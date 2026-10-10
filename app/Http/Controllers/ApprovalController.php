@@ -10,8 +10,10 @@ class ApprovalController extends Controller
     public function index(Request $request)
     {
         $query = ApprovalRequest::query()->with(['requester','reviewer']);
-        $businessId = $request->user()->business_id ?? null;
-        if ($businessId) {
+        $user = $request->user();
+        $businessId = $user->business_id;
+        // Tenant users must never see unscoped or another tenant's requests.
+        if (!$user->isSuperAdmin()) {
             $query->where('business_id', $businessId);
         }
         if ($request->filled('status') && in_array($request->status, ['pending','approved','rejected','cancelled'], true)) {
@@ -23,7 +25,7 @@ class ApprovalController extends Controller
         }
         $requests = $query->latest()->paginate(15)->withQueryString();
         $countQuery = ApprovalRequest::query();
-        if ($businessId) { $countQuery->where('business_id', $businessId); }
+        if (!$user->isSuperAdmin()) { $countQuery->where('business_id', $businessId); }
         $counts = $countQuery->selectRaw("status, COUNT(*) as total")->groupBy('status')->pluck('total','status');
         return view('approvals.index', compact('requests','counts'));
     }
@@ -85,8 +87,13 @@ class ApprovalController extends Controller
 
     private function ensureSameBusiness(Request $request, ApprovalRequest $approvalRequest): void
     {
-        $businessId = $request->user()->business_id ?? null;
-        abort_unless(!$businessId || (int) $approvalRequest->business_id === (int) $businessId, 404);
+        $user = $request->user();
+        if ($user->isSuperAdmin()) {
+            return;
+        }
+        abort_unless($approvalRequest->business_id !== null
+            && $user->business_id !== null
+            && (int) $approvalRequest->business_id === (int) $user->business_id, 404);
     }
 
     private function ensureReviewer(Request $request): void
