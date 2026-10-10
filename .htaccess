@@ -1,0 +1,27 @@
+# SHREE GURVE - root .htaccess (local WAMP, app served from project root)
+<IfModule mod_negotiation.c>
+    Options -MultiViews -Indexes
+</IfModule>
+
+RewriteEngine On
+
+# Already pointing inside public/: leave alone
+RewriteRule ^public/ - [L]
+
+# Pass auth/CSRF headers to PHP
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+RewriteCond %{HTTP:x-xsrf-token} .
+RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
+
+# Static assets live in public/
+RewriteRule ^(css|js|images|fonts|build|storage|favicon\.ico|robots\.txt)(/.*)?$ public/$1$2 [L,NC]
+
+# SECURITY: never serve dotfiles (.env, .git ...), source or config
+RewriteRule (^|/)\.(?!well-known) - [F,L]
+RewriteRule ^(app|bootstrap|config|database|resources|routes|storage|tests|vendor|node_modules)(/|$) - [F,L,NC]
+RewriteRule ^(artisan|composer\.(json|lock)|package(-lock)?\.json|phpunit\.xml|vite\.config\.js|.*\.md|.*\.zip)$ - [F,L,NC]
+
+# Everything else -> Laravel
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^ index.php [L]

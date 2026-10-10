@@ -34,7 +34,16 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script>
-const D=@json($daily->map(fn($r)=>['d'=>\Illuminate\Support\Str::substr((string)$r->date,0,10),'s'=>(float)$r->spend,'a'=>(float)$r->sales]));
+@php
+    $chartData = $daily->map(function ($r) {
+        return [
+            'd' => \Illuminate\Support\Str::substr((string) $r->date, 0, 10),
+            's' => (float) $r->spend,
+            'a' => (float) $r->sales,
+        ];
+    })->values();
+@endphp
+const D = {{ \Illuminate\Support\Js::from($chartData) }};
 const dark=document.documentElement.getAttribute('data-bs-theme')==='dark', tick=dark?'#8f9bb8':'#6e7891';
 new Chart(document.getElementById('adChart'),{type:'line',data:{labels:D.map(x=>x.d),datasets:[
  {label:'Ad spend',data:D.map(x=>x.s),borderColor:'#ed2b2a',backgroundColor:'rgba(237,43,42,.1)',tension:.25,fill:true},
