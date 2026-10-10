@@ -43,30 +43,10 @@ return new class extends Migration {
             $t->timestamps();
             $t->unique(['business_id', 'year', 'month']);
         });
-
-        // AI / automation proposals. Nothing risky touches a marketplace until status = APPROVED.
-        Schema::create('approval_requests', function (Blueprint $t) {
-            $t->id();
-            $t->foreignId('business_id')->constrained()->restrictOnDelete();
-            $t->string('type', 60)->index();               // price_change, ad_budget, listing_update, claim_submit ...
-            $t->string('title');
-            $t->nullableMorphs('entity');
-            $t->json('current_value')->nullable();
-            $t->json('proposed_value')->nullable();
-            $t->string('source', 20)->default('USER');     // USER | AI | AUTOMATION
-            $t->string('status', 20)->default('PENDING')->index(); // PENDING|APPROVED|REJECTED|EXECUTED|FAILED
-            $t->foreignId('requested_by')->nullable()->constrained('users')->nullOnDelete();
-            $t->foreignId('reviewed_by')->nullable()->constrained('users')->nullOnDelete();
-            $t->timestamp('reviewed_at')->nullable();
-            $t->text('review_note')->nullable();
-            $t->timestamp('executed_at')->nullable();
-            $t->timestamps();
-        });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('approval_requests');
         Schema::dropIfExists('financial_periods');
         Schema::dropIfExists('system_logs');
         Schema::dropIfExists('activity_logs');

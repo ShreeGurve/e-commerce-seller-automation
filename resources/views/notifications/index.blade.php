@@ -1,0 +1,6 @@
+@extends('layouts.app')
+@section('title','Notifications') @section('subtitle','Business alerts and automation events')
+@section('content')
+<div class="d-flex justify-content-end mb-3"><form method="POST" action="{{route('notifications.read-all')}}">@csrf<button class="btn btn-outline-primary btn-sm">Mark all as read</button></form></div>
+<div class="card"><div class="list-group list-group-flush">@forelse($notifications as $n)<div class="list-group-item d-flex gap-3 align-items-start {{$n->read_at?'':'bg-body-tertiary'}}"><i class="bi bi-bell fs-4 text-primary"></i><div class="flex-grow-1"><div class="fw-bold">{{data_get($n->data,'title','Business notification')}}</div><div>{{data_get($n->data,'message','')}}</div><div class="small text-muted mt-1">{{$n->created_at->diffForHumans()}}</div>@if(data_get($n->data,'url'))<a href="{{data_get($n->data,'url')}}" class="small">Open related item</a>@endif</div>@if(!$n->read_at)<form method="POST" action="{{route('notifications.read',$n->id)}}">@csrf<button class="btn btn-sm btn-outline-secondary">Mark read</button></form>@endif</div>@empty<div class="p-5 text-center text-muted">No notifications yet. Run an enabled automation rule to check for alerts.</div>@endforelse</div><div class="card-footer">{{$notifications->links()}}</div></div>
+@endsection

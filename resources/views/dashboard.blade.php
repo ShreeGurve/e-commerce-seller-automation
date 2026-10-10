@@ -16,6 +16,12 @@
   @endforeach
 </div>
 
+<div class="row g-3 mb-4">
+ @foreach([['Sales this month','₹'.number_format($metrics['sales'],2),'bi-currency-rupee','t-green'],['Orders this month',number_format($metrics['orders']),'bi-receipt','t-blue'],['Estimated profit','₹'.number_format($metrics['profit'],2),'bi-graph-up-arrow','t-green'],['Ad spend','₹'.number_format($metrics['ads'],2),'bi-megaphone','t-orange'],['Low stock',number_format($metrics['low_stock']),'bi-boxes','t-red']] as [$label,$value,$icon,$tile])
+ <div class="col-6 col-xl"><div class="card h-100"><div class="card-body d-flex align-items-center gap-3"><div class="sg-tile {{$tile}}"><i class="bi {{$icon}}"></i></div><div><div class="small text-muted">{{$label}}</div><div class="fw-bold fs-5">{{$value}}</div></div></div></div></div>
+ @endforeach
+</div>
+
 <div class="row g-3 g-lg-4">
   <div class="col-xl-7">
     <div class="card h-100"><div class="card-body">
@@ -76,10 +82,15 @@
         @empty<li class="list-group-item text-muted">No activity yet.</li>@endforelse
       </ul></div>
   </div>
+  <div class="col-12"><div class="row g-3">
+    @can('reports.view')<div class="col-md-4"><a class="card card-body h-100 text-decoration-none" href="{{route('reports.index')}}"><b><i class="bi bi-file-earmark-bar-graph me-2"></i>Business reports</b><span class="small text-muted">Filter and export operational and financial reports.</span></a></div>@endcan
+    @can('automation.view')<div class="col-md-4"><a class="card card-body h-100 text-decoration-none" href="{{route('automation.index')}}"><b><i class="bi bi-gear-wide-connected me-2"></i>Automation rules</b><span class="small text-muted">Configure and run internal alerts.</span></a></div>@endcan
+    @can('reports.view')<div class="col-md-4"><a class="card card-body h-100 text-decoration-none" href="{{route('notifications.index')}}"><b><i class="bi bi-bell me-2"></i>Notifications ({{$metrics['unread']}})</b><span class="small text-muted">Review unread alerts and follow related links.</span></a></div>@endcan
+  </div></div>
   <div class="col-lg-5">
     <div class="card h-100"><div class="card-header">Roadmap</div>
       <ul class="list-group list-group-flush small">
-        @foreach([['Phase 1','Catalog, costs, inventory','success','Now'],['Phase 2','Orders, returns, refunds','secondary','Next'],['Phase 3','Amazon + Flipkart imports','secondary','Soon'],['Phase 4','Fees, settlements, profit engine','secondary','Soon'],['Phase 5+','Ads, claims, listings, AI','secondary','Later']] as [$p,$d,$c,$b])
+        @foreach([['Phases 1–7','Catalog, imports, orders, finance, ads, claims, listings','success','Completed'],['Phase 8','Dashboard, reports, notifications, automation','primary','Current']] as [$p,$d,$c,$b])
           <li class="list-group-item d-flex align-items-center gap-2"><b style="width:64px">{{ $p }}</b><span class="text-muted">{{ $d }}</span><span class="badge text-bg-{{ $c }} ms-auto">{{ $b }}</span></li>
         @endforeach
       </ul></div>

@@ -1,29 +1,7 @@
 <?php
 namespace App\Http\Controllers;
-
-use App\Models\{ActivityLog, Category, Claim, Marketplace, Product};
-
-class DashboardController extends Controller
-{
-    public function __invoke()
-    {
-        return view('dashboard', [
-            'productCount' => Product::count(),
-            'activeCount' => Product::where('status', 'active')->count(),
-            'categoryCount' => Category::count(),
-            'marketplaceCount' => Marketplace::active()->count(),
-            'activity' => ActivityLog::with('user')->latest('id')->limit(8)->get(),
-            'claimAlerts' => $this->claimAlerts(),
-        ]);
-    }
-
-    /** claims where you must act soon; never lets a missing table break the landing page */
-    private function claimAlerts()
-    {
-        try {
-            if (! auth()->user()->can('claims.view')) return collect();
-            return Claim::with('order:id,external_order_id')->whereIn('status', Claim::ALERT_STATUSES)->whereNotNull('deadline')
-                ->whereDate('deadline', '<=', now()->addDays(Claim::warningDays())->toDateString())->orderBy('deadline')->limit(6)->get();
-        } catch (\Throwable) { return collect(); }
-    }
+use App\Models\{ActivityLog,Category,Claim,Marketplace,Product};use Illuminate\Support\Facades\DB;
+class DashboardController extends Controller {
+ public function __invoke(){$from=now()->startOfMonth()->toDateString();$to=now()->toDateString();$m=['orders'=>0,'sales'=>0,'profit'=>0,'ads'=>0,'low_stock'=>0,'unread'=>0];try{$m['orders']=DB::table('orders')->whereBetween('order_date',[$from.' 00:00:00',$to.' 23:59:59'])->count();$m['sales']=(float)DB::table('orders')->whereBetween('order_date',[$from.' 00:00:00',$to.' 23:59:59'])->sum('total_amount');$m['profit']=(float)DB::table('order_profits')->whereBetween('order_date',[$from,$to])->sum('estimated_profit');$m['ads']=(float)DB::table('advertising_daily')->whereBetween('date',[$from,$to])->where('level','CAMPAIGN')->sum('spend');$m['low_stock']=DB::table('inventory')->whereRaw('available_qty <= minimum_stock')->count();$m['unread']=auth()->user()->unreadNotifications()->count();}catch(\Throwable){}return view('dashboard',['productCount'=>Product::count(),'activeCount'=>Product::where('status','active')->count(),'categoryCount'=>Category::count(),'marketplaceCount'=>Marketplace::active()->count(),'activity'=>ActivityLog::with('user')->latest('id')->limit(8)->get(),'claimAlerts'=>$this->claimAlerts(),'metrics'=>$m]);}
+ private function claimAlerts(){try{if(!auth()->user()->can('claims.view'))return collect();return Claim::with('order:id,external_order_id')->whereIn('status',Claim::ALERT_STATUSES)->whereNotNull('deadline')->whereDate('deadline','<=',now()->addDays(Claim::warningDays())->toDateString())->orderBy('deadline')->limit(6)->get();}catch(\Throwable){return collect();}}
 }

@@ -1,5 +1,5 @@
 <?php
-use App\Http\Controllers\{ClaimController, ListingController, KeywordController, PricingController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController};
+use App\Http\Controllers\{ReportController, NotificationController, AutomationController, ApprovalController, ClaimController, ListingController, KeywordController, PricingController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController};
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\LoginController;
 use Illuminate\Support\Facades\Route;
@@ -194,6 +194,27 @@ Route::middleware('auth')->group(function () {
     });
     Route::get('/pricing', [PricingController::class, 'index'])->middleware('can:pricing.view')->name('pricing.index');
     Route::post('/pricing/calculate', [PricingController::class, 'calculate'])->middleware('can:pricing.manage')->name('pricing.calculate');
+
+    // Approval workflow: submit requests; only authorised reviewers may approve/reject.
+    Route::get('/approvals', [ApprovalController::class, 'index'])->name('approvals.index');
+    Route::post('/approvals', [ApprovalController::class, 'store'])->name('approvals.store');
+    Route::post('/approvals/{approvalRequest}/approve', [ApprovalController::class, 'approve'])->name('approvals.approve');
+    Route::post('/approvals/{approvalRequest}/reject', [ApprovalController::class, 'reject'])->name('approvals.reject');
+    Route::post('/approvals/{approvalRequest}/cancel', [ApprovalController::class, 'cancel'])->name('approvals.cancel');
+
+    // Phase 8: reporting, notifications and internal automation
+    Route::get('/reports', [ReportController::class, 'index'])->middleware('can:reports.view')->name('reports.index');
+    Route::get('/reports/export', [ReportController::class, 'export'])->middleware('can:reports.export')->name('reports.export');
+    Route::get('/notifications', [NotificationController::class, 'index'])->middleware('can:reports.view')->name('notifications.index');
+    Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->middleware('can:reports.view')->name('notifications.read-all');
+    Route::post('/notifications/{notification}/read', [NotificationController::class, 'read'])->middleware('can:reports.view')->name('notifications.read');
+    Route::middleware('can:automation.view')->prefix('automation')->name('automation.')->group(function () {
+        Route::get('/', [AutomationController::class, 'index'])->name('index');
+        Route::post('/run', [AutomationController::class, 'run'])->middleware('can:automation.manage')->name('run');
+        Route::post('/rules', [AutomationController::class, 'store'])->middleware('can:automation.manage')->name('store');
+        Route::post('/rules/{automationRule}/toggle', [AutomationController::class, 'toggle'])->middleware('can:automation.manage')->name('toggle');
+        Route::delete('/rules/{automationRule}', [AutomationController::class, 'destroy'])->middleware('can:automation.manage')->name('destroy');
+    });
 
     // Other modules not built yet
     Route::get('/m/{module}', ModuleController::class)->name('module');

@@ -15,6 +15,7 @@ class ModuleController extends Controller
 
     public function __invoke(string $module)
     {
+        if ($module === 'approvals') return redirect()->route('approvals.index');
         abort_unless(isset(self::PHASES[$module]), 404);
         [$title, $phase] = self::PHASES[$module];
         return view('module', compact('title', 'phase'));

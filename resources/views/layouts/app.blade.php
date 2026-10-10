@@ -62,14 +62,21 @@
     .sg-appgrid i{font-size:1.3rem;color:#3874ff}
     /* sidebar */
     .sg-side{position:fixed;top:var(--sg-nav-h);bottom:0;left:0;width:var(--sg-side-w);background:var(--sg-card);border-right:1px solid var(--sg-border);display:flex;flex-direction:column;z-index:1020;transition:width .2s ease,transform .25s ease}
-    .sg-side-scroll{flex:1;overflow-y:auto;padding:.5rem 0}
-    .sg-sec{font-size:.68rem;font-weight:800;letter-spacing:.08em;color:var(--sg-muted);padding:1rem 1.5rem .3rem;text-transform:uppercase;white-space:nowrap}
-    .sg-link{display:flex;align-items:center;gap:.75rem;padding:.5rem 1.5rem;color:var(--sg-text);text-decoration:none;font-size:.9rem;font-weight:600;white-space:nowrap;border-left:3px solid transparent}
+    .sg-side-scroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:.65rem .45rem .8rem .35rem;scrollbar-width:thin;scrollbar-color:rgba(56,116,255,.42) transparent;overscroll-behavior:contain}
+    /* Clean, modern sidebar scrollbar (Chromium / Safari) */
+    .sg-side-scroll::-webkit-scrollbar{width:7px}
+    .sg-side-scroll::-webkit-scrollbar-track{background:transparent;margin:8px 0}
+    .sg-side-scroll::-webkit-scrollbar-thumb{background:rgba(110,120,145,.25);border:2px solid transparent;border-radius:999px;background-clip:padding-box;min-height:34px}
+    .sg-side-scroll:hover::-webkit-scrollbar-thumb{background:rgba(56,116,255,.48);border:2px solid transparent;background-clip:padding-box}
+    .sg-side-scroll::-webkit-scrollbar-thumb:hover{background:rgba(56,116,255,.75);border:2px solid transparent;background-clip:padding-box} 
+    .sg-sec{font-size:.66rem;font-weight:800;letter-spacing:.09em;color:var(--sg-muted);padding:1.05rem 1.15rem .45rem;text-transform:uppercase;white-space:nowrap;opacity:.88}
+    .sg-link{display:flex;align-items:center;gap:.75rem;margin:.12rem .35rem;padding:.62rem .8rem;color:var(--sg-text);text-decoration:none;font-size:.9rem;font-weight:600;white-space:nowrap;border-left:3px solid transparent;border-radius:0 .6rem .6rem 0;transition:background .16s ease,color .16s ease,border-color .16s ease}
     .sg-link i{font-size:1.05rem;width:1.25rem;text-align:center;color:var(--sg-muted)}
-    .sg-link:hover{background:rgba(56,116,255,.06)}
-    .sg-link.active{color:#3874ff;background:rgba(56,116,255,.09);border-left-color:#3874ff}
+    .sg-link:hover{background:rgba(56,116,255,.07);color:#3874ff}
+    .sg-link:hover i{color:#3874ff}
+    .sg-link.active{color:#3874ff;background:rgba(56,116,255,.11);border-left-color:#3874ff;box-shadow:inset 0 0 0 1px rgba(56,116,255,.035)}
     .sg-link.active i{color:#3874ff}
-    .sg-soon{margin-left:auto;font-size:.6rem;font-weight:700;padding:.1rem .4rem;border-radius:1rem;background:rgba(110,120,145,.15);color:var(--sg-muted)}
+    .sg-soon{margin-left:auto;flex:none;font-size:.61rem;font-weight:800;letter-spacing:.01em;padding:.18rem .48rem;border:1px solid rgba(110,120,145,.12);border-radius:999px;background:rgba(110,120,145,.12);color:var(--sg-muted)}
     .sg-side-foot{border-top:1px solid var(--sg-border);padding:.5rem 0}
     .sg-side-foot button{all:unset;cursor:pointer;display:flex;align-items:center;gap:.75rem;padding:.55rem 1.5rem;color:var(--sg-text);font-weight:600;width:100%;box-sizing:border-box;white-space:nowrap}
     .sg-side-foot button:hover{color:#3874ff}
@@ -92,7 +99,7 @@
     @media(min-width:992px){
       html.sg-collapsed{--sg-side-w:72px}
       .sg-collapsed .sg-label,.sg-collapsed .sg-sec,.sg-collapsed .sg-soon{display:none}
-      .sg-collapsed .sg-link,.sg-collapsed .sg-side-foot button{justify-content:center;padding-left:0;padding-right:0}
+      .sg-collapsed .sg-link,.sg-collapsed .sg-side-foot button{justify-content:center;padding-left:0;padding-right:0;margin-left:.35rem;margin-right:.35rem;border-radius:.65rem}
       .sg-collapsed .sg-link i{font-size:1.2rem}
     }
     /* tablet + phone: off-canvas sidebar */
@@ -145,12 +152,12 @@
       ['Listings','bi-card-text',route('listings.index'),'listings*','listings.view',false],
       ['Keywords','bi-search',route('keywords.index'),'keywords*','keywords.view',false],
       ['Pricing intelligence','bi-currency-rupee',route('pricing.index'),'pricing*','pricing.view',false],
-      ['Reports','bi-file-earmark-bar-graph',route('module','reports'),'m/reports',null,true],
+      ['Reports','bi-file-earmark-bar-graph',route('reports.index'),'reports*','reports.view',false],
     ],
     'System' => [
-      ['Automation','bi-gear-wide-connected',route('module','automation'),'m/automation',null,true],
-      ['Notifications','bi-bell',route('module','notifications'),'m/notifications',null,true],
-      ['Approvals','bi-check2-square',route('module','approvals'),'m/approvals',null,true],
+      ['Automation','bi-gear-wide-connected',route('automation.index'),'automation*','automation.view',false],
+      ['Notifications','bi-bell',route('notifications.index'),'notifications*','reports.view',false],
+      ['Approvals','bi-check2-square',route('approvals.index'),'approvals',null,false],
       ['Users','bi-people',route('users.index'),'users*','users.manage',false],
       ['Roles & Permissions','bi-shield-lock',route('roles.index'),'roles*','roles.manage',false],
       ['Settings','bi-sliders',route('settings.index'),'settings*','settings.manage',false],
@@ -188,7 +195,7 @@
     <a href="{{ route('products.index') }}" class="sg-iconbtn sg-searchicon" aria-label="Search products"><i class="bi bi-search"></i></a>
     @endcan
     <button class="sg-iconbtn" type="button" id="sgTheme" aria-label="Toggle dark mode"><i class="bi bi-sun" id="sgThemeIcon"></i></button>
-    <a href="{{ route('module','notifications') }}" class="sg-iconbtn" aria-label="Notifications"><i class="bi bi-bell"></i></a>
+    <a href="{{ route('notifications.index') }}" class="sg-iconbtn" aria-label="Notifications"><i class="bi bi-bell"></i></a>
     <div class="dropdown d-none d-sm-block">
       <button class="sg-iconbtn" data-bs-toggle="dropdown" aria-label="Quick apps"><i class="bi bi-grid-3x3-gap-fill"></i></button>
       <div class="dropdown-menu dropdown-menu-end p-0"><div class="sg-appgrid">
@@ -218,7 +225,7 @@
         <div class="sg-sec">{{ $title }}</div>
         @foreach($visible as [$l,$i,$url,$p,$perm,$soon])
           <a href="{{ $url }}" class="sg-link {{ $isActive($p,$soon) ? 'active' : '' }}" title="{{ $l }}">
-            <i class="bi {{ $i }}"></i><span class="sg-label">{{ $l }}</span>@if($l==='Claims' && $urgentClaims)<span class="sg-soon" style="background:#ed2b2a;color:#fff" title="Claims at or past their deadline window">{{ $urgentClaims }}</span>@endif @if($soon)<span class="sg-soon">Soon</span>@endif
+            <i class="bi {{ $i }}"></i><span class="sg-label">{{ $l }}</span>@if($l==='Claims' && $urgentClaims)<span class="sg-soon" style="background:#ed2b2a;color:#fff" title="Claims at or past their deadline window">{{ $urgentClaims }}</span>@endif @if($soon)<span class="sg-soon" title="Coming soon — this module is planned for a future phase" aria-label="Coming soon">Soon</span>@endif
           </a>
         @endforeach
       @endif

@@ -1,0 +1,3 @@
+<?php
+namespace App\Http\Controllers;use Illuminate\Http\Request;
+class NotificationController extends Controller {public function index(Request $r){$notifications=$r->user()->notifications()->latest()->paginate(25);return view('notifications.index',compact('notifications'));}public function read(Request $r,string $notification){$n=$r->user()->notifications()->whereKey($notification)->firstOrFail();$n->markAsRead();return back()->with('success','Notification marked as read.');}public function readAll(Request $r){$r->user()->unreadNotifications()->update(['read_at'=>now()]);return back()->with('success','All notifications marked as read.');}}
