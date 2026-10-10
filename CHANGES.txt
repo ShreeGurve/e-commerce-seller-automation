@@ -1,0 +1,52 @@
+UPDATE 12 - Phase 6: Claims (SAFE-T, reimbursements, disputes), evidence, deadline alerts, appeals, recovery in profit
+
+NEW
+  database/migrations/2026_10_14_000001_create_claims_tables.php   claims, claim_documents, claim_events
+  app/Models/Claim, ClaimDocument, ClaimEvent
+  app/Services/ClaimService.php         suggestion from a return, create, edit, status rules, evidence
+  app/Http/Controllers/ClaimController.php
+  resources/views/claims/{_deadline,index,_form,create,edit,show}.blade.php
+  tests/Feature/ClaimTest.php   (auto-skips unless in-memory SQLite)
+CHANGED
+  app/Models/Order.php, ProductReturn.php          claims() relations
+  app/Models/ReconciliationIssue.php               + 'Approved claim not paid'
+  app/Services/ProfitService.php                   approved claim money counts as recovery (see below)
+  app/Services/ReconciliationService.php           flags approved claims that never got paid
+  app/Http/Controllers/SettingsController.php      3 new settings (filing window, urgent days, warning days)
+  app/Http/Controllers/DashboardController.php, ReturnController.php, OrderController.php
+  resources/views/dashboard (claims needing action), returns/show (Create claim), orders/show (Claims card), layouts/app (sidebar + urgent badge)
+  routes/web.php
+
+RUN (project folder) - plain migrate, NOT migrate:fresh:
+  php artisan migrate
+  php artisan optimize:clear
+No seeder change. Permissions already exist: claims.view (see), claims.create (create claims, add evidence), claims.manage (edit, change status, delete evidence).
+
+FLOW
+  Return inspection marks 'claim eligible' -> Claims page lists it under 'Returns marked claim eligible' -> Create claim.
+  Pre-filled: channel, order, return, product, type (Amazon = SAFE-T, Flipkart = Flipkart claim, otherwise damaged / missing / wrong item)
+  and amount (price of the units that did not come back sellable). Everything is editable.
+  Draft -> (you file it on the Amazon / Flipkart portal) -> Submitted -> Under review -> Approved / Partially approved / Rejected
+  Rejected or partial -> Appeal -> decision again.  Closed ends it.  Nothing is ever sent to a marketplace by this system.
+  Evidence: upload photos, videos, PDFs, or copy the photos taken at return inspection in one click. Files are private.
+  Same order + same claim type cannot be opened twice while the first is not closed. A portal claim id can only be tracked once.
+
+DEADLINES
+  New claims get deadline = return date + 'Claim filing window' (Settings, default 30 days), editable per claim.
+  Alerts apply to claims you still have to file (Draft) or appeal (Rejected / Partial / Appeal):
+    URGENT at or under 'urgent' days (default 3)  |  WARNING at or under 'warning' days (default 7)  |  EXPIRED when past.
+  Shown on: Claims list, claim page, Dashboard card, red badge on the sidebar Claims item.
+  (Scheduled e-mail / WhatsApp reminders come with the notification system.)
+
+MONEY
+  Approved amount counts as RECOVERY in order profit (estimated and actual) as soon as it is approved.
+  When the real payout shows up in a settlement (a reimbursement line) the payout replaces the claim amount: never counted twice.
+  Reconciliation adds 'Approved claim not paid' when an approved claim has no reimbursement in any settlement after the wait days.
+
+VERIFY
+  1 Inspect a return, tick 'claim eligible'. Claims page shows it under suggestions. Create claim: type, amount, deadline are pre-filled.
+  2 Claim page: upload a photo (or copy from the return). Mark Submitted (portal id optional).
+  3 Mark Partially approved with an amount: Approved / Rejected figures update; order Profit card shows the recovery.
+  4 Reject another claim, press Appeal with a new deadline. Timeline shows every step.
+  5 Set a deadline 2 days away on a draft: Claims list, Dashboard and the sidebar badge turn red.
+  6 Settings: change the urgent / warning days and see the flags move.
