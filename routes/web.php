@@ -1,5 +1,5 @@
 <?php
-use App\Http\Controllers\{KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController};
+use App\Http\Controllers\{PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController};
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\LoginController;
 use Illuminate\Support\Facades\Route;
@@ -205,6 +205,15 @@ Route::middleware('auth')->group(function () {
         Route::put('/keywords/{keyword}', [KeywordController::class, 'update'])->name('keywords.update');
         Route::delete('/keywords/{keyword}', [KeywordController::class, 'destroy'])->name('keywords.destroy');
         Route::post('/keywords/{keyword}/rank', [KeywordController::class, 'rank'])->name('keywords.rank');
+    });
+
+    // Pricing intelligence (cost + fees => break-even / minimum / target price). Advice only.
+    Route::get('/pricing', [PricingController::class, 'index'])->middleware('can:products.view')->name('pricing.index');
+    Route::get('/pricing/{product}/{marketplace}', [PricingController::class, 'show'])->middleware('can:products.view')->name('pricing.show');
+    Route::middleware('can:products.edit')->group(function () {
+        Route::post('/pricing/{product}/{marketplace}/prices', [PricingController::class, 'recordPrice'])->name('pricing.price');
+        Route::post('/pricing/{product}/{marketplace}/competitors', [PricingController::class, 'competitor'])->name('pricing.competitor');
+        Route::delete('/pricing/competitors/{competitorPrice}', [PricingController::class, 'deleteCompetitor'])->name('pricing.competitor.delete');
     });
 
     // Modules not built yet

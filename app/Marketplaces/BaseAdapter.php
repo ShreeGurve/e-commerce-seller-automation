@@ -16,7 +16,9 @@ abstract class BaseAdapter implements MarketplaceInterface
     public function code(): string { return $this->marketplace->code; }
     public function supportsApi(): bool { return false; }
     /** header guesses that are the same for every channel */
-    protected array $commonAliases = ['KEYWORDS' => [
+    protected array $commonAliases = ['COMPETITORS' => [
+        'sku' => ['sku', 'product sku', 'our sku'], 'competitor' => ['competitor', 'competitor name', 'seller', 'seller name'], 'competitor_price' => ['price', 'competitor price', 'their price'],
+        'captured_on' => ['date', 'captured on', 'date captured'], 'source' => ['source'], 'url' => ['url', 'link']], 'KEYWORDS' => [
         'sku' => ['sku', 'product sku', 'seller sku'], 'keyword' => ['keyword', 'keywords', 'keyword phrase', 'search term'], 'keyword_type' => ['type', 'keyword type'],
         'search_volume' => ['search volume', 'volume', 'monthly search volume', 'sv'], 'competition' => ['competition', 'competition level', 'difficulty'],
         'relevance' => ['relevance', 'relevancy', 'relevance score'], 'rank' => ['rank', 'organic rank', 'position', 'current rank'], 'rank_date' => ['date', 'checked on', 'rank date'],

@@ -2,7 +2,7 @@
 namespace App\Services;
 
 use App\Marketplaces\{MarketplaceInterface, MarketplaceManager};
-use App\Models\{DataImport, ImportRow, Order, OrderItem, Product, ProductMarketplace, ProductReturn, ReturnItem, Settlement, SettlementItem, AdvertisingCampaign, AdvertisingDaily, AdvertisingGroup, AdvertisingKeyword, AdvertisingSearchTerm, Keyword, KeywordGroup, KeywordRanking};
+use App\Models\{DataImport, ImportRow, Order, OrderItem, Product, ProductMarketplace, ProductReturn, ReturnItem, Settlement, SettlementItem, AdvertisingCampaign, AdvertisingDaily, AdvertisingGroup, AdvertisingKeyword, AdvertisingSearchTerm, Keyword, KeywordGroup, KeywordRanking, CompetitorPrice};
 use App\Support\{FileReader, ImportValue, Money};
 use Illuminate\Support\Facades\{DB, Storage};
 use Illuminate\Validation\ValidationException;
@@ -48,6 +48,7 @@ class ImportProcessor
                 'MAPPINGS' => $this->mappings($rows, $commit),
                 'SETTLEMENTS' => $this->settlements($rows, $commit),
                 'KEYWORDS' => $this->keywords($rows, $commit),
+                'COMPETITORS' => $this->competitors($rows, $commit),
                 'ADS_CAMPAIGN', 'ADS_KEYWORD', 'ADS_TERM', 'ADS_PRODUCT' => $this->ads($rows, $commit),
             };
             $summary = $this->summary($rows);
@@ -519,6 +520,37 @@ class ImportProcessor
         }
         $this->created = $new + $upd;
         if ($this->created && count($this->samples) < 10) $this->samples[] = "{$new} new keyword(s), {$upd} updated";
+    }
+
+
+    // ------------------------------------------------------------------ COMPETITOR PRICES (your own research or an approved source; never scraped)
+    private function competitors(array $rows, bool $commit): void
+    {
+        $opts = $this->import->options ?? []; $mp = $this->import->marketplace; $seen = []; $new = 0; $upd = 0;
+        foreach ($rows as $r) {
+            $d = $r['d']; $n = $r['n'];
+            $sku = trim($d['sku'] ?? ''); $product = $sku === '' ? null : $this->product($sku);
+            if (! $product) { $this->mark($n, 'ERROR', "Unknown SKU '{$sku}'."); continue; }
+            $name = trim($d['competitor'] ?? '');
+            if ($name === '' || mb_strlen($name) > 120) { $this->mark($n, 'ERROR', 'Competitor name is empty or longer than 120 characters.'); continue; }
+            $price = ImportValue::money($d['competitor_price'] ?? null);
+            if ($price === null || Money::p($price) <= 0) { $this->mark($n, 'ERROR', 'Competitor price must be more than zero.'); continue; }
+            $date = ($d['captured_on'] ?? '') === '' ? now() : ImportValue::date($d['captured_on'], $opts['date_format'] ?? 'auto');
+            if (! $date || $date->gt(now()->addDay())) { $this->mark($n, 'ERROR', 'Date is invalid or in the future.'); continue; }
+            $key = $product->id . '|' . mb_strtolower($name) . '|' . $date->toDateString();
+            if (isset($seen[$key])) { $this->mark($n, 'ERROR', 'Same competitor and date appears twice for this product in this file.'); continue; }
+            $seen[$key] = true;
+            $ex = CompetitorPrice::where(['product_id' => $product->id, 'marketplace_id' => $mp->id, 'competitor_name' => $name, 'captured_on' => $date->toDateString()])->first();
+            if ($ex && Money::p($ex->competitor_price) === Money::p($price)) { $this->mark($n, 'DUPLICATE', 'Same price already saved for that day. Skipped.'); continue; }
+            $ex ? $upd++ : $new++;
+            if (! $commit) { $this->mark($n, 'OK', $ex ? 'Will update the saved price.' : null); continue; }
+            try {
+                $row = app(PricingService::class)->addCompetitor($product, $mp, $name, $price, $date->toDateString(), ($d['source'] ?? '') ?: null, ($d['url'] ?? '') ?: null, $this->user());
+                $this->mark($n, 'OK', $ex ? 'Updated.' : null, 'competitor', $row->id);
+            } catch (\Throwable $e) { report($e); $this->mark($n, 'ERROR', 'Unexpected error while saving this price (see storage/logs/laravel.log).'); }
+        }
+        $this->created = $new + $upd;
+        if ($this->created && count($this->samples) < 10) $this->samples[] = "{$new} new competitor price(s), {$upd} updated";
     }
 
     /** After a real import: refresh profit and reconciliation for everything it touched. Never fails the import itself. */

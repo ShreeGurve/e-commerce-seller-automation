@@ -105,7 +105,7 @@ class ImportController extends Controller
     /** Settlements need finance.manage, ad reports need advertising.manage, everything else orders.edit. */
     private function authorizeType(string $type): void
     {
-        $perm = match (true) { $type === 'SETTLEMENTS' => 'finance.manage', str_starts_with($type, 'ADS_') => 'advertising.manage', $type === 'KEYWORDS' => 'listings.manage', default => 'orders.edit' };
+        $perm = match (true) { $type === 'SETTLEMENTS' => 'finance.manage', str_starts_with($type, 'ADS_') => 'advertising.manage', $type === 'KEYWORDS' => 'listings.manage', $type === 'COMPETITORS' => 'products.edit', default => 'orders.edit' };
         abort_unless(auth()->user()->can($perm), 403);
     }
 }

@@ -10,7 +10,7 @@ class CanImport
     public function handle(Request $request, Closure $next)
     {
         $u = $request->user();
-        abort_unless($u && ($u->can('orders.edit') || $u->can('finance.manage') || $u->can('advertising.manage') || $u->can('listings.manage')), 403);
+        abort_unless($u && ($u->can('orders.edit') || $u->can('finance.manage') || $u->can('advertising.manage') || $u->can('listings.manage') || $u->can('products.edit')), 403);
         return $next($request);
     }
 }

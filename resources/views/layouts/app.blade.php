@@ -138,6 +138,7 @@
     'Growth & Finance' => [
       ['Advertising','bi-megaphone',route('ads.index'),'ads*','advertising.view',false],
       ['Profit','bi-graph-up-arrow',route('profit.index'),'finance/profit*','finance.view',false],
+      ['Pricing','bi-tag',route('pricing.index'),'pricing*','products.view',false],
       ['Expenses','bi-wallet2',route('expenses.index'),'finance/expenses*','finance.view',false],
       ['Fee rules','bi-percent',route('fees.index'),'finance/fees*','finance.view',false],
       ['Settlements','bi-bank',route('settlements.index'),'finance/settlements*','finance.view',false],

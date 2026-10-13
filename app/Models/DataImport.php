@@ -39,6 +39,9 @@ class DataImport extends Model
             'sku' => ['Product SKU', true], 'keyword' => ['Keyword', true], 'keyword_type' => ['Type (primary, secondary, long-tail...)', false], 'search_volume' => ['Search volume', false],
             'competition' => ['Competition (low / medium / high)', false], 'relevance' => ['Relevance 0-100', false], 'rank' => ['Current rank / position', false],
             'rank_date' => ['Rank date', false], 'source' => ['Source / tool', false], 'group' => ['Keyword group', false]]],
+        'COMPETITORS' => ['label' => 'Competitor prices', 'fields' => [
+            'sku' => ['Our product SKU', true], 'competitor' => ['Competitor / seller name', true], 'competitor_price' => ['Competitor price ₹', true],
+            'captured_on' => ['Date captured', false], 'source' => ['Source', false], 'url' => ['Link', false]]],
         'MAPPINGS' => ['label' => 'SKU mappings', 'fields' => [
             'marketplace_sku' => ['Marketplace SKU', true], 'product_sku' => ['Our product SKU', true],
             'external_product_id' => ['ASIN / FSN', false], 'fulfillment_sku' => ['FNSKU', false], 'listing_status' => ['Listing status', false]]],

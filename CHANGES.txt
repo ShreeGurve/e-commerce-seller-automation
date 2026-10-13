@@ -1,50 +1,47 @@
-UPDATE 13 - Phase 7a: Listings (versions + compare), configurable Listing score, Keywords (+ rankings, groups, import)
-            [Phase 7b = pricing intelligence, price history, competitor prices, comes next]
+UPDATE 14 - Phase 7b: Pricing intelligence, price history, competitor prices   (completes Phase 7)
 
 NEW
-  database/migrations/2026_10_15_000001_create_listing_tables.php   listings, listing_versions, listing_score_rules (8 seeded), keyword_groups, keywords, keyword_rankings
-  app/Models/Listing, ListingVersion, ListingScoreRule, KeywordGroup, Keyword, KeywordRanking
-  app/Support/TextDiff.php                 word-level compare of two versions
-  app/Services/ListingScoreService.php     the 0-100 score
-  app/Services/ListingService.php          versioning, restore, mark live
-  app/Http/Controllers/ListingController, ListingScoreRuleController, KeywordController
-  resources/views/listings/{index,_form,create,edit,show,compare,rules}.blade.php, keywords/{index,edit}.blade.php
-  tests/Feature/ListingKeywordTest.php   (auto-skips unless in-memory SQLite)
+  database/migrations/2026_10_16_000001_create_pricing_tables.php   price_history, competitor_prices
+  app/Models/PriceHistory, CompetitorPrice
+  app/Services/PricingService.php
+  app/Http/Controllers/PricingController.php
+  resources/views/pricing/{index,show}.blade.php
+  tests/Feature/PricingTest.php   (auto-skips unless in-memory SQLite)
 CHANGED
-  app/Models/DataImport.php, app/Marketplaces/BaseAdapter.php, app/Services/ImportProcessor.php   new import type: Keywords (and rankings)
-  app/Http/Controllers/ImportController.php, Middleware/CanImport.php                              keyword imports need listings.manage
-  app/Http/Controllers/ProductController.php, resources/views/products/show.blade.php              Listings + Keywords tabs on the product page
-  resources/views/layouts/app.blade.php (sidebar), routes/web.php
+  app/Models/DataImport.php, app/Marketplaces/BaseAdapter.php, app/Services/ImportProcessor.php   new import type: Competitor prices
+  app/Http/Controllers/ImportController.php, Middleware/CanImport.php                             competitor imports need products.edit
+  app/Http/Controllers/SettingsController.php                                                      3 pricing settings
+  resources/views/layouts/app.blade.php (sidebar: Pricing), routes/web.php
 
 RUN (project folder) - plain migrate, NOT migrate:fresh:
   php artisan migrate
   php artisan optimize:clear
-No seeder change. Permissions already exist: listings.view (see), listings.manage (write, score rules, keyword import). Marketing Manager has both.
+No seeder change. Permissions: products.view (see pricing, includes your costs) / products.edit (record prices, competitor prices).
 
-LISTINGS
-  Write title, bullets, description, backend search terms, special features, A+ text, image count / video, brand, category.
-  EVERY save is a new version (v1, v2, v3 ...). Saving identical text is refused. Restore copies an old version into a NEW version, history is never lost.
-  Compare any two versions side by side: removed words red, added words green, plus the score change.
-  'Mark live' only records which version you applied on the marketplace. NOTHING is ever sent to Amazon or Flipkart. A 'newer draft' tag shows when the latest version is not the live one.
+WHAT YOU SEE  (Pricing in the sidebar; pick the channel at the top)
+  Per product: price now, unit cost, fees, ad cost per unit, return cost per unit, BREAK-EVEN price, MINIMUM price, TARGET price,
+  margin now, MAX DISCOUNT you can give before hitting the minimum, and how you compare with the lowest competitor.
+  Status: Losing money / Fees too high / Below minimum / Below target / No price set / OK. Worst first.
+  Click a product: a line-by-line breakdown of one unit's money, a WHAT-IF box ('what if I sell at 249?'), price history with chart, competitors with chart.
 
-SCORE (0-100)  Listings > Score rules (sliders icon)
-  Title 20 | Bullets 20 | Keyword coverage 15 | Images 15 | Description 10 | A+ 10 | Special features 5 | Backend search terms 5   (all editable, can be switched off)
-  The score is earned points / total max x 100, so weights never have to add up to 100.
-  Rules you can change: title min / max length and 'keyword in first N characters', bullet count and length, description length, image target, A+ length,
-  feature target, backend byte range. Every criterion shows tips (e.g. 'Move a primary keyword into the first 80 characters').
-  Keyword checks use the keywords saved for that product + channel (primary count double). AEO / SEO / GEO keywords are tracked but not scored.
-  After changing keywords or rules press 'Recalculate score' on a listing.
-  The default limits (title 80-200, 5 bullets of 100-500, backend 150-250 bytes) are starting points: set them to your marketplace's current rules.
+HOW THE PRICES ARE WORKED OUT (nothing guessed)
+  profit per unit = price / (1 + GST)  -  unit cost  -  marketplace fees  -  ad cost per unit  -  return cost per unit
+  - Fees: your fee rules (percentage + fixed + GST on fees). Fees are a straight line in price, so each target price is solved exactly,
+    then rounded UP to the next whole rupee (the lowest whole-rupee price that really reaches the margin).
+  - Unit cost: current COGS + packaging + other (cost history).
+  - Ad cost and return cost per unit: averages of your own recent orders (Settings: look-back days, default 90). No orders yet = Rs 0, shown as '-'.
+  - Minimum margin (Settings, default 5%) and Target margin (Settings > target profit margin, default 20%) set the minimum and target prices.
+  - 'Current price' = the latest price you RECORDED for that channel, else the product's master selling price.
+  If no fee rules exist for a channel the page says so: without fees every price looks better than it is.
 
-KEYWORDS
-  Add many at once (one per line) with type, volume, competition, group. Types: Primary, Secondary, Long-tail, Backend, AEO, SEO, GEO.
-  Rank history per keyword (organic / sponsored) with a chart. Group keywords. Import a file: Imports > 'Keywords (and rankings)'
-  (columns: SKU, keyword, type, volume, competition, relevance, rank, rank date, source, group). Re-importing never duplicates; a changed volume / rank updates the row.
+PRICE HISTORY / COMPETITORS
+  'Record price' keeps a dated history (with the previous price) of what you set. It does NOT change anything on Amazon / Flipkart.
+  Competitor prices: type them in, or import them (Imports > Competitor prices: SKU, competitor, price, date). Same day + same competitor updates the price.
+  Only prices captured in the last N days (Settings, default 30) are compared. This system never scrapes marketplaces.
 
 VERIFY
-  1 Keywords > add 3 primary / secondary keywords for a product.
-  2 Listings > New listing for that product and channel: write copy, Save. Read the score tips.
-  3 Edit, improve the title, save: v2 appears. Compare v1 and v2: changes are highlighted, score goes up.
-  4 Mark v2 live. Edit again: list shows 'newer draft'.
-  5 Listings > sliders icon: change Title max points, save, Recalculate score.
-  6 Product page > Listings and Keywords tabs show the summary.
+  1 Make sure Fee rules exist for the channel (Finance > Fee rules). Open Pricing and pick the channel.
+  2 Open a product: check the breakdown matches your own calculator. Try a what-if price below break-even: it turns red.
+  3 Record a new price; the history shows 'was Rs X'. The status updates.
+  4 Add two competitor prices. 'vs competitor' shows how far above / below you are.
+  5 Place or import some orders with ad spend: ads / unit and returns / unit fill in and the break-even price rises.
