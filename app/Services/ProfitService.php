@@ -13,7 +13,13 @@ use Illuminate\Support\Facades\DB;
  */
 class ProfitService
 {
-    public function __construct(private FeeService $fees, private AdAllocationService $ads) {}
+    public function __construct(private FeeService $fees, private AdAllocationService $ads, private SummaryService $summary) {}
+
+    /** never let the speed tables break profit calculation (e.g. before the migration has run) */
+    private function touchSummary(Order $o): void
+    {
+        try { $this->summary->touch($o->order_date->toDateString(), (int) $o->marketplace_id); } catch (\Throwable $e) { report($e); }
+    }
 
     /** Recalculate, but never let a profit problem break the order/return/refund that triggered it. */
     public function safe(Order $order): void
@@ -34,6 +40,7 @@ class ProfitService
                 OrderItemFee::whereIn('order_item_id', $ids)->delete();
                 OrderProfit::whereIn('order_item_id', $ids)->delete();
                 foreach ($o->items->pluck('product_id')->unique() as $pid) $this->ads->allocateKey($o->marketplace_id, $pid, $o->order_date->toDateString());
+                $this->touchSummary($o);
                 return;
             }
             $subtotal = Money::p($o->subtotal);
@@ -108,15 +115,20 @@ class ProfitService
                 OrderProfit::updateOrCreate(['order_item_id' => $item->id], $row);
             }
             foreach ($o->items->pluck('product_id')->unique() as $pid) $this->ads->allocateKey($o->marketplace_id, $pid, $o->order_date->toDateString());   // ad spend for this product/day is shared across its lines
+            $this->touchSummary($o);
         });
     }
 
     public function recalcAll(): int
     {
-        $n = 0;
-        Order::where('status', '!=', 'CANCELLED')->select('id')->chunkById(200, function ($chunk) use (&$n) {
-            foreach ($chunk as $o) { $this->recalcOrder($o); $n++; }
-        });
+        $n = 0; $this->summary->begin();                      // refresh each affected day once at the end, not once per order
+        try {
+            Order::where('status', '!=', 'CANCELLED')->select('id')->chunkById(200, function ($chunk) use (&$n) {
+                foreach ($chunk as $o) { $this->recalcOrder($o); $n++; }
+            });
+        } finally {
+            try { $this->summary->flush(); } catch (\Throwable $e) { report($e); }
+        }
         return $n;
     }
 

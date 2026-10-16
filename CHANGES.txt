@@ -1,47 +1,56 @@
-UPDATE 14 - Phase 7b: Pricing intelligence, price history, competitor prices   (completes Phase 7)
+UPDATE 15 - Phase 8a: Dashboard decision center + daily summary tables (fast dashboards)
+            [8b = reports + Excel/CSV/print export + daily business report;  8c = notifications, automation rules, scheduler, backups, period closing]
 
 NEW
-  database/migrations/2026_10_16_000001_create_pricing_tables.php   price_history, competitor_prices
-  app/Models/PriceHistory, CompetitorPrice
-  app/Services/PricingService.php
-  app/Http/Controllers/PricingController.php
-  resources/views/pricing/{index,show}.blade.php
-  tests/Feature/PricingTest.php   (auto-skips unless in-memory SQLite)
+  database/migrations/2026_10_17_000001_create_summary_tables.php   daily_sales, daily_profit, daily_advertising, daily_inventory
+  app/Services/SummaryService.php      keeps the daily tables correct (always recomputed from real data, never incremented, so they cannot drift)
+  app/Services/DashboardService.php    every dashboard number, from the daily tables
+  app/Services/DecisionService.php     the 'What should I do today?' list
+  app/Console/Commands/RebuildSummaries.php   php artisan summary:rebuild [--from= --to=]
+  app/Console/Commands/SnapshotInventory.php  php artisan summary:snapshot   (end-of-day stock per product)
+  tests/Feature/SummaryDashboardTest.php   (auto-skips unless in-memory SQLite)
 CHANGED
-  app/Models/DataImport.php, app/Marketplaces/BaseAdapter.php, app/Services/ImportProcessor.php   new import type: Competitor prices
-  app/Http/Controllers/ImportController.php, Middleware/CanImport.php                             competitor imports need products.edit
-  app/Http/Controllers/SettingsController.php                                                      3 pricing settings
-  resources/views/layouts/app.blade.php (sidebar: Pricing), routes/web.php
+  app/Providers/AppServiceProvider.php   SummaryService is a singleton (so big jobs can batch)
+  app/Services/ProfitService.php         refreshes the affected day whenever an order's profit is recalculated; recalc-all batches
+  app/Services/ImportProcessor.php       big imports batch the refresh; ad imports refresh their days
+  app/Http/Controllers/DashboardController.php, resources/views/dashboard.blade.php   the new dashboard
+  resources/views/layouts/app.blade.php  print stylesheet (hides menus when printing)
+  routes/web.php                         dashboard rebuild button route
 
 RUN (project folder) - plain migrate, NOT migrate:fresh:
   php artisan migrate
+  php artisan summary:rebuild            <- ONCE, fills the daily tables from orders you already have
   php artisan optimize:clear
-No seeder change. Permissions: products.view (see pricing, includes your costs) / products.edit (record prices, competitor prices).
+(No terminal? Open the Dashboard: a yellow 'Build dashboard numbers' button appears when needed.)
+No seeder change. Everyone who can open the dashboard sees sales numbers; profit shortcuts only show to people with the matching permission.
 
-WHAT YOU SEE  (Pricing in the sidebar; pick the channel at the top)
-  Per product: price now, unit cost, fees, ad cost per unit, return cost per unit, BREAK-EVEN price, MINIMUM price, TARGET price,
-  margin now, MAX DISCOUNT you can give before hitting the minimum, and how you compare with the lowest competitor.
-  Status: Losing money / Fees too high / Below minimum / Below target / No price set / OK. Worst first.
-  Click a product: a line-by-line breakdown of one unit's money, a WHAT-IF box ('what if I sell at 249?'), price history with chart, competitors with chart.
+THE DASHBOARD ANSWERS 5 QUESTIONS
+  1 How much did I sell?       sales, orders, units, change vs the period right before
+  2 What did I actually earn?  order profit, and NET profit after expenses and ad spend that no sale could carry
+  3 Which products earn most?  top 5
+  4 Where am I losing money?   5 lowest-profit products + 'Where the money went' waterfall (revenue - cost - fees - refunds + recovered - ads - expenses)
+  5 What should I do today?    real problems with an Open button, worst first:
+      claims past / near deadline | sold-out products | below-minimum stock | products that lost money in 30 days |
+      open reconciliation issues | keywords that spent money and never sold | returns waiting for inspection |
+      imported orders to review | listings scoring under 70
+  Only items you are allowed to open are shown. Filters: today, yesterday, 7 / 30 days, this / last month, custom range, channel.
+  Charts: sales and orders, profit, ad spend vs sales, refunds, profit by channel. Channel table. 'All numbers' lists every KPI
+  (sales, orders, units, revenue, fees, ads, cost, refunds, profit, margin, ROAS, ACOS, TACOS, return rate, cancellation rate).
 
-HOW THE PRICES ARE WORKED OUT (nothing guessed)
-  profit per unit = price / (1 + GST)  -  unit cost  -  marketplace fees  -  ad cost per unit  -  return cost per unit
-  - Fees: your fee rules (percentage + fixed + GST on fees). Fees are a straight line in price, so each target price is solved exactly,
-    then rounded UP to the next whole rupee (the lowest whole-rupee price that really reaches the margin).
-  - Unit cost: current COGS + packaging + other (cost history).
-  - Ad cost and return cost per unit: averages of your own recent orders (Settings: look-back days, default 90). No orders yet = Rs 0, shown as '-'.
-  - Minimum margin (Settings, default 5%) and Target margin (Settings > target profit margin, default 20%) set the minimum and target prices.
-  - 'Current price' = the latest price you RECORDED for that channel, else the product's master selling price.
-  If no fee rules exist for a channel the page says so: without fees every price looks better than it is.
+HOW THE SPEED TABLES STAY TRUE
+  Each time an order is created, cancelled, returned, refunded, settled, claimed or ad-costed, that ONE day for that channel is recomputed
+  from the real tables. Re-running gives identical numbers. Importing thousands of orders refreshes each day once at the end.
+  If you ever doubt them: php artisan summary:rebuild   (or the dashboard button).
 
-PRICE HISTORY / COMPETITORS
-  'Record price' keeps a dated history (with the previous price) of what you set. It does NOT change anything on Amazon / Flipkart.
-  Competitor prices: type them in, or import them (Imports > Competitor prices: SKU, competitor, price, date). Same day + same competitor updates the price.
-  Only prices captured in the last N days (Settings, default 30) are compared. This system never scrapes marketplaces.
+LIMITS TO KNOW
+  - Shipping cost is not a separate KPI yet (courier costs can be entered as an expense).
+  - Return rate = returns created in the period / orders in the period.
+  - Scheduled daily refresh and the stock snapshot run automatically only after the scheduler is set up (Phase 8c).
 
 VERIFY
-  1 Make sure Fee rules exist for the channel (Finance > Fee rules). Open Pricing and pick the channel.
-  2 Open a product: check the breakdown matches your own calculator. Try a what-if price below break-even: it turns red.
-  3 Record a new price; the history shows 'was Rs X'. The status updates.
-  4 Add two competitor prices. 'vs competitor' shows how far above / below you are.
-  5 Place or import some orders with ad spend: ads / unit and returns / unit fill in and the break-even price rises.
+  1 php artisan migrate, then php artisan summary:rebuild. Open Dashboard: numbers, charts and the action list appear.
+  2 Switch to Last month / a custom range / one channel. Numbers and arrows change.
+  3 Create a new order: reload the dashboard, sales and profit move at once.
+  4 Cancel it: they move back.
+  5 Click an item in 'What should I do today?': it opens the right screen.
+  6 Compare 'Net profit' with Profit page > Net profit for the same dates: they match.

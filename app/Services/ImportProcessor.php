@@ -40,6 +40,8 @@ class ImportProcessor
         $this->adapter = $this->markets->for($this->import->marketplace);
         $this->res = []; $this->samples = []; $this->created = 0; $this->skuCache = []; $this->touchedOrders = []; $this->touchedSettlements = []; $this->adDates = [];
 
+        $speed = app(SummaryService::class);
+        if ($commit) $speed->begin();                         // many orders/lines: refresh each affected day once at the end, not once per order
         try {
             $rows = $this->load();
             match ($this->import->data_type) {
@@ -57,6 +59,8 @@ class ImportProcessor
         } catch (\Throwable $e) {
             if ($commit) DataImport::whereKey($import->id)->update(['status' => 'FAILED', 'error_message' => substr($e->getMessage(), 0, 500)]);
             throw $e;
+        } finally {
+            if ($commit) { try { $speed->flush(); } catch (\Throwable $e) { report($e); } }
         }
     }
 
@@ -564,6 +568,7 @@ class ImportProcessor
                 $recon->run($this->touchedOrders, array_keys($this->touchedSettlements));
             } elseif (str_starts_with($this->import->data_type, 'ADS_') && $this->adDates) {
                 app(AdAllocationService::class)->allocateRange(min($this->adDates), max($this->adDates));   // ad cost lands on the sales it paid for
+                app(SummaryService::class)->rebuildRange(min($this->adDates), max($this->adDates));          // daily ad + profit summaries for those days
             } elseif ($this->import->data_type === 'ORDERS' && SettlementItem::whereNull('order_id')->exists()) {
                 $recon->run([]);                           // payouts that arrived before their order get linked now
             }

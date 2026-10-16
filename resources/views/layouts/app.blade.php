@@ -95,6 +95,7 @@
       .sg-collapsed .sg-link,.sg-collapsed .sg-side-foot button{justify-content:center;padding-left:0;padding-right:0}
       .sg-collapsed .sg-link i{font-size:1.2rem}
     }
+    @media print{.sg-side,.sg-top,.sg-footer,#sgTop,.sg-backdrop,.no-print{display:none!important}.sg-main{margin:0!important;padding-top:0!important}.sg-main>main{padding:0!important}.card{border:1px solid #ccc!important}}
     /* tablet + phone: off-canvas sidebar */
     @media(max-width:991.98px){
       .sg-side{transform:translateX(-100%);width:272px;box-shadow:none}

@@ -8,7 +8,10 @@ use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
-    public function register(): void {}
+    public function register(): void
+    {
+        $this->app->singleton(\App\Services\SummaryService::class);   // one instance so big jobs can batch refreshes
+    }
 
     public function boot(): void
     {

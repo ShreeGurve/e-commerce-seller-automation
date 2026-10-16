@@ -110,6 +110,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/returns/{productReturn}/media/{media}', [ReturnController::class, 'media'])->middleware('can:returns.view')->name('returns.media');
     Route::delete('/returns/{productReturn}/media/{media}', [ReturnController::class, 'deleteMedia'])->middleware('can:returns.manage')->name('returns.media.delete');
 
+    Route::post('/dashboard/rebuild', [DashboardController::class, 'rebuild'])->middleware(['can:finance.manage', 'throttle:6,1'])->name('dashboard.rebuild');
+
     // Marketplace hubs (Amazon / Flipkart / ...)
     Route::get('/marketplaces/{code}', [MarketplaceController::class, 'show'])->middleware('can:orders.view')->name('marketplaces.show');
 
