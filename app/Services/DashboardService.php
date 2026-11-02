@@ -59,7 +59,7 @@ class DashboardService
         return $out;
     }
 
-    private function channels(array $f, ?int $mp): array
+    public function channels(array $f, ?int $mp): array
     {
         $g = fn (string $table, string $cols) => DB::table($table)->whereBetween('date', [$f['from'], $f['to']])->when($mp, fn ($q, $v) => $q->where('marketplace_id', $v))
             ->selectRaw("marketplace_id, {$cols}")->groupBy('marketplace_id')->get()->keyBy('marketplace_id');
@@ -74,10 +74,10 @@ class DashboardService
         return $rows;
     }
 
-    private function products(array $f, ?int $mp): array
+    public function products(array $f, ?int $mp, int $n = 5): array
     {
         $q = fn () => DB::table('order_profits as p')->join('products as pr', 'pr.id', '=', 'p.product_id')->whereBetween('p.order_date', [$f['from'], $f['to']])->when($mp, fn ($x, $v) => $x->where('p.marketplace_id', $v))
             ->selectRaw('p.product_id, pr.sku, pr.name, SUM(p.qty) units, SUM(p.revenue) revenue, SUM(COALESCE(p.actual_profit, p.estimated_profit)) profit')->groupBy('p.product_id', 'pr.sku', 'pr.name');
-        return ['top' => $q()->orderByRaw('profit DESC')->limit(5)->get(), 'worst' => $q()->orderByRaw('profit ASC')->limit(5)->get()];
+        return ['top' => $q()->orderByRaw('profit DESC')->limit($n)->get(), 'worst' => $q()->orderByRaw('profit ASC')->limit($n)->get()];
     }
 }

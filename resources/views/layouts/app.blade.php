@@ -146,7 +146,7 @@
       ['Reconciliation','bi-check2-all',route('reconciliation.index'),'finance/reconciliation*','finance.view',false],
       ['Listings','bi-card-text',route('listings.index'),'listings*','listings.view',false],
       ['Keywords','bi-search',route('keywords.index'),'keywords*','listings.view',false],
-      ['Reports','bi-file-earmark-bar-graph',route('module','reports'),'m/reports',null,true],
+      ['Reports','bi-file-earmark-bar-graph',route('reports.index'),'reports*','reports.view',false],
     ],
     'System' => [
       ['Automation','bi-gear-wide-connected',route('module','automation'),'m/automation',null,true],
