@@ -20,8 +20,6 @@ class RolesPermissionsSeeder extends Seeder
             'advertising' => ['view', 'manage'],
             'finance' => ['view', 'manage', 'close_period'],
             'listings' => ['view', 'manage'],
-            'keywords' => ['view', 'manage'],
-            'pricing' => ['view', 'manage'],
             'reports' => ['view', 'export'],
             'automation' => ['view', 'manage'],
             'approvals' => ['view', 'decide'],

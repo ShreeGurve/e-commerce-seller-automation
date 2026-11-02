@@ -2,7 +2,7 @@
 namespace App\Services;
 
 use App\Marketplaces\{MarketplaceInterface, MarketplaceManager};
-use App\Models\{DataImport, ImportRow, Order, OrderItem, Product, ProductMarketplace, ProductReturn, ReturnItem, Settlement, SettlementItem, AdvertisingCampaign, AdvertisingDaily, AdvertisingGroup, AdvertisingKeyword, AdvertisingSearchTerm};
+use App\Models\{DataImport, ImportRow, Order, OrderItem, Product, ProductMarketplace, ProductReturn, ReturnItem, Settlement, SettlementItem, AdvertisingCampaign, AdvertisingDaily, AdvertisingGroup, AdvertisingKeyword, AdvertisingSearchTerm, Keyword, KeywordGroup, KeywordRanking, CompetitorPrice};
 use App\Support\{FileReader, ImportValue, Money};
 use Illuminate\Support\Facades\{DB, Storage};
 use Illuminate\Validation\ValidationException;
@@ -40,6 +40,8 @@ class ImportProcessor
         $this->adapter = $this->markets->for($this->import->marketplace);
         $this->res = []; $this->samples = []; $this->created = 0; $this->skuCache = []; $this->touchedOrders = []; $this->touchedSettlements = []; $this->adDates = [];
 
+        $speed = app(SummaryService::class);
+        if ($commit) $speed->begin();                         // many orders/lines: refresh each affected day once at the end, not once per order
         try {
             $rows = $this->load();
             match ($this->import->data_type) {
@@ -47,6 +49,8 @@ class ImportProcessor
                 'RETURNS' => $this->returns($rows, $commit),
                 'MAPPINGS' => $this->mappings($rows, $commit),
                 'SETTLEMENTS' => $this->settlements($rows, $commit),
+                'KEYWORDS' => $this->keywords($rows, $commit),
+                'COMPETITORS' => $this->competitors($rows, $commit),
                 'ADS_CAMPAIGN', 'ADS_KEYWORD', 'ADS_TERM', 'ADS_PRODUCT' => $this->ads($rows, $commit),
             };
             $summary = $this->summary($rows);
@@ -55,6 +59,8 @@ class ImportProcessor
         } catch (\Throwable $e) {
             if ($commit) DataImport::whereKey($import->id)->update(['status' => 'FAILED', 'error_message' => substr($e->getMessage(), 0, 500)]);
             throw $e;
+        } finally {
+            if ($commit) { try { $speed->flush(); } catch (\Throwable $e) { report($e); } }
         }
     }
 
@@ -459,6 +465,98 @@ class ImportProcessor
         if ($this->created && count($this->samples) < 10) $this->samples[] = "{$new} new row(s), {$upd} updated row(s), total spend ₹" . number_format($spendTotal / 100, 2) . ' (' . strtolower($level) . ' level)';
     }
 
+
+    // ------------------------------------------------------------------ KEYWORDS (+ rankings)
+    private const KW_TYPES = ['primary' => 'PRIMARY', 'secondary' => 'SECONDARY', 'longtail' => 'LONG_TAIL', 'backend' => 'BACKEND', 'aeo' => 'AEO', 'seo' => 'SEO', 'geo' => 'GEO'];
+
+    /** New keywords are created; existing ones are updated only with the columns you gave; a row that changes nothing is a Duplicate. */
+    private function keywords(array $rows, bool $commit): void
+    {
+        $opts = $this->import->options ?? []; $mp = $this->import->marketplace_id; $seen = []; $new = 0; $upd = 0;
+        foreach ($rows as $r) {
+            $d = $r['d']; $n = $r['n'];
+            $sku = trim($d['sku'] ?? ''); $product = $sku === '' ? null : $this->product($sku);
+            if (! $product) { $this->mark($n, 'ERROR', "Unknown SKU '{$sku}'. Map it first (Product > Marketplace tab, or import SKU mappings)."); continue; }
+            $kw = trim($d['keyword'] ?? '');
+            if ($kw === '' || mb_strlen($kw) > 255) { $this->mark($n, 'ERROR', 'Keyword is empty or longer than 255 characters.'); continue; }
+            $type = null;
+            if (($d['keyword_type'] ?? '') !== '') {
+                $type = self::KW_TYPES[\App\Marketplaces\BaseAdapter::norm($d['keyword_type'])] ?? null;
+                if (! $type) { $this->mark($n, 'ERROR', "Unknown keyword type '{$d['keyword_type']}'. Use primary, secondary, long-tail, backend, AEO, SEO or GEO."); continue; }
+            }
+            $vol = ($d['search_volume'] ?? '') === '' ? null : ImportValue::int($d['search_volume']);
+            $rel = ($d['relevance'] ?? '') === '' ? null : ImportValue::int($d['relevance']);
+            $rank = ($d['rank'] ?? '') === '' ? null : ImportValue::int($d['rank']);
+            if ((($d['search_volume'] ?? '') !== '' && ($vol === null || $vol < 0)) || (($d['relevance'] ?? '') !== '' && ($rel === null || $rel < 0 || $rel > 100)) || (($d['rank'] ?? '') !== '' && ($rank === null || $rank < 1))) {
+                $this->mark($n, 'ERROR', 'Search volume must be 0 or more, relevance 0-100, rank 1 or more (whole numbers).'); continue;
+            }
+            $comp = null;
+            if (($d['competition'] ?? '') !== '') {
+                $c = strtoupper(trim($d['competition'])); $comp = in_array($c, ['LOW', 'MEDIUM', 'HIGH'], true) ? $c : (str_starts_with($c, 'MED') ? 'MEDIUM' : null);
+                if (! $comp) { $this->mark($n, 'ERROR', "Competition '{$d['competition']}' must be low, medium or high."); continue; }
+            }
+            $rdate = ($d['rank_date'] ?? '') === '' ? now() : ImportValue::date($d['rank_date'], $opts['date_format'] ?? 'auto');
+            if ($rank !== null && (! $rdate || $rdate->gt(now()->addDay()))) { $this->mark($n, 'ERROR', 'Rank date is invalid or in the future.'); continue; }
+            $hash = Keyword::hash($kw);
+            if (isset($seen[$product->id . $hash])) { $this->mark($n, 'ERROR', 'Same keyword appears twice for this product in this file.'); continue; }
+            $seen[$product->id . $hash] = true;
+
+            $given = array_filter(['keyword_type' => $type, 'search_volume' => $vol, 'competition' => $comp, 'relevance' => $rel, 'source' => ($d['source'] ?? '') ?: null], fn ($v) => $v !== null);
+            $ex = Keyword::where(['product_id' => $product->id, 'marketplace_id' => $mp, 'key_hash' => $hash])->first();
+            $diff = $ex ? array_filter($given, fn ($v, $k) => (string) $ex->{$k} !== (string) $v, ARRAY_FILTER_USE_BOTH) : $given;
+            $groupName = trim($d['group'] ?? ''); $groupChange = $ex && $groupName !== '' && optional($ex->group)->name !== $groupName;
+            $rankChange = $rank !== null && (! $ex || ! KeywordRanking::where(['keyword_id' => $ex->id, 'checked_on' => $rdate->toDateString(), 'rank_type' => 'ORGANIC', 'rank' => $rank])->exists());
+            if ($ex && ! $diff && ! $groupChange && ! $rankChange) { $this->mark($n, 'DUPLICATE', 'Nothing new for this keyword. Skipped.'); continue; }
+            $ex ? $upd++ : $new++;
+            if (! $commit) { $this->mark($n, 'OK', $ex ? 'Will update this keyword.' : null); continue; }
+            try {
+                $gid = $groupName !== '' ? KeywordGroup::firstOrCreate(['name' => mb_substr($groupName, 0, 255)])->id : null;
+                if ($ex) { $ex->update($diff + ($gid ? ['group_id' => $gid] : [])); $k = $ex; }
+                else $k = Keyword::create($given + ['product_id' => $product->id, 'marketplace_id' => $mp, 'keyword' => $kw, 'key_hash' => $hash, 'keyword_type' => $type ?? 'SECONDARY', 'group_id' => $gid, 'created_by' => $this->import->uploaded_by]);
+                if ($rank !== null) {
+                    KeywordRanking::updateOrCreate(['keyword_id' => $k->id, 'checked_on' => $rdate->toDateString(), 'rank_type' => 'ORGANIC'], ['rank' => $rank, 'source' => $given['source'] ?? null, 'created_by' => $this->import->uploaded_by]);
+                    if (! $k->rank_checked_on || $k->rank_checked_on->toDateString() <= $rdate->toDateString()) $k->update(['current_rank' => $rank, 'rank_checked_on' => $rdate->toDateString()]);
+                }
+                $this->mark($n, 'OK', $ex ? 'Updated.' : null, 'keyword', $k->id);
+            } catch (\Throwable $e) {
+                report($e); $this->mark($n, 'ERROR', 'Unexpected error while saving this keyword (see storage/logs/laravel.log).');
+            }
+        }
+        $this->created = $new + $upd;
+        if ($this->created && count($this->samples) < 10) $this->samples[] = "{$new} new keyword(s), {$upd} updated";
+    }
+
+
+    // ------------------------------------------------------------------ COMPETITOR PRICES (your own research or an approved source; never scraped)
+    private function competitors(array $rows, bool $commit): void
+    {
+        $opts = $this->import->options ?? []; $mp = $this->import->marketplace; $seen = []; $new = 0; $upd = 0;
+        foreach ($rows as $r) {
+            $d = $r['d']; $n = $r['n'];
+            $sku = trim($d['sku'] ?? ''); $product = $sku === '' ? null : $this->product($sku);
+            if (! $product) { $this->mark($n, 'ERROR', "Unknown SKU '{$sku}'."); continue; }
+            $name = trim($d['competitor'] ?? '');
+            if ($name === '' || mb_strlen($name) > 120) { $this->mark($n, 'ERROR', 'Competitor name is empty or longer than 120 characters.'); continue; }
+            $price = ImportValue::money($d['competitor_price'] ?? null);
+            if ($price === null || Money::p($price) <= 0) { $this->mark($n, 'ERROR', 'Competitor price must be more than zero.'); continue; }
+            $date = ($d['captured_on'] ?? '') === '' ? now() : ImportValue::date($d['captured_on'], $opts['date_format'] ?? 'auto');
+            if (! $date || $date->gt(now()->addDay())) { $this->mark($n, 'ERROR', 'Date is invalid or in the future.'); continue; }
+            $key = $product->id . '|' . mb_strtolower($name) . '|' . $date->toDateString();
+            if (isset($seen[$key])) { $this->mark($n, 'ERROR', 'Same competitor and date appears twice for this product in this file.'); continue; }
+            $seen[$key] = true;
+            $ex = CompetitorPrice::where(['product_id' => $product->id, 'marketplace_id' => $mp->id, 'competitor_name' => $name, 'captured_on' => $date->toDateString()])->first();
+            if ($ex && Money::p($ex->competitor_price) === Money::p($price)) { $this->mark($n, 'DUPLICATE', 'Same price already saved for that day. Skipped.'); continue; }
+            $ex ? $upd++ : $new++;
+            if (! $commit) { $this->mark($n, 'OK', $ex ? 'Will update the saved price.' : null); continue; }
+            try {
+                $row = app(PricingService::class)->addCompetitor($product, $mp, $name, $price, $date->toDateString(), ($d['source'] ?? '') ?: null, ($d['url'] ?? '') ?: null, $this->user());
+                $this->mark($n, 'OK', $ex ? 'Updated.' : null, 'competitor', $row->id);
+            } catch (\Throwable $e) { report($e); $this->mark($n, 'ERROR', 'Unexpected error while saving this price (see storage/logs/laravel.log).'); }
+        }
+        $this->created = $new + $upd;
+        if ($this->created && count($this->samples) < 10) $this->samples[] = "{$new} new competitor price(s), {$upd} updated";
+    }
+
     /** After a real import: refresh profit and reconciliation for everything it touched. Never fails the import itself. */
     private function afterCommit(): void
     {
@@ -470,6 +568,7 @@ class ImportProcessor
                 $recon->run($this->touchedOrders, array_keys($this->touchedSettlements));
             } elseif (str_starts_with($this->import->data_type, 'ADS_') && $this->adDates) {
                 app(AdAllocationService::class)->allocateRange(min($this->adDates), max($this->adDates));   // ad cost lands on the sales it paid for
+                app(SummaryService::class)->rebuildRange(min($this->adDates), max($this->adDates));          // daily ad + profit summaries for those days
             } elseif ($this->import->data_type === 'ORDERS' && SettlementItem::whereNull('order_id')->exists()) {
                 $recon->run([]);                           // payouts that arrived before their order get linked now
             }

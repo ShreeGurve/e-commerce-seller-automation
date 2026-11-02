@@ -38,7 +38,7 @@ class ClaimController extends Controller
 
     public function create(Request $request)
     {
-        $pre = ['claim_type' => 'DAMAGED_ITEM', 'claim_amount' => null, 'notes' => ''];
+        $pre = ['claim_type' => 'DAMAGED_ITEM', 'claim_amount' => '', 'notes' => ''];
         $return = $request->query('return_id') ? ProductReturn::with('order')->find($request->query('return_id')) : null;
         $order = $return?->order ?? ($request->query('order_id') ? Order::find($request->query('order_id')) : null);
         if ($return) $pre = $this->service->suggestFromReturn($return) + $pre;

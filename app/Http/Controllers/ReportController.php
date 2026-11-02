@@ -1,15 +1,81 @@
 <?php
-namespace App\Http\Controllers;use Illuminate\Http\Request;use Illuminate\Support\Facades\DB;use Symfony\Component\HttpFoundation\StreamedResponse;
-class ReportController extends Controller {
- private const TYPES=['orders','profit','returns','claims','advertising','inventory'];
- public function index(Request $r){$f=$this->filters($r);[$columns,$rows,$totals]=$this->data($f['type'],$f);return view('reports.index',compact('f','columns','rows','totals'));}
- public function export(Request $r):StreamedResponse{$f=$this->filters($r);[$cols,$rows]=$this->data($f['type'],$f);return response()->streamDownload(function()use($cols,$rows){$o=fopen('php://output','w');fwrite($o,"\xEF\xBB\xBF");fputcsv($o,array_values($cols));foreach($rows as $row)fputcsv($o,array_map(fn($k)=>data_get($row,$k),array_keys($cols)));fclose($o);},'shree-gurve-'.$f['type'].'-'.$f['from'].'-to-'.$f['to'].'.csv',['Content-Type'=>'text/csv; charset=UTF-8']);}
- private function filters(Request $r):array{$d=$r->validate(['type'=>['nullable','in:'.implode(',',self::TYPES)],'from'=>['nullable','date'],'to'=>['nullable','date','after_or_equal:from']]);return ['type'=>$d['type']??'profit','from'=>$d['from']??now()->startOfMonth()->toDateString(),'to'=>$d['to']??now()->toDateString()];}
- private function data(string $type,array $f):array{
- if($type==='orders'){$rows=DB::table('orders')->select('order_number','order_date','status','total_amount','source')->whereBetween('order_date',[$f['from'].' 00:00:00',$f['to'].' 23:59:59'])->orderBy('order_date')->get();return [['order_number'=>'Order','order_date'=>'Date','status'=>'Status','total_amount'=>'Total INR','source'=>'Source'],$rows,['Rows'=>$rows->count(),'Total INR'=>$rows->sum('total_amount')]];}
- if($type==='profit'){$rows=DB::table('order_profits')->join('orders','orders.id','=','order_profits.order_id')->join('products','products.id','=','order_profits.product_id')->select('orders.order_number','products.sku','products.name','order_profits.order_date','order_profits.revenue','order_profits.estimated_profit','order_profits.actual_profit','order_profits.profit_status')->whereBetween('order_profits.order_date',[$f['from'],$f['to']])->orderBy('order_profits.order_date')->get();return [['order_number'=>'Order','sku'=>'SKU','name'=>'Product','order_date'=>'Date','revenue'=>'Revenue INR','estimated_profit'=>'Estimated profit INR','actual_profit'=>'Actual profit INR','profit_status'=>'Status'],$rows,['Rows'=>$rows->count(),'Revenue INR'=>$rows->sum('revenue'),'Estimated profit INR'=>$rows->sum('estimated_profit'),'Actual profit INR'=>$rows->sum('actual_profit')]];}
- if($type==='returns'){$rows=DB::table('returns')->join('orders','orders.id','=','returns.order_id')->select('returns.return_number','orders.order_number','returns.return_date','returns.return_type','returns.status','returns.claim_eligible')->whereBetween('returns.return_date',[$f['from'],$f['to']])->orderBy('returns.return_date')->get();return [['return_number'=>'Return','order_number'=>'Order','return_date'=>'Date','return_type'=>'Type','status'=>'Status','claim_eligible'=>'Claim eligible'],$rows,['Rows'=>$rows->count(),'Claim eligible'=>$rows->where('claim_eligible',1)->count()]];}
- if($type==='claims'){$rows=DB::table('claims')->leftJoin('orders','orders.id','=','claims.order_id')->select('claims.claim_number','orders.order_number','claims.claim_type','claims.status','claims.claim_amount','claims.approved_amount','claims.deadline','claims.created_at')->whereBetween('claims.created_at',[$f['from'].' 00:00:00',$f['to'].' 23:59:59'])->orderBy('claims.created_at')->get();return [['claim_number'=>'Claim','order_number'=>'Order','claim_type'=>'Type','status'=>'Status','claim_amount'=>'Claim INR','approved_amount'=>'Approved INR','deadline'=>'Deadline','created_at'=>'Created'],$rows,['Rows'=>$rows->count(),'Claim INR'=>$rows->sum('claim_amount'),'Approved INR'=>$rows->sum('approved_amount')]];}
- if($type==='advertising'){$levels=DB::table('advertising_daily')->whereBetween('date',[$f['from'],$f['to']])->distinct()->pluck('level')->all();$level=collect(['CAMPAIGN','PRODUCT','KEYWORD','TERM'])->first(fn($x)=>in_array($x,$levels,true))??'CAMPAIGN';$rows=DB::table('advertising_daily')->join('advertising_campaigns','advertising_campaigns.id','=','advertising_daily.campaign_id')->select('advertising_campaigns.name as campaign','advertising_daily.date','advertising_daily.spend','advertising_daily.sales','advertising_daily.orders','advertising_daily.clicks')->where('advertising_daily.level',$level)->whereBetween('advertising_daily.date',[$f['from'],$f['to']])->orderBy('advertising_daily.date')->get();return [['campaign'=>'Campaign','date'=>'Date','spend'=>'Spend INR','sales'=>'Sales INR','orders'=>'Orders','clicks'=>'Clicks'],$rows,['Report level'=>$level,'Spend INR'=>$rows->sum('spend'),'Sales INR'=>$rows->sum('sales'),'Orders'=>$rows->sum('orders')]];}
- $rows=DB::table('inventory')->join('products','products.id','=','inventory.product_id')->select('products.sku','products.name','inventory.available_qty','inventory.reserved_qty','inventory.damaged_qty','inventory.minimum_stock','inventory.reorder_level')->orderBy('products.sku')->get();return [['sku'=>'SKU','name'=>'Product','available_qty'=>'Available','reserved_qty'=>'Reserved','damaged_qty'=>'Damaged','minimum_stock'=>'Minimum','reorder_level'=>'Reorder level'],$rows,['Rows'=>$rows->count(),'Low stock'=>$rows->filter(fn($x)=>$x->available_qty<=$x->minimum_stock)->count()]];
- }}
+namespace App\Http\Controllers;
+
+use App\Models\{Category, Marketplace, Product};
+use App\Services\{ActivityLogger, ReportService};
+use App\Support\XlsxWriter;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+
+class ReportController extends Controller
+{
+    private const SCREEN_ROWS = 500;
+
+    public function __construct(private ReportService $reports) {}
+
+    public function index()
+    {
+        return view('reports.index', ['catalog' => $this->reports->catalog(), 'groups' => ReportService::GROUPS]);
+    }
+
+    public function show(Request $request, string $key)
+    {
+        $data = $this->reports->run($key, $f = $this->filters($request));
+        return view('reports.show', ['data' => $data, 'f' => $f, 'shown' => array_slice($data['rows'], 0, self::SCREEN_ROWS), 'total' => count($data['rows']), 'limit' => self::SCREEN_ROWS,
+            'marketplaces' => Marketplace::active()->get(), 'products' => Product::orderBy('sku')->get(['id', 'sku', 'name']), 'categories' => Category::orderBy('name')->get(), 'sorts' => ReportService::SORTS]);
+    }
+
+    public function print(Request $request, string $key)
+    {
+        $data = $this->reports->run($key, $f = $this->filters($request));
+        return view('reports.print', ['data' => $data, 'f' => $f, 'mp' => $f['marketplace_id'] ? Marketplace::find($f['marketplace_id'])?->name : null, 'by' => $request->user()->name]);
+    }
+
+    public function export(Request $request, string $key, string $format)
+    {
+        $data = $this->reports->run($key, $f = $this->filters($request));
+        ActivityLogger::log('report.exported', null, null, ['report' => $key, 'format' => $format, 'rows' => count($data['rows']), 'from' => $f['from'], 'to' => $f['to']]);
+        $name = $key . (in_array('date', $data['filters'], true) ? "-{$f['from']}-to-{$f['to']}" : '-' . now()->toDateString());
+
+        if ($format === 'xlsx') {
+            $bin = XlsxWriter::build($data['columns'], $data['rows'], $data['title'], $data['totals']);
+            return response($bin, 200, ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Content-Disposition' => "attachment; filename=\"{$name}.xlsx\"", 'Content-Length' => strlen($bin)]);
+        }
+        return response()->streamDownload(function () use ($data) {
+            $o = fopen('php://output', 'w');
+            fwrite($o, "\xEF\xBB\xBF");                                                  // so Excel reads rupee signs and accents correctly
+            fputcsv($o, array_map(fn ($c) => $c[1], $data['columns']), ',', '"', '');
+            foreach ($data['rows'] as $r) fputcsv($o, array_map(fn ($c) => self::cell($r[$c[0]] ?? null, $c[2]), $data['columns']), ',', '"', '');
+            if ($data['totals']) { $first = true; fputcsv($o, array_map(function ($c) use ($data, &$first) { $v = $data['totals'][$c[0]] ?? null; if ($first) { $first = false; return 'TOTAL'; } return self::cell($v, $c[2]); }, $data['columns']), ',', '"', ''); }
+            fclose($o);
+        }, "{$name}.csv", ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    /** numbers stay plain numbers; TEXT starting with = + - @ gets a leading quote so Excel can never run it as a formula */
+    public static function cell($v, string $type)
+    {
+        if ($v === null || $v === '') return '';
+        if (in_array($type, ['money', 'ratio'], true) && is_numeric($v)) return number_format((float) $v, 2, '.', '');
+        if ($type === 'pct' && is_numeric($v)) return number_format((float) $v, 1, '.', '');
+        if ($type === 'int' && is_numeric($v)) return (int) $v;
+        $v = (string) $v;
+        return preg_match('/^[=+\-@\t\r]/', $v) ? "'" . $v : $v;
+    }
+
+    public function daily(Request $request)
+    {
+        try { $date = Carbon::parse($request->query('date', now()->subDay()->toDateString()))->toDateString(); } catch (\Throwable) { $date = now()->subDay()->toDateString(); }
+        if ($date > now()->toDateString()) $date = now()->toDateString();
+        return view('reports.daily', ['r' => $this->reports->daily($date, $request->user()), 'date' => $date]);
+    }
+
+    private function filters(Request $r): array
+    {
+        $parse = function ($v) { try { return $v ? Carbon::parse($v)->startOfDay() : null; } catch (\Throwable) { return null; } };
+        $to = $parse($r->query('to')) ?? now()->startOfDay(); $from = $parse($r->query('from')) ?? now()->subDays(29)->startOfDay();
+        if ($from->gt($to)) [$from, $to] = [$to, $from];
+        return ['from' => $from->toDateString(), 'to' => $to->toDateString(), 'marketplace_id' => $r->query('marketplace_id') ? (int) $r->query('marketplace_id') : null,
+            'product_id' => $r->query('product_id') ? (int) $r->query('product_id') : null, 'category_id' => $r->query('category_id') ? (int) $r->query('category_id') : null,
+            'sort' => array_key_exists($r->query('sort'), ReportService::SORTS) ? $r->query('sort') : 'profit_desc'];
+    }
+}

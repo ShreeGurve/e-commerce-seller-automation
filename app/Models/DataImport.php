@@ -35,6 +35,13 @@ class DataImport extends Model
             'keyword' => ['Keyword / targeting that triggered it', false], 'match_type' => ['Match type', false], 'search_term' => ['Customer search term', true], ...self::ADS_METRICS]],
         'ADS_PRODUCT' => ['label' => 'Ads: advertised product report', 'fields' => ['date' => ['Date', true], 'campaign' => ['Campaign name', true], 'ad_group' => ['Ad group', false],
             'sku' => ['Advertised SKU', true], ...self::ADS_METRICS]],
+        'KEYWORDS' => ['label' => 'Keywords (and rankings)', 'fields' => [
+            'sku' => ['Product SKU', true], 'keyword' => ['Keyword', true], 'keyword_type' => ['Type (primary, secondary, long-tail...)', false], 'search_volume' => ['Search volume', false],
+            'competition' => ['Competition (low / medium / high)', false], 'relevance' => ['Relevance 0-100', false], 'rank' => ['Current rank / position', false],
+            'rank_date' => ['Rank date', false], 'source' => ['Source / tool', false], 'group' => ['Keyword group', false]]],
+        'COMPETITORS' => ['label' => 'Competitor prices', 'fields' => [
+            'sku' => ['Our product SKU', true], 'competitor' => ['Competitor / seller name', true], 'competitor_price' => ['Competitor price ₹', true],
+            'captured_on' => ['Date captured', false], 'source' => ['Source', false], 'url' => ['Link', false]]],
         'MAPPINGS' => ['label' => 'SKU mappings', 'fields' => [
             'marketplace_sku' => ['Marketplace SKU', true], 'product_sku' => ['Our product SKU', true],
             'external_product_id' => ['ASIN / FSN', false], 'fulfillment_sku' => ['FNSKU', false], 'listing_status' => ['Listing status', false]]],

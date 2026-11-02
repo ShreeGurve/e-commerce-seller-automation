@@ -15,7 +15,20 @@ abstract class BaseAdapter implements MarketplaceInterface
 
     public function code(): string { return $this->marketplace->code; }
     public function supportsApi(): bool { return false; }
-    public function columnAliases(string $dataType): array { return $this->aliases[str_starts_with($dataType, 'ADS_') ? 'ADS' : $dataType] ?? []; }   // all ad reports share one alias set
+    /** header guesses that are the same for every channel */
+    protected array $commonAliases = ['COMPETITORS' => [
+        'sku' => ['sku', 'product sku', 'our sku'], 'competitor' => ['competitor', 'competitor name', 'seller', 'seller name'], 'competitor_price' => ['price', 'competitor price', 'their price'],
+        'captured_on' => ['date', 'captured on', 'date captured'], 'source' => ['source'], 'url' => ['url', 'link']], 'KEYWORDS' => [
+        'sku' => ['sku', 'product sku', 'seller sku'], 'keyword' => ['keyword', 'keywords', 'keyword phrase', 'search term'], 'keyword_type' => ['type', 'keyword type'],
+        'search_volume' => ['search volume', 'volume', 'monthly search volume', 'sv'], 'competition' => ['competition', 'competition level', 'difficulty'],
+        'relevance' => ['relevance', 'relevancy', 'relevance score'], 'rank' => ['rank', 'organic rank', 'position', 'current rank'], 'rank_date' => ['date', 'checked on', 'rank date'],
+        'source' => ['source', 'tool'], 'group' => ['group', 'keyword group', 'cluster']]];
+
+    public function columnAliases(string $dataType): array
+    {
+        $key = str_starts_with($dataType, 'ADS_') ? 'ADS' : $dataType;   // all ad reports share one alias set
+        return $this->aliases[$key] ?? $this->commonAliases[$key] ?? [];
+    }
 
     public static function norm(?string $s): string { return strtolower(preg_replace('/[^a-z0-9]/i', '', (string) $s)); }
 

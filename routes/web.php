@@ -1,5 +1,5 @@
 <?php
-use App\Http\Controllers\{ReportController, NotificationController, AutomationController, ApprovalController, ClaimController, ListingController, KeywordController, PricingController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController};
+use App\Http\Controllers\{ReportController, PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController};
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\LoginController;
 use Illuminate\Support\Facades\Route;
@@ -110,6 +110,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/returns/{productReturn}/media/{media}', [ReturnController::class, 'media'])->middleware('can:returns.view')->name('returns.media');
     Route::delete('/returns/{productReturn}/media/{media}', [ReturnController::class, 'deleteMedia'])->middleware('can:returns.manage')->name('returns.media.delete');
 
+    Route::post('/dashboard/rebuild', [DashboardController::class, 'rebuild'])->middleware(['can:finance.manage', 'throttle:6,1'])->name('dashboard.rebuild');
+
     // Marketplace hubs (Amazon / Flipkart / ...)
     Route::get('/marketplaces/{code}', [MarketplaceController::class, 'show'])->middleware('can:orders.view')->name('marketplaces.show');
 
@@ -178,44 +180,53 @@ Route::middleware('auth')->group(function () {
     Route::get('/claims/{claim}/documents/{document}', [ClaimController::class, 'document'])->middleware('can:claims.view')->name('claims.document');
     Route::delete('/claims/{claim}/documents/{document}', [ClaimController::class, 'deleteDocument'])->middleware('can:claims.manage')->name('claims.document.delete');
 
-    // Phase 7: listing management, keyword research and pricing intelligence
-    Route::middleware('can:listings.view')->prefix('listings')->name('listings.')->group(function () {
-        Route::get('/', [ListingController::class, 'index'])->name('index');
-        Route::get('/create', [ListingController::class, 'create'])->middleware('can:listings.manage')->name('create');
-        Route::post('/', [ListingController::class, 'store'])->middleware('can:listings.manage')->name('store');
-        Route::get('/{listing}', [ListingController::class, 'show'])->name('show');
-        Route::get('/{listing}/edit', [ListingController::class, 'edit'])->middleware('can:listings.manage')->name('edit');
-        Route::put('/{listing}', [ListingController::class, 'update'])->middleware('can:listings.manage')->name('update');
+    // Listings (copy workspace with versions) + score rules
+    Route::middleware('can:listings.view')->group(function () {
+        Route::get('/listings', [ListingController::class, 'index'])->name('listings.index');
+        Route::get('/listings/score-rules', [ListingScoreRuleController::class, 'index'])->name('listings.rules');
     });
-    Route::middleware('can:keywords.view')->prefix('keywords')->name('keywords.')->group(function () {
-        Route::get('/', [KeywordController::class, 'index'])->name('index');
-        Route::post('/', [KeywordController::class, 'store'])->middleware('can:keywords.manage')->name('store');
-        Route::delete('/{keyword}', [KeywordController::class, 'destroy'])->middleware('can:keywords.manage')->name('destroy');
+    Route::middleware('can:listings.manage')->group(function () {
+        Route::put('/listings/score-rules', [ListingScoreRuleController::class, 'update'])->name('listings.rules.update');
+        Route::get('/listings/create', [ListingController::class, 'create'])->name('listings.create');
+        Route::post('/listings', [ListingController::class, 'store'])->name('listings.store');
+        Route::get('/listings/{listing}/edit', [ListingController::class, 'edit'])->name('listings.edit');
+        Route::put('/listings/{listing}', [ListingController::class, 'update'])->name('listings.update');
+        Route::post('/listings/{listing}/status', [ListingController::class, 'status'])->name('listings.status');
+        Route::post('/listings/{listing}/rescore', [ListingController::class, 'rescore'])->name('listings.rescore');
+        Route::post('/listings/{listing}/publish/{version}', [ListingController::class, 'publish'])->name('listings.publish');
+        Route::post('/listings/{listing}/restore/{version}', [ListingController::class, 'restore'])->name('listings.restore');
     });
-    Route::get('/pricing', [PricingController::class, 'index'])->middleware('can:pricing.view')->name('pricing.index');
-    Route::post('/pricing/calculate', [PricingController::class, 'calculate'])->middleware('can:pricing.manage')->name('pricing.calculate');
+    Route::get('/listings/{listing}', [ListingController::class, 'show'])->middleware('can:listings.view')->name('listings.show');
+    Route::get('/listings/{listing}/compare', [ListingController::class, 'compare'])->middleware('can:listings.view')->name('listings.compare');
 
-    // Approval workflow: submit requests; only authorised reviewers may approve/reject.
-    Route::get('/approvals', [ApprovalController::class, 'index'])->name('approvals.index');
-    Route::post('/approvals', [ApprovalController::class, 'store'])->name('approvals.store');
-    Route::post('/approvals/{approvalRequest}/approve', [ApprovalController::class, 'approve'])->name('approvals.approve');
-    Route::post('/approvals/{approvalRequest}/reject', [ApprovalController::class, 'reject'])->name('approvals.reject');
-    Route::post('/approvals/{approvalRequest}/cancel', [ApprovalController::class, 'cancel'])->name('approvals.cancel');
-
-    // Phase 8: reporting, notifications and internal automation
-    Route::get('/reports', [ReportController::class, 'index'])->middleware('can:reports.view')->name('reports.index');
-    Route::get('/reports/export', [ReportController::class, 'export'])->middleware('can:reports.export')->name('reports.export');
-    Route::get('/notifications', [NotificationController::class, 'index'])->middleware('can:reports.view')->name('notifications.index');
-    Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->middleware('can:reports.view')->name('notifications.read-all');
-    Route::post('/notifications/{notification}/read', [NotificationController::class, 'read'])->middleware('can:reports.view')->name('notifications.read');
-    Route::middleware('can:automation.view')->prefix('automation')->name('automation.')->group(function () {
-        Route::get('/', [AutomationController::class, 'index'])->name('index');
-        Route::post('/run', [AutomationController::class, 'run'])->middleware('can:automation.manage')->name('run');
-        Route::post('/rules', [AutomationController::class, 'store'])->middleware('can:automation.manage')->name('store');
-        Route::post('/rules/{automationRule}/toggle', [AutomationController::class, 'toggle'])->middleware('can:automation.manage')->name('toggle');
-        Route::delete('/rules/{automationRule}', [AutomationController::class, 'destroy'])->middleware('can:automation.manage')->name('destroy');
+    // Keywords
+    Route::get('/keywords', [KeywordController::class, 'index'])->middleware('can:listings.view')->name('keywords.index');
+    Route::middleware('can:listings.manage')->group(function () {
+        Route::post('/keywords', [KeywordController::class, 'store'])->name('keywords.store');
+        Route::get('/keywords/{keyword}/edit', [KeywordController::class, 'edit'])->name('keywords.edit');
+        Route::put('/keywords/{keyword}', [KeywordController::class, 'update'])->name('keywords.update');
+        Route::delete('/keywords/{keyword}', [KeywordController::class, 'destroy'])->name('keywords.destroy');
+        Route::post('/keywords/{keyword}/rank', [KeywordController::class, 'rank'])->name('keywords.rank');
     });
 
-    // Other modules not built yet
+    // Pricing intelligence (cost + fees => break-even / minimum / target price). Advice only.
+    Route::get('/pricing', [PricingController::class, 'index'])->middleware('can:products.view')->name('pricing.index');
+    Route::get('/pricing/{product}/{marketplace}', [PricingController::class, 'show'])->middleware('can:products.view')->name('pricing.show');
+    Route::middleware('can:products.edit')->group(function () {
+        Route::post('/pricing/{product}/{marketplace}/prices', [PricingController::class, 'recordPrice'])->name('pricing.price');
+        Route::post('/pricing/{product}/{marketplace}/competitors', [PricingController::class, 'competitor'])->name('pricing.competitor');
+        Route::delete('/pricing/competitors/{competitorPrice}', [PricingController::class, 'deleteCompetitor'])->name('pricing.competitor.delete');
+    });
+
+    // Reports (+ CSV / Excel / print)
+    Route::middleware('can:reports.view')->prefix('reports')->name('reports.')->group(function () {
+        Route::get('/', [ReportController::class, 'index'])->name('index');
+        Route::get('/daily', [ReportController::class, 'daily'])->name('daily');
+        Route::get('/{key}', [ReportController::class, 'show'])->where('key', '[a-z_]+')->name('show');
+        Route::get('/{key}/print', [ReportController::class, 'print'])->where('key', '[a-z_]+')->name('print');
+    });
+    Route::get('/reports/{key}/export/{format}', [ReportController::class, 'export'])->middleware('can:reports.export')->where(['key' => '[a-z_]+', 'format' => 'csv|xlsx'])->name('reports.export');
+
+    // Modules not built yet
     Route::get('/m/{module}', ModuleController::class)->name('module');
 });

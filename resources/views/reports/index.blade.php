@@ -1,7 +1,31 @@
 @extends('layouts.app')
-@section('title','Business Reports') @section('subtitle','Filtered operational and financial reports')
+@section('title', 'Reports')
+@section('subtitle', 'Every report can be filtered, exported to Excel or CSV, and printed')
 @section('content')
-<div class="card mb-3"><div class="card-body"><form method="GET" class="row g-3 align-items-end"><div class="col-md-3"><label class="form-label">Report</label><select name="type" class="form-select">@foreach(['profit'=>'Profit','orders'=>'Orders','returns'=>'Returns','claims'=>'Claims','advertising'=>'Advertising','inventory'=>'Inventory snapshot'] as $k=>$v)<option value="{{$k}}" @selected($f['type']===$k)>{{$v}}</option>@endforeach</select></div><div class="col-md-3"><label class="form-label">From</label><input type="date" name="from" class="form-control" value="{{$f['from']}}"></div><div class="col-md-3"><label class="form-label">To</label><input type="date" name="to" class="form-control" value="{{$f['to']}}"></div><div class="col-md-3 d-flex gap-2"><button class="btn btn-primary">Apply</button><a class="btn btn-outline-primary" href="{{route('reports.export',request()->query())}}"><i class="bi bi-download"></i> CSV</a></div></form></div></div>
-<div class="row g-3 mb-3">@foreach($totals as $label=>$value)<div class="col-6 col-xl-3"><div class="card h-100"><div class="card-body"><div class="small text-muted">{{$label}}</div><div class="fs-5 fw-bold">{{is_numeric($value)?number_format((float)$value,2):$value}}</div></div></div></div>@endforeach</div>
-<div class="card"><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr>@foreach($columns as $label)<th>{{$label}}</th>@endforeach</tr></thead><tbody>@forelse($rows as $row)<tr>@foreach($columns as $key=>$label)<td>{{data_get($row,$key)===null?'—':data_get($row,$key)}}</td>@endforeach</tr>@empty<tr><td colspan="{{count($columns)}}" class="text-center text-muted py-5">No data for these filters.</td></tr>@endforelse</tbody></table></div><div class="card-footer small text-muted">{{count($rows)}} rows</div></div>
+    <div class="card border-primary mb-4">
+        <div class="card-body d-flex flex-wrap align-items-center gap-3">
+            <div class="sg-tile t-blue"><i class="bi bi-sunrise"></i></div>
+            <div class="flex-grow-1">
+                <div class="fw-bold fs-5">Daily business report</div>
+                <div class="text-muted small">One page for any day: sales, costs, profit, top and bottom products, low stock,
+                    high ACOS, high returns, claims, settlement issues and alerts.</div>
+            </div>
+            <a href="{{ route('reports.daily') }}" class="btn btn-primary">Open yesterday's report</a>
+        </div>
+    </div>
+    @foreach ($groups as $group => $keys)
+        <h6 class="fw-bold text-muted text-uppercase small mt-4 mb-2">{{ $group }}</h6>
+        <div class="row g-3">
+            @foreach ($keys as $k)
+                <div class="col-md-6 col-xl-4"><a href="{{ route('reports.show', $k) }}" class="text-decoration-none">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="fw-bold">{{ $catalog[$k]['title'] }}</div>
+                                <div class="small text-muted mt-1">{{ $catalog[$k]['desc'] }}</div>
+                            </div>
+                        </div>
+                    </a></div>
+            @endforeach
+        </div>
+    @endforeach
 @endsection

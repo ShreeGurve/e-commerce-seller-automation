@@ -53,6 +53,8 @@ class ProductController extends Controller
         return view('products.show', [
             'product' => $product,
             'marketplaces' => Marketplace::active()->get(),
+            'listings' => \App\Models\Listing::with(['marketplace', 'current:id,version_no,score'])->where('product_id', $product->id)->get(),
+            'keywords' => \App\Models\Keyword::with('marketplace:id,name')->where('product_id', $product->id)->orderByRaw("CASE keyword_type WHEN 'PRIMARY' THEN 1 WHEN 'SECONDARY' THEN 2 ELSE 3 END")->limit(60)->get(),
             'costRows' => $product->costs()->orderBy('cost_type')->orderByDesc('effective_from')->get()->groupBy('cost_type'),
             'activity' => ActivityLog::with('user')->where('subject_type', $product->getMorphClass())
                 ->where('subject_id', $product->id)->latest('id')->limit(40)->get(),
