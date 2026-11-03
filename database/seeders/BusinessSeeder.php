@@ -28,7 +28,7 @@ class BusinessSeeder extends Seeder
                 ['group' => $group, 'value' => $value, 'type' => $type]);
         }
 
-        $admin = User::firstOrCreate(['email' => 'admin@sg.com'], [
+        $admin = User::firstOrCreate(['email' => 'sa@sg.com'], [
             'business_id' => $biz->id, 'name' => 'Super Admin', 'password' => 'Pass@321', 'is_active' => true,
         ]);
         $admin->roles()->syncWithoutDetaching([Role::where('slug', 'super-admin')->value('id')]);

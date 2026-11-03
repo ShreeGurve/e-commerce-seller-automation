@@ -1,5 +1,8 @@
 <?php
-use App\Http\Controllers\{ReportController, PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController};
+use App\Http\Controllers\{ReportController, PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController, AutomationController};
+use App\Http\Controllers\MarketplaceConnectionController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\LoginController;
 use Illuminate\Support\Facades\Route;
@@ -29,6 +32,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/products/{product}', [ProductController::class, 'destroy'])->middleware('can:products.delete')->name('products.destroy');
     Route::post('/products/{product}/costs', [ProductController::class, 'storeCost'])->middleware('can:products.edit')->name('products.costs.store');
     Route::post('/products/{product}/marketplaces', [ProductController::class, 'storeMarketplace'])->middleware('can:products.edit')->name('products.marketplaces.store');
+    Route::post('/products/{product}/marketplace-settings', [ProductController::class, 'saveMarketplaceSettings'])->middleware('can:products.edit')->name('products.marketplaces.settings');
     Route::delete('/products/{product}/marketplaces/{mapping}', [ProductController::class, 'destroyMarketplace'])->middleware('can:products.edit')->name('products.marketplaces.destroy');
 
     // Categories
@@ -111,6 +115,36 @@ Route::middleware('auth')->group(function () {
     Route::delete('/returns/{productReturn}/media/{media}', [ReturnController::class, 'deleteMedia'])->middleware('can:returns.manage')->name('returns.media.delete');
 
     Route::post('/dashboard/rebuild', [DashboardController::class, 'rebuild'])->middleware(['can:finance.manage', 'throttle:6,1'])->name('dashboard.rebuild');
+
+    // Automation engine (rules and internal alerts only; no marketplace writes).
+    Route::get('/automation', [AutomationController::class, 'index'])
+        ->middleware('can:automation.view')->name('automation.index');
+    Route::middleware('can:automation.manage')->prefix('automation')->name('automation.')->group(function () {
+        Route::post('/rules', [AutomationController::class, 'store'])->name('store');
+        Route::post('/rules/{automationRule}/toggle', [AutomationController::class, 'toggle'])->name('toggle');
+        Route::delete('/rules/{automationRule}', [AutomationController::class, 'destroy'])->name('destroy');
+        Route::post('/run', [AutomationController::class, 'run'])->middleware('throttle:6,1')->name('run');
+    });
+
+    // Notifications used by the header icon and notification centre.
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
+    Route::post('/notifications/{notification}/read', [NotificationController::class, 'read'])->name('notifications.read');
+
+    // Approval workflow used by the sidebar and approval screens.
+    Route::get('/approvals', [ApprovalController::class, 'index'])
+        ->middleware('can:approvals.view')->name('approvals.index');
+    Route::post('/approvals', [ApprovalController::class, 'store'])
+        ->middleware('can:approvals.view')->name('approvals.store');
+    Route::post('/approvals/{approvalRequest}/approve', [ApprovalController::class, 'approve'])
+        ->name('approvals.approve');
+    Route::post('/approvals/{approvalRequest}/reject', [ApprovalController::class, 'reject'])
+        ->name('approvals.reject');
+    Route::post('/approvals/{approvalRequest}/cancel', [ApprovalController::class, 'cancel'])
+        ->name('approvals.cancel');
+
+    // Marketplace connector diagnostics (credentials are configured in .env, never stored in the UI).
+    Route::get('/marketplace-connections', [MarketplaceConnectionController::class, 'index'])->middleware('can:settings.manage')->name('marketplaces.connections');
 
     // Marketplace hubs (Amazon / Flipkart / ...)
     Route::get('/marketplaces/{code}', [MarketplaceController::class, 'show'])->middleware('can:orders.view')->name('marketplaces.show');

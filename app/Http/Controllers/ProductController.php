@@ -49,7 +49,7 @@ class ProductController extends Controller
 
     public function show(Product $product)
     {
-        $product->load(['category', 'brand', 'marketplaces.marketplace']);
+        $product->load(['category', 'brand', 'marketplaces.marketplace', 'marketplaceSettings.marketplace']);
         return view('products.show', [
             'product' => $product,
             'marketplaces' => Marketplace::active()->get(),
@@ -121,6 +121,39 @@ class ProductController extends Controller
         $mapping->delete();
         ActivityLogger::log('product.marketplace_unmapped', $product, $mapping->only(['marketplace_id', 'marketplace_sku']));
         return redirect()->route('products.show', [$product, 'tab' => 'marketplace'])->with('success', 'Mapping removed.');
+    }
+
+
+    public function saveMarketplaceSettings(Request $request, Product $product)
+    {
+        $data = $request->validate([
+            'marketplace_id' => 'required|exists:marketplaces,id',
+            'outbound_shipping_cost' => 'required|numeric|min:0|max:9999999',
+            'handling_cost' => 'required|numeric|min:0|max:9999999',
+            'desired_profit_min' => 'required|numeric|min:0|max:9999999',
+            'desired_profit_max' => 'required|numeric|gte:desired_profit_min|max:9999999',
+            'manual_selling_price' => 'nullable|numeric|gt:0|max:9999999',
+            'auto_price_enabled' => 'nullable|boolean',
+        ]);
+
+        $data['auto_price_enabled'] = $request->boolean('auto_price_enabled');
+        // Push remains off until a live, verified marketplace write adapter exists.
+        $data['push_enabled'] = false;
+
+        \App\Models\MarketplaceProductSetting::updateOrCreate(
+            ['product_id' => $product->id, 'marketplace_id' => $data['marketplace_id']],
+            $data
+        );
+
+        ActivityLogger::log('product.marketplace_pricing_saved', $product, null, [
+            'marketplace_id' => $data['marketplace_id'],
+            'outbound_shipping_cost' => $data['outbound_shipping_cost'],
+            'desired_profit_min' => $data['desired_profit_min'],
+            'desired_profit_max' => $data['desired_profit_max'],
+        ]);
+
+        return redirect()->route('products.show', [$product, 'tab' => 'channel-pricing'])
+            ->with('success', 'Marketplace-specific shipping and profit targets saved. No marketplace price was published.');
     }
 
     private function formData(Product $product): array

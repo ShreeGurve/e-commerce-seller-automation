@@ -21,6 +21,7 @@ class Product extends Model
     public function inventory() { return $this->hasOne(Inventory::class); }
     public function variants() { return $this->hasMany(ProductVariant::class); }
     public function marketplaces() { return $this->hasMany(ProductMarketplace::class); }
+    public function marketplaceSettings() { return $this->hasMany(MarketplaceProductSetting::class); }
     public function costs() { return $this->hasMany(ProductCostHistory::class); }
     public function currentCosts() { return $this->hasMany(ProductCostHistory::class)->whereNull('effective_to'); }
 

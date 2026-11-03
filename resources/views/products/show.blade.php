@@ -18,7 +18,7 @@
         </div>
     </div>
     <ul class="nav nav-tabs mb-3">
-        @foreach (['overview' => 'Overview', 'costs' => 'Costs', 'marketplace' => 'Marketplace', 'listings' => 'Listings', 'keywords' => 'Keywords', 'history' => 'History'] as $k => $l)
+        @foreach (['overview' => 'Overview', 'costs' => 'Costs', 'marketplace' => 'Marketplace', 'channel-pricing' => 'Channel Pricing', 'listings' => 'Listings', 'keywords' => 'Keywords', 'history' => 'History'] as $k => $l)
             <li class="nav-item"><a class="nav-link {{ $tab == $k ? 'active' : '' }}"
                     href="{{ route('products.show', [$product, 'tab' => $k]) }}">{{ $l }}</a></li>
         @endforeach
@@ -152,6 +152,29 @@
                 </tbody>
             </table>
         </div>
+    @elseif($tab == 'channel-pricing')
+        @can('products.edit')
+            @foreach($marketplaces as $m)
+                @php $cfg = $product->marketplaceSettings->firstWhere('marketplace_id', $m->id); @endphp
+                <div class="card mb-3">
+                    <div class="card-header fw-semibold">{{ $m->name }} · Channel pricing inputs</div>
+                    <div class="card-body">
+                        <form method="POST" action="{{ route('products.marketplaces.settings', $product) }}" class="row g-3">
+                            @csrf
+                            <input type="hidden" name="marketplace_id" value="{{ $m->id }}">
+                            <div class="col-md-3"><label class="form-label">Outbound shipping cost (₹)</label><input class="form-control" type="number" step="0.01" min="0" name="outbound_shipping_cost" value="{{ old('outbound_shipping_cost', $cfg->outbound_shipping_cost ?? 0) }}" required></div>
+                            <div class="col-md-3"><label class="form-label">Handling / packaging (₹)</label><input class="form-control" type="number" step="0.01" min="0" name="handling_cost" value="{{ old('handling_cost', $cfg->handling_cost ?? 0) }}" required></div>
+                            <div class="col-md-3"><label class="form-label">Desired profit minimum (₹)</label><input class="form-control" type="number" step="0.01" min="0" name="desired_profit_min" value="{{ old('desired_profit_min', $cfg->desired_profit_min ?? 60) }}" required></div>
+                            <div class="col-md-3"><label class="form-label">Desired profit maximum (₹)</label><input class="form-control" type="number" step="0.01" min="0" name="desired_profit_max" value="{{ old('desired_profit_max', $cfg->desired_profit_max ?? 80) }}" required></div>
+                            <div class="col-md-4"><label class="form-label">Manual selling price override (₹)</label><input class="form-control" type="number" step="0.01" min="0" name="manual_selling_price" value="{{ old('manual_selling_price', $cfg->manual_selling_price ?? '') }}" placeholder="Optional"></div>
+                            <div class="col-md-4 d-flex align-items-end"><div class="form-check mb-2"><input class="form-check-input" type="checkbox" name="auto_price_enabled" value="1" id="auto-price-{{ $m->id }}" @checked(old('auto_price_enabled', $cfg->auto_price_enabled ?? false))><label class="form-check-label" for="auto-price-{{ $m->id }}">Enable automatic price calculation (internal recommendation only)</label></div></div>
+                            <div class="col-md-4 d-flex align-items-end"><button class="btn btn-primary">Save {{ $m->name }} settings</button></div>
+                        </form>
+                        <p class="small text-muted mt-3 mb-0">These inputs are stored independently per marketplace. Actual recommended selling price must also account for configured commission, closing/payment fees, GST and fee taxes in Pricing & Fee Rules. Nothing is pushed to the seller account from this form.</p>
+                    </div>
+                </div>
+            @endforeach
+        @endcan
     @elseif($tab == 'listings')
         <div class="card">
             <div class="table-responsive">

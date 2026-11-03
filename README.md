@@ -56,3 +56,35 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+
+## Marketplace integration milestone (Amazon + Flipkart)
+
+This milestone adds connector readiness diagnostics and per-product/per-channel shipping and profit-target inputs. It intentionally does **not** mark a marketplace as connected and does not perform live writes.
+
+### Configure credentials after seller API access is approved
+
+1. Copy `.env.example` to `.env` only if you do not already have an environment file.
+2. Keep the real `.env` on the server only. Never include it in a ZIP, commit it to Git, or paste secrets into chat.
+3. Create/authorize the Amazon SP-API application and configure the `AMAZON_*` values.
+4. Obtain Flipkart Seller Dashboard Developer Access and configure the `FLIPKART_*` values.
+5. Run `php artisan config:clear`.
+6. Open **Sales → Marketplace Connections** to inspect which required values are still missing.
+
+All marketplace write switches remain false by default. Do not enable them until the corresponding API operation has been implemented and verified against the seller account.
+
+### New database migration
+
+`database/migrations/2026_11_03_000001_create_marketplace_product_settings.php`
+
+Adds `marketplace_product_settings`, storing outbound shipping, handling, desired profit range, optional manual selling price and internal auto-price preference independently for each product and marketplace.
+
+Run:
+
+```bash
+php artisan migrate
+```
+
+### Important operational boundary
+
+The existing listing publish action records an internal "published" state only; it does not publish to Amazon or Flipkart. The current adapters still support report/CSV normalization. Live listing creation, catalogue pull, order API sync, acceptance, label/invoice retrieval, pickup scheduling and settlement API sync require seller credentials, verified regional endpoints, operation-specific permissions, payload mapping and sandbox/live account tests. Do not interpret configured environment values as proof of a working connection.
