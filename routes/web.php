@@ -3,6 +3,7 @@ use App\Http\Controllers\{ReportController, PricingController, KeywordController
 use App\Http\Controllers\MarketplaceConnectionController;
 use App\Http\Controllers\ReorderController;
 use App\Http\Controllers\SupplierAnalyticsController;
+use App\Http\Controllers\InventoryForecastController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\Auth\PasswordResetController;
@@ -74,6 +75,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/supplier-analytics/export', [SupplierAnalyticsController::class, 'export'])->middleware('can:purchases.view')->name('supplier-analytics.export');
     Route::get('/supplier-analytics/{supplier}', [SupplierAnalyticsController::class, 'show'])->middleware('can:purchases.view')->name('supplier-analytics.show');
     Route::post('/supplier-analytics/{supplier}/reviews', [SupplierAnalyticsController::class, 'review'])->middleware('can:purchases.edit')->name('supplier-analytics.review');
+
+    // Phase 9: internal inventory demand forecasting and stock-out planning
+    Route::get('/inventory-forecast', [InventoryForecastController::class, 'index'])->middleware('can:purchases.view')->name('inventory-forecast.index');
+    Route::post('/inventory-forecast/snapshot', [InventoryForecastController::class, 'snapshot'])->middleware('can:purchases.edit')->name('inventory-forecast.snapshot');
 
     // Inventory
     Route::get('/inventory', [InventoryController::class, 'index'])->middleware('can:inventory.view')->name('inventory.index');
