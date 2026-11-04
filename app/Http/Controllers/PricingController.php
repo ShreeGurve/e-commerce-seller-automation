@@ -17,7 +17,7 @@ class PricingController extends Controller
         $marketplaces = Marketplace::active()->get();
         $mp = $marketplaces->firstWhere('id', (int) $request->marketplace_id) ?? $marketplaces->first();
         abort_unless($mp, 404);
-        $products = Product::with('currentCosts')->where('status', 'active')->when($request->q, fn ($q, $s) => $q->where(fn ($w) => $w->where('sku', 'like', "%$s%")->orWhere('name', 'like', "%$s%")))
+        $products = Product::with(['currentCosts', 'marketplaceSettings' => fn ($q) => $q->where('marketplace_id', $mp->id)])->where('status', 'active')->when($request->q, fn ($q, $s) => $q->where(fn ($w) => $w->where('sku', 'like', "%$s%")->orWhere('name', 'like', "%$s%")))
             ->orderBy('sku')->limit(300)->get();
         $rows = $products->map(fn ($p) => $this->pricing->analyze($p, $mp));
         $counts = $rows->countBy('status');
@@ -30,7 +30,7 @@ class PricingController extends Controller
 
     public function show(Request $request, Product $product, Marketplace $marketplace)
     {
-        $product->load('currentCosts');
+        $product->load(['currentCosts', 'marketplaceSettings' => fn ($q) => $q->where('marketplace_id', $marketplace->id)]);
         $a = $this->pricing->analyze($product, $marketplace, $request->filled('price') && is_numeric($request->price) ? (string) $request->price : null);
         $history = PriceHistory::with('user:id,name')->where('product_id', $product->id)->where('marketplace_id', $marketplace->id)->orderByDesc('effective_on')->orderByDesc('id')->limit(40)->get();
         $comps = CompetitorPrice::where('product_id', $product->id)->where('marketplace_id', $marketplace->id)->orderByDesc('captured_on')->orderByDesc('id')->limit(60)->get();

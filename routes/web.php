@@ -145,6 +145,9 @@ Route::middleware('auth')->group(function () {
 
     // Marketplace connector diagnostics (credentials are configured in .env, never stored in the UI).
     Route::get('/marketplace-connections', [MarketplaceConnectionController::class, 'index'])->middleware('can:settings.manage')->name('marketplaces.connections');
+    Route::get('/marketplace-connections/{marketplace}/add', [MarketplaceConnectionController::class, 'create'])->middleware('can:settings.manage')->name('marketplaces.connections.create');
+    Route::post('/marketplace-connections/{marketplace}/verify', [MarketplaceConnectionController::class, 'verify'])->middleware(['can:settings.manage', 'throttle:6,1'])->name('marketplaces.connections.verify');
+    Route::delete('/marketplace-connections/{connection}', [MarketplaceConnectionController::class, 'destroy'])->middleware('can:settings.manage')->name('marketplaces.connections.destroy');
 
     // Marketplace hubs (Amazon / Flipkart / ...)
     Route::get('/marketplaces/{code}', [MarketplaceController::class, 'show'])->middleware('can:orders.view')->name('marketplaces.show');

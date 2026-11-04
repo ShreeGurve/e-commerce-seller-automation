@@ -2,7 +2,7 @@
 namespace Tests\Feature;
 
 use App\Marketplaces\Amazon\AmazonAdapter;
-use App\Models\{CompetitorPrice, DataImport, FeeRule, Marketplace, OrderProfit, PriceHistory, Product, ProductCostHistory, User};
+use App\Models\{CompetitorPrice, DataImport, FeeRule, Marketplace, MarketplaceProductSetting, OrderProfit, PriceHistory, Product, ProductCostHistory, User};
 use App\Services\{ImportProcessor, OrderService, PricingService};
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -40,6 +40,38 @@ class PricingTest extends TestCase
         $this->assertSame(42, (int) round($a['at']['margin']));
         $this->assertSame(45.7, $a['max_discount']);
         $this->assertFalse($a['no_fees']);
+    }
+
+    public function test_channel_manual_price_is_used_until_a_recorded_price_exists(): void
+    {
+        MarketplaceProductSetting::create([
+            'product_id' => $this->p->id, 'marketplace_id' => $this->mp->id,
+            'outbound_shipping_cost' => '0.00', 'handling_cost' => '0.00',
+            'desired_profit_min' => '60.00', 'desired_profit_max' => '80.00',
+            'manual_selling_price' => '275.00', 'auto_price_enabled' => false, 'push_enabled' => false,
+        ]);
+        $current = app(PricingService::class)->currentPrice($this->p->fresh(), $this->mp->id);
+        $this->assertSame('275.00', $current['price']);
+        $this->assertSame('Channel manual selling price override', $current['source']);
+    }
+
+    public function test_channel_shipping_and_absolute_profit_targets_are_used_in_recommendation(): void
+    {
+        MarketplaceProductSetting::create([
+            'product_id' => $this->p->id, 'marketplace_id' => $this->mp->id,
+            'outbound_shipping_cost' => '50.00', 'handling_cost' => '10.00',
+            'desired_profit_min' => '60.00', 'desired_profit_max' => '80.00',
+            'auto_price_enabled' => true, 'push_enabled' => false,
+        ]);
+
+        $a = $this->a();
+        $this->assertSame('absolute', $a['profit_target_mode']);
+        $this->assertSame(5000, $a['channel_shipping']);
+        $this->assertSame(1000, $a['channel_handling']);
+        $this->assertGreaterThan(15400, $a['break_even']);
+        $this->assertGreaterThan($a['break_even'], $a['min_price']);
+        $this->assertGreaterThan($a['min_price'], $a['target_price']);
+        $this->assertSame('BELOW_MIN', $a['status']);
     }
 
     public function test_recorded_prices_change_the_status_and_keep_a_history(): void

@@ -44,11 +44,17 @@ class PricingService
         return $r;
     }
 
-    /** latest price you recorded for this channel, else the product's master selling price (GST incl.), else null */
+    /** Latest recorded channel price, then channel manual override, then master selling price (GST incl.). */
     public function currentPrice(Product $p, ?int $marketplaceId): ?array
     {
         $h = PriceHistory::where('product_id', $p->id)->where('marketplace_id', $marketplaceId)->orderByDesc('effective_on')->orderByDesc('id')->first();
         if ($h) return ['price' => (string) $h->price, 'source' => 'Recorded ' . $h->effective_on->format('d M Y')];
+        if ($marketplaceId !== null) {
+            $channelPrice = $p->relationLoaded('marketplaceSettings')
+                ? $p->marketplaceSettings->firstWhere('marketplace_id', $marketplaceId)?->manual_selling_price
+                : $p->marketplaceSettings()->where('marketplace_id', $marketplaceId)->value('manual_selling_price');
+            if ($channelPrice !== null) return ['price' => (string) $channelPrice, 'source' => 'Channel manual selling price override'];
+        }
         return $p->default_selling_price !== null ? ['price' => (string) $p->default_selling_price, 'source' => 'Product master price'] : null;
     }
 
@@ -78,21 +84,54 @@ class PricingService
         return ['ads' => (float) $r->ads * 100 / $q, 'ret' => max(((float) $r->rl - $restocked) * 100 / $q, 0), 'units' => $q, 'days' => $days];
     }
 
+    private function priceForAbsoluteProfit(float $gstPct, float $feeShare, int $fixedCostsPaise, int $desiredProfitPaise): ?int
+    {
+        // Selling price includes GST. Solve ex-GST revenue minus percentage fees and fixed costs.
+        $denominator = (1 / (1 + ($gstPct / 100))) - $feeShare;
+        if ($denominator <= 1e-9) return null;
+        return (int) (ceil((($fixedCostsPaise + $desiredProfitPaise) / $denominator) / 100) * 100);
+    }
+
     public function analyze(Product $p, Marketplace $mp, ?string $priceOverride = null): array
     {
         $cur = $this->currentPrice($p, $mp->id);
         $curPaise = $priceOverride !== null && $priceOverride !== '' ? Money::p($priceOverride) : ($cur ? Money::p($cur['price']) : null);
         [$a, $b] = $this->feeCoefficients($p, $mp->id);
         $h = $this->history($p->id, $mp->id); $unit = Money::p($p->totalUnitCost());
+        $setting = $p->relationLoaded('marketplaceSettings')
+            ? $p->marketplaceSettings->firstWhere('marketplace_id', $mp->id)
+            : $p->marketplaceSettings()->where('marketplace_id', $mp->id)->first();
+        $shipping = $setting ? Money::p($setting->outbound_shipping_cost) : 0;
+        $handling = $setting ? Money::p($setting->handling_cost) : 0;
+        $channelFixed = $shipping + $handling;
         $minM = (float) SettingsService::get('pricing_min_margin_percent', 5); $tgtM = (float) SettingsService::get('default_profit_margin', 20);
-        $e = $this->economics((float) $p->gst_rate, $unit, $a, $b, $h['ads'], $h['ret'], $minM, $tgtM, $curPaise);
+        $e = $this->economics((float) $p->gst_rate, $unit, $a, $b + $channelFixed, $h['ads'], $h['ret'], $minM, $tgtM, $curPaise);
+        if ($setting) {
+            $minProfit = Money::p($setting->desired_profit_min);
+            $maxProfit = Money::p($setting->desired_profit_max);
+            $fixed = $unit + $b + $channelFixed + (int) round($h['ads']) + (int) round($h['ret']);
+            $e['min_price'] = $this->priceForAbsoluteProfit((float) $p->gst_rate, $a, $fixed, $minProfit);
+            $e['target_price'] = $this->priceForAbsoluteProfit((float) $p->gst_rate, $a, $fixed, $maxProfit);
+            if ($curPaise && $e['at']) {
+                $profit = (int) round($e['at']['profit']);
+                $e['status'] = match (true) {
+                    $e['break_even'] === null => 'NO_BREAK_EVEN',
+                    $profit < 0 => 'LOSS',
+                    $profit < $minProfit => 'BELOW_MIN',
+                    $profit < $maxProfit => 'BELOW_TARGET',
+                    default => 'OK',
+                };
+                $e['max_discount'] = $e['min_price'] !== null && $curPaise > $e['min_price']
+                    ? round(($curPaise - $e['min_price']) / $curPaise * 100, 1) : 0.0;
+            }
+        }
 
         $win = (int) SettingsService::get('pricing_competitor_days', 30);
         $comp = CompetitorPrice::where('product_id', $p->id)->where('marketplace_id', $mp->id)->where('captured_on', '>=', now()->subDays($win)->toDateString())
             ->orderByDesc('captured_on')->orderByDesc('id')->get()->unique(fn ($c) => mb_strtolower($c->competitor_name))->values();
         $lowest = $comp->isEmpty() ? null : (float) $comp->min('competitor_price');
         return $e + ['product' => $p, 'marketplace' => $mp, 'current' => $curPaise, 'source' => $priceOverride ? 'What-if price' : ($cur['source'] ?? null), 'unit_cost' => $unit,
-            'fee_a' => $a, 'fee_b' => $b, 'no_fees' => $a == 0 && $b == 0, 'ads_per_unit' => $h['ads'], 'return_per_unit' => $h['ret'], 'history_units' => $h['units'], 'history_days' => $h['days'],
+            'fee_a' => $a, 'fee_b' => $b, 'channel_shipping' => $shipping, 'channel_handling' => $handling, 'channel_setting' => $setting, 'profit_target_mode' => $setting ? 'absolute' : 'margin', 'desired_profit_min' => $setting ? Money::p($setting->desired_profit_min) : null, 'desired_profit_max' => $setting ? Money::p($setting->desired_profit_max) : null, 'no_fees' => $a == 0 && $b == 0, 'ads_per_unit' => $h['ads'], 'return_per_unit' => $h['ret'], 'history_units' => $h['units'], 'history_days' => $h['days'],
             'min_margin' => $minM, 'target_margin' => $tgtM, 'competitors' => $comp, 'competitor_low' => $lowest,
             'vs_competitor' => ($lowest !== null && $curPaise) ? round(($curPaise / 100 - $lowest) / $lowest * 100, 1) : null];
     }

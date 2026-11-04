@@ -106,7 +106,7 @@
             <div class="card-footer">{{ $rows->links() }}</div>
         @endif
         <div class="card-footer small text-muted">Prices include GST and are rounded up to the next rupee. Break-even = ₹0
-            profit. Minimum and target use the margins in Settings. Fees come from your fee rules (with GST on fees). Ads
+            profit. Minimum and target use channel-specific desired profit amounts when configured; otherwise they use the margins in Settings. Fees come from your fee rules (with GST on fees). Ads
             and returns per unit are averages of your recent orders (look-back in Settings); "—" means no orders yet,
             assumed ₹0.@if ($capped)
                 Showing the first 300 products.

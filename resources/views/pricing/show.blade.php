@@ -27,7 +27,7 @@
             class="ms-auto btn btn-sm btn-outline-secondary">&larr; All prices</a>
     </div>
     <div class="row g-3 mb-3">
-        @foreach ([['Price now', $inr2($a['current']), null], ['Break-even', $inr($a['break_even']), '₹0 profit'], ['Minimum price', $inr($a['min_price']), 'margin ' . $a['min_margin'] . '%'], ['Target price', $inr($a['target_price']), 'margin ' . $a['target_margin'] . '%'], ['Margin now', $x && $x['margin'] !== null ? round($x['margin'], 1) . '%' : '—', $x ? 'profit ' . $inr2($x['profit']) . ' / unit' : null], ['Max discount', $a['max_discount'] !== null ? $a['max_discount'] . '%' : '—', 'before hitting the minimum']] as [$l, $v, $s])
+        @foreach ([['Price now', $inr2($a['current']), null], ['Break-even', $inr($a['break_even']), '₹0 profit'], ['Minimum price', $inr($a['min_price']), $a['profit_target_mode'] === 'absolute' ? 'profit ₹' . number_format($a['desired_profit_min'] / 100, 2) . ' / unit' : 'margin ' . $a['min_margin'] . '%'], ['Target price', $inr($a['target_price']), $a['profit_target_mode'] === 'absolute' ? 'profit ₹' . number_format($a['desired_profit_max'] / 100, 2) . ' / unit' : 'margin ' . $a['target_margin'] . '%'], ['Margin now', $x && $x['margin'] !== null ? round($x['margin'], 1) . '%' : '—', $x ? 'profit ' . $inr2($x['profit']) . ' / unit' : null], ['Max discount', $a['max_discount'] !== null ? $a['max_discount'] . '%' : '—', 'before hitting the minimum']] as [$l, $v, $s])
             <div class="col-6 col-xl-2">
                 <div class="card h-100">
                     <div class="card-body">
@@ -46,6 +46,7 @@
         <div class="col-lg-6">
             <div class="card mb-3">
                 <div class="card-header">Where one unit's money goes</div>
+                @if ($a['profit_target_mode'] === 'absolute')<div class="card-body border-bottom small text-muted">Channel profit targets are active: minimum ₹{{ number_format($a['desired_profit_min'] / 100, 2) }} and target ₹{{ number_format($a['desired_profit_max'] / 100, 2) }} per unit. Channel shipping and handling are included in the calculation.</div>@endif
                 <div class="card-body">
                     <form method="GET" class="d-flex gap-2 mb-3"><input type="number" step="1" min="1"
                             name="price" value="{{ $whatIf }}" class="form-control"
@@ -75,8 +76,14 @@
                             </tr>
                             <tr>
                                 <td>− Marketplace fees (incl. GST on fees)</td>
-                                <td class="text-end">{{ $inr2($x['fees']) }}</td>
+                                <td class="text-end">{{ $inr2($x['fees'] - ($a['channel_shipping'] ?? 0) - ($a['channel_handling'] ?? 0)) }}</td>
                             </tr>
+                            @if (($a['channel_shipping'] ?? 0) > 0)
+                                <tr><td>− Channel outbound shipping</td><td class="text-end">{{ $inr2($a['channel_shipping']) }}</td></tr>
+                            @endif
+                            @if (($a['channel_handling'] ?? 0) > 0)
+                                <tr><td>− Channel handling / packaging</td><td class="text-end">{{ $inr2($a['channel_handling']) }}</td></tr>
+                            @endif
                             <tr>
                                 <td>− Ads per unit <span
                                         class="text-muted small">({{ $a['history_units'] ? 'avg of ' . $a['history_units'] . ' units, ' . $a['history_days'] . ' days' : 'no orders yet: ₹0' }})</span>
