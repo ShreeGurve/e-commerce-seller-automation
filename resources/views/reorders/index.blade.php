@@ -11,9 +11,9 @@
         <div class="card"><div class="card-body text-center py-5"><i class="bi bi-check-circle fs-2 text-success"></i><h5 class="mt-2">No reorder required</h5><p class="text-muted mb-0">No active products are currently at or below their configured reorder threshold.</p></div></div>
     @else
         @can('purchases.create')
-            <form method="POST" action="{{ route('reorders.purchase') }}" class="card mb-3">
+            <form method="POST" action="{{ route('reorders.approval') }}" class="card mb-3">
                 @csrf
-                <div class="card-header fw-semibold">Create a draft purchase order from selected suggestions</div>
+                <div class="card-header fw-semibold">Submit selected reorder suggestions for approval</div>
                 <div class="card-body">
                     <div class="row g-2 mb-3">
                         <div class="col-md-5"><label class="form-label">Supplier *</label><select name="supplier_id" class="form-select" required><option value="">Choose supplier</option>@foreach ($suppliers as $supplier)<option value="{{ $supplier->id }}" @selected(old('supplier_id') == $supplier->id)>{{ $supplier->name }}</option>@endforeach</select></div>
@@ -34,7 +34,7 @@
                         @endforeach
                         </tbody>
                     </table></div>
-                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2"><span class="small text-muted">Uncheck products you do not want to include. Unit cost is prefilled from current COGS where available and can be edited.</span><button class="btn btn-primary" onclick="return confirm('Create a draft purchase order? No supplier order will be sent.')"><i class="bi bi-file-earmark-plus"></i> Create draft PO</button></div>
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2"><span class="small text-muted">Uncheck products you do not want to include. Unit cost is prefilled from current COGS where available. Approval is required before a draft PO can be generated.</span><button class="btn btn-primary" onclick="return confirm('Submit this purchase plan for approval? No purchase order or supplier order will be created yet.')"><i class="bi bi-file-earmark-plus"></i> Request purchase approval</button></div>
                 </div>
             </form>
         @endcan
