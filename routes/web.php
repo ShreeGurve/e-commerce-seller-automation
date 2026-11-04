@@ -239,6 +239,10 @@ Route::middleware('auth')->group(function () {
         ->middleware('can:finance.view')
         ->name('profit.export');
 
+    Route::get('/finance/cash-planning', [\App\Http\Controllers\CashPlanningController::class, 'index'])
+        ->middleware('can:finance.view')
+        ->name('cash-planning.index');
+
     // Advertising (reports come from the import wizard)
     Route::middleware('can:advertising.view')->prefix('ads')->name('ads.')->group(function () {
         Route::get('/', [AdsController::class, 'index'])->name('index');
