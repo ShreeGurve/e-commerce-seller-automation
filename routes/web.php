@@ -243,6 +243,14 @@ Route::middleware('auth')->group(function () {
         ->middleware('can:finance.view')
         ->name('cash-planning.index');
 
+    Route::get('/finance/supplier-payments', [\App\Http\Controllers\SupplierPaymentPlanningController::class, 'index'])
+        ->middleware('can:finance.view')
+        ->name('supplier-payments.index');
+
+    Route::get('/finance/supplier-payments/export', [\App\Http\Controllers\SupplierPaymentPlanningController::class, 'export'])
+        ->middleware('can:finance.view')
+        ->name('supplier-payments.export');
+
     // Advertising (reports come from the import wizard)
     Route::middleware('can:advertising.view')->prefix('ads')->name('ads.')->group(function () {
         Route::get('/', [AdsController::class, 'index'])->name('index');

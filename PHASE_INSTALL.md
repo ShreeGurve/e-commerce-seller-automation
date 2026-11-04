@@ -730,3 +730,54 @@ php artisan route:list --name=cash-planning
 
 ## Validation
 PHP syntax checks and ZIP integrity are checked when packaging. Local database/browser behavior must be verified in the user's environment. No migration is required.
+
+# Phase 16 — Automated Purchase Intelligence & Supplier Payment Planning
+
+## Included
+- Supplier-wise outstanding exposure for ORDERED and RECEIVED purchase orders.
+- Estimated payment due dates based on invoice date (fallback: purchase date) plus recognised supplier payment terms.
+- Priority buckets for overdue, due today, upcoming within selected horizon, and unrecognised terms.
+- Supplier exposure summary and filtered CSV export.
+- Read-only planning: no payment is recorded and no PO/inventory data is changed.
+
+## Files
+- `app/Http/Controllers/SupplierPaymentPlanningController.php`
+- `resources/views/supplier-payments/index.blade.php`
+
+## Install
+1. Back up matching files if they already exist.
+2. Extract the ZIP into the Laravel project root.
+3. Add both routes inside the existing authenticated route group in `routes/web.php`:
+
+```php
+Route::get('/finance/supplier-payments', [\App\Http\Controllers\SupplierPaymentPlanningController::class, 'index'])
+    ->middleware('can:finance.view')
+    ->name('supplier-payments.index');
+
+Route::get('/finance/supplier-payments/export', [\App\Http\Controllers\SupplierPaymentPlanningController::class, 'export'])
+    ->middleware('can:finance.view')
+    ->name('supplier-payments.export');
+```
+
+4. Run:
+
+```bash
+php artisan optimize:clear
+php artisan route:list --name=supplier-payments
+```
+
+5. Open `/finance/supplier-payments` under your existing Laravel subfolder URL.
+
+## Due-date interpretation
+- `Net 30`, `30 days`, `15d` and similar day-based terms are supported.
+- `COD`, `cash on delivery`, `advance`, `immediate`, and `due on receipt` are treated as zero-day terms.
+- Terms not matching these patterns are flagged for review, not guessed.
+- Invoice date is preferred; purchase date is used if invoice date is missing.
+- Only ORDERED and RECEIVED purchase orders with an unpaid balance are included. DRAFT and CANCELLED POs are excluded.
+- The export contains all open qualifying POs; dashboard filters do not change export scope.
+
+## Safety
+This is an internal planning estimate, not an accounting ledger or legal determination of contractual due dates. It does not submit supplier payments, create purchase orders, update payment records, adjust inventory, or call marketplace APIs. TEST orders are not used; this phase reads purchase-order balances only.
+
+## Validation
+Run PHP syntax checks and verify route registration locally. Database/browser behavior has not been tested against the user's local database. No migration is required.
