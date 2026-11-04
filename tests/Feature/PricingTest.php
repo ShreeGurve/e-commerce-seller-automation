@@ -74,6 +74,23 @@ class PricingTest extends TestCase
         $this->assertSame('BELOW_MIN', $a['status']);
     }
 
+    public function test_channel_profit_targets_are_only_applied_when_enabled_but_shipping_is_always_included(): void
+    {
+        MarketplaceProductSetting::create([
+            'product_id' => $this->p->id, 'marketplace_id' => $this->mp->id,
+            'outbound_shipping_cost' => '50.00', 'handling_cost' => '10.00',
+            'desired_profit_min' => '60.00', 'desired_profit_max' => '80.00',
+            'auto_price_enabled' => false, 'push_enabled' => false,
+        ]);
+
+        $a = $this->a();
+        $this->assertSame('margin', $a['profit_target_mode']);
+        $this->assertNull($a['desired_profit_min']);
+        $this->assertSame(5000, $a['channel_shipping']);
+        $this->assertSame(1000, $a['channel_handling']);
+        $this->assertGreaterThan(15400, $a['break_even']);
+    }
+
     public function test_recorded_prices_change_the_status_and_keep_a_history(): void
     {
         $svc = app(PricingService::class);

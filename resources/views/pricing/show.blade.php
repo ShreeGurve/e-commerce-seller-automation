@@ -23,8 +23,11 @@
     <div class="d-flex flex-wrap gap-2 align-items-center mb-3"><span
             class="badge text-bg-{{ $bc }} fs-6">{{ $bl }}</span><span
             class="text-muted small">{{ $a['source'] }}</span>
+        @can('products.edit')
+            <a href="{{ route('products.show', [$p, 'tab' => 'channel-pricing']) }}" class="btn btn-sm btn-outline-primary">Configure channel costs &amp; targets</a>
+        @endcan
         <a href="{{ route('pricing.index', ['marketplace_id' => $mp->id]) }}"
-            class="ms-auto btn btn-sm btn-outline-secondary">&larr; All prices</a>
+            class="btn btn-sm btn-outline-secondary">&larr; All prices</a>
     </div>
     <div class="row g-3 mb-3">
         @foreach ([['Price now', $inr2($a['current']), null], ['Break-even', $inr($a['break_even']), '₹0 profit'], ['Minimum price', $inr($a['min_price']), $a['profit_target_mode'] === 'absolute' ? 'profit ₹' . number_format($a['desired_profit_min'] / 100, 2) . ' / unit' : 'margin ' . $a['min_margin'] . '%'], ['Target price', $inr($a['target_price']), $a['profit_target_mode'] === 'absolute' ? 'profit ₹' . number_format($a['desired_profit_max'] / 100, 2) . ' / unit' : 'margin ' . $a['target_margin'] . '%'], ['Margin now', $x && $x['margin'] !== null ? round($x['margin'], 1) . '%' : '—', $x ? 'profit ' . $inr2($x['profit']) . ' / unit' : null], ['Max discount', $a['max_discount'] !== null ? $a['max_discount'] . '%' : '—', 'before hitting the minimum']] as [$l, $v, $s])
@@ -46,7 +49,11 @@
         <div class="col-lg-6">
             <div class="card mb-3">
                 <div class="card-header">Where one unit's money goes</div>
-                @if ($a['profit_target_mode'] === 'absolute')<div class="card-body border-bottom small text-muted">Channel profit targets are active: minimum ₹{{ number_format($a['desired_profit_min'] / 100, 2) }} and target ₹{{ number_format($a['desired_profit_max'] / 100, 2) }} per unit. Channel shipping and handling are included in the calculation.</div>@endif
+                @if ($a['profit_target_mode'] === 'absolute')
+                    <div class="card-body border-bottom small text-muted">Channel profit targets are active: minimum ₹{{ number_format($a['desired_profit_min'] / 100, 2) }} and target ₹{{ number_format($a['desired_profit_max'] / 100, 2) }} per unit. Channel shipping and handling are included in the calculation.</div>
+                @elseif($a['channel_setting'])
+                    <div class="card-body border-bottom small text-muted">Channel shipping and handling are included. Global margin targets are currently used. Enable channel-specific profit targets in the product's Channel Pricing tab to use its rupee-per-unit targets.</div>
+                @endif
                 <div class="card-body">
                     <form method="GET" class="d-flex gap-2 mb-3"><input type="number" step="1" min="1"
                             name="price" value="{{ $whatIf }}" class="form-control"

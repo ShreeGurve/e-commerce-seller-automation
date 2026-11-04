@@ -106,7 +106,7 @@ class PricingService
         $channelFixed = $shipping + $handling;
         $minM = (float) SettingsService::get('pricing_min_margin_percent', 5); $tgtM = (float) SettingsService::get('default_profit_margin', 20);
         $e = $this->economics((float) $p->gst_rate, $unit, $a, $b + $channelFixed, $h['ads'], $h['ret'], $minM, $tgtM, $curPaise);
-        if ($setting) {
+        if ($setting && $setting->auto_price_enabled) {
             $minProfit = Money::p($setting->desired_profit_min);
             $maxProfit = Money::p($setting->desired_profit_max);
             $fixed = $unit + $b + $channelFixed + (int) round($h['ads']) + (int) round($h['ret']);
@@ -131,7 +131,7 @@ class PricingService
             ->orderByDesc('captured_on')->orderByDesc('id')->get()->unique(fn ($c) => mb_strtolower($c->competitor_name))->values();
         $lowest = $comp->isEmpty() ? null : (float) $comp->min('competitor_price');
         return $e + ['product' => $p, 'marketplace' => $mp, 'current' => $curPaise, 'source' => $priceOverride ? 'What-if price' : ($cur['source'] ?? null), 'unit_cost' => $unit,
-            'fee_a' => $a, 'fee_b' => $b, 'channel_shipping' => $shipping, 'channel_handling' => $handling, 'channel_setting' => $setting, 'profit_target_mode' => $setting ? 'absolute' : 'margin', 'desired_profit_min' => $setting ? Money::p($setting->desired_profit_min) : null, 'desired_profit_max' => $setting ? Money::p($setting->desired_profit_max) : null, 'no_fees' => $a == 0 && $b == 0, 'ads_per_unit' => $h['ads'], 'return_per_unit' => $h['ret'], 'history_units' => $h['units'], 'history_days' => $h['days'],
+            'fee_a' => $a, 'fee_b' => $b, 'channel_shipping' => $shipping, 'channel_handling' => $handling, 'channel_setting' => $setting, 'profit_target_mode' => ($setting && $setting->auto_price_enabled) ? 'absolute' : 'margin', 'desired_profit_min' => ($setting && $setting->auto_price_enabled) ? Money::p($setting->desired_profit_min) : null, 'desired_profit_max' => ($setting && $setting->auto_price_enabled) ? Money::p($setting->desired_profit_max) : null, 'no_fees' => $a == 0 && $b == 0, 'ads_per_unit' => $h['ads'], 'return_per_unit' => $h['ret'], 'history_units' => $h['units'], 'history_days' => $h['days'],
             'min_margin' => $minM, 'target_margin' => $tgtM, 'competitors' => $comp, 'competitor_low' => $lowest,
             'vs_competitor' => ($lowest !== null && $curPaise) ? round(($curPaise / 100 - $lowest) / $lowest * 100, 1) : null];
     }
