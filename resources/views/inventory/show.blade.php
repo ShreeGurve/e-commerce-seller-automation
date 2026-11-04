@@ -57,6 +57,22 @@
             </div>
         @endcan
         <div class="@can('inventory.manage') col-lg-8 @else col-12 @endcan">
+            @can('inventory.manage')
+                <div class="card mb-3">
+                    <div class="card-header">Physical stock count & reconciliation</div>
+                    <div class="card-body">
+                        <p class="small text-muted">Enter the quantity physically counted. The difference will be recorded as an auditable stock adjustment.</p>
+                        <form method="POST" action="{{ route('inventory.stock-count', $product) }}">@csrf
+                            <div class="row g-2 align-items-end">
+                                <div class="col-md-4"><label class="form-label">System available</label><input class="form-control" value="{{ $inv->available_qty }}" readonly></div>
+                                <div class="col-md-4"><label class="form-label">Physical count *</label><input type="number" min="0" max="1000000" name="counted_qty" class="form-control" required></div>
+                                <div class="col-md-4"><label class="form-label">Reason / note *</label><input name="note" maxlength="255" class="form-control" required placeholder="e.g. Monthly shelf count"></div>
+                            </div>
+                            <button class="btn btn-outline-primary mt-3">Record count & reconcile</button>
+                        </form>
+                    </div>
+                </div>
+            @endcan
             <div class="card">
                 <div class="card-header">Ledger</div>
                 <div class="table-responsive">

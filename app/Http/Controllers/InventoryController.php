@@ -1,7 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
-use App\Models\{Inventory, InventoryTransaction, Product};
+use App\Models\{Inventory, InventoryStockCount, InventoryTransaction, Product};
 use App\Services\{ActivityLogger, InventoryService};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -62,5 +62,43 @@ class InventoryController extends Controller
         $inv->update($data);
         ActivityLogger::log('inventory.levels_changed', $product, $old, $data);
         return redirect()->route('inventory.show', $product)->with('success', 'Stock levels saved.');
+    }
+
+    public function stockCount(Request $request, Product $product)
+    {
+        $data = $request->validate([
+            'counted_qty' => 'required|integer|min:0|max:1000000',
+            'note' => 'required|string|max:255',
+        ]);
+
+        DB::transaction(function () use ($request, $product, $data) {
+            $inv = $this->service->ensureRow($product);
+            $inv = Inventory::where('product_id', $product->id)->lockForUpdate()->firstOrFail();
+            $systemQty = (int) $inv->available_qty;
+            $countedQty = (int) $data['counted_qty'];
+            $variance = $countedQty - $systemQty;
+
+            InventoryStockCount::create([
+                'product_id' => $product->id,
+                'system_qty' => $systemQty,
+                'counted_qty' => $countedQty,
+                'variance' => $variance,
+                'note' => $data['note'],
+                'counted_by' => $request->user()->id,
+                'counted_at' => now(),
+            ]);
+
+            if ($variance !== 0) {
+                $this->service->record($product, 'ADJUSTMENT', $variance, [
+                    'note' => 'Physical stock count: ' . $data['note'],
+                ]);
+            }
+
+            ActivityLogger::log('inventory.stock_counted', $product,
+                ['available_qty' => $systemQty],
+                ['counted_qty' => $countedQty, 'variance' => $variance, 'note' => $data['note']]);
+        });
+
+        return redirect()->route('inventory.show', $product)->with('success', 'Physical stock count recorded and inventory reconciled.');
     }
 }

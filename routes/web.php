@@ -284,6 +284,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/m/{module}', ModuleController::class)->name('module');
 });
 
+Route::post('/inventory/{product}/stock-count', [InventoryController::class, 'stockCount'])
+    ->middleware('can:inventory.manage')
+    ->name('inventory.stock-count');
+
 require __DIR__ . '/marketplace_listing_phase4.php';
 require __DIR__ . '/marketplace_fulfilment_phase5.php';
 require __DIR__ . '/marketplace_test_orders_phase5.php';
