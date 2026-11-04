@@ -181,7 +181,7 @@ class ReportService
     {
         $b = [];
         $key = fn ($d, $r) => substr((string) $d, 0, 7) . '|' . number_format((float) $r, 2, '.', '');
-        $sales = DB::table('order_items as i')->join('orders as o', 'o.id', '=', 'i.order_id')->whereNull('o.deleted_at')->where('o.status', '<>', 'CANCELLED')->whereBetween('o.order_date', [$f['from'] . ' 00:00:00', $f['to'] . ' 23:59:59'])
+        $sales = DB::table('order_items as i')->join('orders as o', 'o.id', '=', 'i.order_id')->whereNull('o.deleted_at')->where('o.source', '<>', 'TEST')->where('o.status', '<>', 'CANCELLED')->whereBetween('o.order_date', [$f['from'] . ' 00:00:00', $f['to'] . ' 23:59:59'])
             ->when($this->mp($f), fn ($q, $v) => $q->where('o.marketplace_id', $v))->selectRaw('DATE(o.order_date) d, i.gst_rate r, SUM(i.line_total - i.tax_amount) taxable, SUM(i.tax_amount) gst')->groupByRaw('DATE(o.order_date), i.gst_rate')->get();
         foreach ($sales as $r) { $k = $key($r->d, $r->r); $b[$k]['ts'] = ($b[$k]['ts'] ?? 0) + (float) $r->taxable; $b[$k]['og'] = ($b[$k]['og'] ?? 0) + (float) $r->gst; }
         $purch = DB::table('purchase_items as i')->join('purchases as p', 'p.id', '=', 'i.purchase_id')->whereNull('p.deleted_at')->where('p.status', 'RECEIVED')->whereBetween('p.purchase_date', [$f['from'], $f['to']])

@@ -24,6 +24,8 @@ class Order extends Model
         'subtotal' => 'decimal:2', 'shipping_charged' => 'decimal:2', 'tax_amount' => 'decimal:2', 'total_amount' => 'decimal:2'];
 
     public function marketplace() { return $this->belongsTo(Marketplace::class); }
+    public function fulfillment() { return $this->hasOne(OrderFulfillment::class); }
+    public function fulfillmentEvents() { return $this->hasMany(OrderFulfillmentEvent::class)->latest('id'); }
     public function items() { return $this->hasMany(OrderItem::class); }
     public function history() { return $this->hasMany(OrderStatusHistory::class)->latest('id'); }
     public function returns() { return $this->hasMany(ProductReturn::class); }

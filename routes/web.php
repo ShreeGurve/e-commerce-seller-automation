@@ -285,3 +285,5 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__ . '/marketplace_listing_phase4.php';
+require __DIR__ . '/marketplace_fulfilment_phase5.php';
+require __DIR__ . '/marketplace_test_orders_phase5.php';

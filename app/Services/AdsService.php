@@ -44,7 +44,7 @@ class AdsService
     public function summary(array $f): array
     {
         $t = (clone $this->base($f))->selectRaw(self::SUMS)->first();
-        $orderSales = (float) Order::where('status', '!=', 'CANCELLED')->whereDate('order_date', '>=', $f['from'])->whereDate('order_date', '<=', $f['to'])
+        $orderSales = (float) Order::where('source', '!=', 'TEST')->where('status', '!=', 'CANCELLED')->whereDate('order_date', '>=', $f['from'])->whereDate('order_date', '<=', $f['to'])
             ->when($f['marketplace_id'] ?? null, fn ($q, $v) => $q->where('marketplace_id', $v))->sum('total_amount');
         return ['totals' => $this->metrics($t), 'totalSales' => $orderSales, 'tacos' => $orderSales > 0 ? round((float) $t->spend / $orderSales * 100, 1) : null,
             'daily' => (clone $this->base($f))->selectRaw('date, ' . self::SUMS)->groupBy('date')->orderBy('date')->get(),

@@ -35,9 +35,9 @@ class SummaryService
         $now = now();
         $start = $date . ' 00:00:00'; $end = $date . ' 23:59:59';
 
-        $o = DB::table('orders')->where('marketplace_id', $mp)->whereNull('deleted_at')->whereBetween('order_date', [$start, $end])
+        $o = DB::table('orders')->where('marketplace_id', $mp)->whereNull('deleted_at')->where('source', '!=', 'TEST')->whereBetween('order_date', [$start, $end])
             ->selectRaw("SUM(CASE WHEN status <> 'CANCELLED' THEN 1 ELSE 0 END) orders, SUM(CASE WHEN status = 'CANCELLED' THEN 1 ELSE 0 END) cancelled, SUM(CASE WHEN status <> 'CANCELLED' THEN total_amount ELSE 0 END) sales")->first();
-        $units = (int) DB::table('order_items as i')->join('orders as o', 'o.id', '=', 'i.order_id')->where('o.marketplace_id', $mp)->whereNull('o.deleted_at')
+        $units = (int) DB::table('order_items as i')->join('orders as o', 'o.id', '=', 'i.order_id')->where('o.marketplace_id', $mp)->whereNull('o.deleted_at')->where('o.source', '!=', 'TEST')
             ->where('o.status', '<>', 'CANCELLED')->whereBetween('o.order_date', [$start, $end])->sum('i.quantity');
         $this->save('daily_sales', $date, $mp, ['orders' => (int) $o->orders, 'units' => $units, 'gross_sales' => (float) $o->sales, 'cancelled_orders' => (int) $o->cancelled], $now);
 
@@ -67,7 +67,7 @@ class SummaryService
     {
         $from = substr($from, 0, 10); $to = substr($to, 0, 10); $pairs = [];
         $add = function ($rows, string $d, string $m) use (&$pairs) { foreach ($rows as $r) { $day = substr((string) $r->{$d}, 0, 10); $pairs["{$day}|{$r->{$m}}"] = [$day, (int) $r->{$m}]; } };
-        $add(DB::table('orders')->whereNull('deleted_at')->whereBetween('order_date', [$from . ' 00:00:00', $to . ' 23:59:59'])->selectRaw('DATE(order_date) d, marketplace_id m')->distinct()->get(), 'd', 'm');
+        $add(DB::table('orders')->whereNull('deleted_at')->where('source', '!=', 'TEST')->whereBetween('order_date', [$from . ' 00:00:00', $to . ' 23:59:59'])->selectRaw('DATE(order_date) d, marketplace_id m')->distinct()->get(), 'd', 'm');
         $add(DB::table('order_profits')->whereBetween('order_date', [$from, $to])->select('order_date as d', 'marketplace_id as m')->distinct()->get(), 'd', 'm');
         $add(DB::table('advertising_daily')->whereBetween('date', [$from, $to])->select('date as d', 'marketplace_id as m')->distinct()->get(), 'd', 'm');
         foreach (['daily_sales', 'daily_profit', 'daily_advertising'] as $t) $add(DB::table($t)->whereBetween('date', [$from, $to])->select('date as d', 'marketplace_id as m')->distinct()->get(), 'd', 'm');

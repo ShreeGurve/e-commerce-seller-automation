@@ -29,8 +29,12 @@
                 <div class="col-6 col-md-2"><input type="date" name="to" value="{{ request('to') }}"
                         class="form-control"></div>
                 <div class="col-md-3 d-flex gap-2"><button class="btn btn-outline-primary">Filter</button>
+                    @can('orders.view')
+                        <a href="{{ route('fulfilment.index') }}" class="btn btn-outline-primary ms-auto">Fulfilment queue</a>
+                    @endcan
                     @can('orders.edit')
-                        <a href="{{ route('orders.create') }}" class="btn btn-primary ms-auto"><i class="bi bi-plus-lg"></i>
+                        <a href="{{ route('test-orders.create') }}" class="btn btn-outline-primary"><i class="bi bi-flask"></i> Test order</a>
+                        <a href="{{ route('orders.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i>
                             New order</a>
                     @endcan
                 </div>
@@ -57,7 +61,7 @@
                             <td><a class="fw-semibold text-decoration-none"
                                     href="{{ route('orders.show', $o) }}">{{ $o->order_number }}</a></td>
                             <td class="text-nowrap">{{ $o->order_date->format('d M Y H:i') }}</td>
-                            <td>{{ $o->marketplace->name }}</td>
+                            <td>{{ $o->marketplace->name }} @if($o->source === 'TEST') <span class="badge text-bg-warning">TEST</span> @endif</td>
                             <td class="text-muted">{{ $o->external_order_id }}</td>
                             <td class="text-end">{{ $o->items_count }}</td>
                             <td class="text-end">₹{{ number_format($o->total_amount, 2) }}</td>

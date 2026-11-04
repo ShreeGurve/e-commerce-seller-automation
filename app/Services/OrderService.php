@@ -63,7 +63,8 @@ class OrderService
         $ship = Money::p($data['shipping_charged'] ?? 0);
         $status = $data['status'] ?? 'CONFIRMED';
         // Cancelled orders never touch stock. Historical imports can switch deduction off (deduct_stock=false).
-        $deduct = ($data['deduct_stock'] ?? true) && $status !== 'CANCELLED';
+        $isTest = strtoupper((string) ($data['source'] ?? 'MANUAL')) === 'TEST';
+        $deduct = ! $isTest && ($data['deduct_stock'] ?? true) && $status !== 'CANCELLED';
 
         $order = Order::create([
             'marketplace_id' => $mp->id, 'external_order_id' => $ext, 'order_number' => 'TMP' . bin2hex(random_bytes(8)),
@@ -83,8 +84,8 @@ class OrderService
                 $item->update(['qty_deducted' => $item->quantity]);
             }
         }
-        OrderStatusHistory::create(['order_id' => $order->id, 'from_status' => null, 'to_status' => $order->status, 'note' => ($data['source'] ?? 'MANUAL') === 'CSV' ? 'Imported from CSV' . ($deduct ? '' : ' (stock not deducted)') : 'Order created', 'user_id' => $user->id]);
-        app(ProfitService::class)->safe($order);   // estimated profit is stored the moment the order exists
+        OrderStatusHistory::create(['order_id' => $order->id, 'from_status' => null, 'to_status' => $order->status, 'note' => ($data['source'] ?? 'MANUAL') === 'CSV' ? 'Imported from CSV' . ($deduct ? '' : ' (stock not deducted)') : (($data['source'] ?? 'MANUAL') === 'TEST' ? 'TEST order created (stock unchanged)' : 'Order created'), 'user_id' => $user->id]);
+        if (($data['source'] ?? 'MANUAL') !== 'TEST') app(ProfitService::class)->safe($order);   // test orders never enter financial reporting
         ActivityLogger::log('order.created', $order, null, ['order' => $order->order_number, 'external' => $ext, 'total' => (string) $order->total_amount]);
         return $order;
     }

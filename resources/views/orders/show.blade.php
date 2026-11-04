@@ -224,6 +224,7 @@
                     </ul>
                 </div>
             @endif
+            @include('orders._fulfilment')
             <div class="card">
                 <div class="card-header">Status history</div>
                 <ul class="list-group list-group-flush small">

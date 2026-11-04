@@ -33,7 +33,7 @@ class ProfitService
     {
         DB::transaction(function () use ($order) {
             $o = Order::with(['items.product', 'refunds'])->find($order->id);
-            if (! $o) return;
+            if (! $o || $o->source === 'TEST') return;
             $ids = $o->items->pluck('id');
 
             if ($o->status === 'CANCELLED') {            // nothing sold, nothing earned
@@ -123,7 +123,7 @@ class ProfitService
     {
         $n = 0; $this->summary->begin();                      // refresh each affected day once at the end, not once per order
         try {
-            Order::where('status', '!=', 'CANCELLED')->select('id')->chunkById(200, function ($chunk) use (&$n) {
+            Order::where('source', '!=', 'TEST')->where('status', '!=', 'CANCELLED')->select('id')->chunkById(200, function ($chunk) use (&$n) {
                 foreach ($chunk as $o) { $this->recalcOrder($o); $n++; }
             });
         } finally {
