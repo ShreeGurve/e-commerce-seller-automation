@@ -57,7 +57,17 @@ class PurchaseController extends Controller
     public function receive(Purchase $purchase)
     {
         $this->service->receive($purchase);
-        return redirect()->route('purchases.show', $purchase)->with('success', 'Stock received and added to inventory.');
+        return redirect()->route('purchases.show', $purchase)->with('success', 'All outstanding stock received and added to inventory.');
+    }
+
+    public function receiveQuantities(Request $request, Purchase $purchase)
+    {
+        $data = $request->validate([
+            'quantities' => 'required|array',
+            'quantities.*' => 'required|integer|min:0|max:1000000',
+        ]);
+        $this->service->receive($purchase, $data['quantities']);
+        return redirect()->route('purchases.show', $purchase)->with('success', 'Received quantities added to inventory. Outstanding quantities remain on the purchase order.');
     }
 
     public function cancel(Purchase $purchase)

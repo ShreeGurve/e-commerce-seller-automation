@@ -14,9 +14,9 @@
             @can('purchases.edit')
                 @if ($purchase->isEditable())
                     <a href="{{ route('purchases.edit', $purchase) }}" class="btn btn-sm btn-outline-primary">Edit</a>
-                    <form method="POST" action="{{ route('purchases.receive', $purchase) }}"
-                        onsubmit="return confirm('Receive all items and add them to stock? This cannot be undone.')">@csrf<button
-                            class="btn btn-sm btn-success"><i class="bi bi-box-arrow-in-down"></i> Receive stock</button></form>
+                    @if ($purchase->items->contains(fn ($item) => (int) $item->received_qty < (int) $item->quantity))
+                        <button type="button" class="btn btn-sm btn-success" data-bs-toggle="collapse" data-bs-target="#receiveItems"><i class="bi bi-box-arrow-in-down"></i> Receive quantities</button>
+                    @endif
                     <form method="POST" action="{{ route('purchases.cancel', $purchase) }}"
                         onsubmit="return confirm('Cancel this purchase?')">@csrf<button
                             class="btn btn-sm btn-outline-danger">Cancel</button></form>
@@ -57,6 +57,35 @@
                     </table>
                 </div>
             </div>
+            @can('purchases.edit')
+                @if ($purchase->isEditable() && $purchase->items->contains(fn ($item) => (int) $item->received_qty < (int) $item->quantity))
+                    <div class="card mt-3 collapse" id="receiveItems">
+                        <div class="card-header fw-semibold">Receive delivered quantities</div>
+                        <div class="card-body">
+                            <form method="POST" action="{{ route('purchases.receive-quantities', $purchase) }}">
+                                @csrf
+                                <p class="small text-muted">Enter only the units delivered in this shipment. Leave other items at zero. Inventory updates only for the quantities entered.</p>
+                                <div class="table-responsive"><table class="table table-sm align-middle">
+                                    <thead><tr><th>Product</th><th class="text-end">Outstanding</th><th style="width:160px">Received now</th></tr></thead>
+                                    <tbody>
+                                    @foreach ($purchase->items as $item)
+                                        @php $remaining = (int) $item->quantity - (int) $item->received_qty; @endphp
+                                        @if ($remaining > 0)
+                                            <tr>
+                                                <td>{{ $item->product->sku }} <span class="text-muted">{{ $item->product->name }}</span></td>
+                                                <td class="text-end">{{ $remaining }}</td>
+                                                <td><input type="number" class="form-control form-control-sm" name="quantities[{{ $item->id }}]" min="0" max="{{ $remaining }}" value="0"></td>
+                                            </tr>
+                                        @endif
+                                    @endforeach
+                                    </tbody>
+                                </table></div>
+                                <button class="btn btn-success btn-sm" onclick="return confirm('Add these received quantities to inventory?')">Save receipt</button>
+                            </form>
+                        </div>
+                    </div>
+                @endif
+            @endcan
             @if ($purchase->notes)
                 <div class="card mt-3">
                     <div class="card-body"><b>Notes</b>

@@ -694,6 +694,7 @@
                 ['Categories', 'bi-tags', route('categories.index'), 'categories*', 'categories.manage', false],
                 ['Suppliers', 'bi-truck', route('suppliers.index'), 'suppliers*', 'purchases.view', false],
                 ['Purchases', 'bi-cart3', route('purchases.index'), 'purchases*', 'purchases.view', false],
+                ['Reorder Planning', 'bi-arrow-repeat', route('reorders.index'), 'reorders*', 'purchases.view', false],
                 ['Inventory', 'bi-boxes', route('inventory.index'), 'inventory*', 'inventory.view', false],
             ],
             'Sales' => [

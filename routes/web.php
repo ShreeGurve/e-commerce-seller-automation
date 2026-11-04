@@ -1,6 +1,7 @@
 <?php
 use App\Http\Controllers\{ReportController, PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController, AutomationController};
 use App\Http\Controllers\MarketplaceConnectionController;
+use App\Http\Controllers\ReorderController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\Auth\PasswordResetController;
@@ -59,8 +60,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/purchases/{purchase}/edit', [PurchaseController::class, 'edit'])->middleware('can:purchases.edit')->name('purchases.edit');
     Route::put('/purchases/{purchase}', [PurchaseController::class, 'update'])->middleware('can:purchases.edit')->name('purchases.update');
     Route::post('/purchases/{purchase}/receive', [PurchaseController::class, 'receive'])->middleware('can:purchases.edit')->name('purchases.receive');
+    Route::post('/purchases/{purchase}/receive-quantities', [PurchaseController::class, 'receiveQuantities'])->middleware('can:purchases.edit')->name('purchases.receive-quantities');
     Route::post('/purchases/{purchase}/cancel', [PurchaseController::class, 'cancel'])->middleware('can:purchases.edit')->name('purchases.cancel');
     Route::post('/purchases/{purchase}/payment', [PurchaseController::class, 'payment'])->middleware('can:purchases.edit')->name('purchases.payment');
+
+    // Phase 7: reorder planning
+    Route::get('/reorders', [ReorderController::class, 'index'])->middleware('can:purchases.view')->name('reorders.index');
+    Route::post('/reorders/purchase', [ReorderController::class, 'createPurchase'])->middleware('can:purchases.create')->name('reorders.purchase');
 
     // Inventory
     Route::get('/inventory', [InventoryController::class, 'index'])->middleware('can:inventory.view')->name('inventory.index');

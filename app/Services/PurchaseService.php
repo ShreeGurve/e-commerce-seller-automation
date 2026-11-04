@@ -66,22 +66,43 @@ class PurchaseService
         });
     }
 
-    /** Receive ALL items -> one PURCHASE ledger row per product. Safe to click twice: second call is rejected. */
-    public function receive(Purchase $purchase): Purchase
+    /** Receive full or partial quantities. Only newly received units enter the inventory ledger. */
+    public function receive(Purchase $purchase, ?array $quantities = null): Purchase
     {
-        return DB::transaction(function () use ($purchase) {
+        return DB::transaction(function () use ($purchase, $quantities) {
             $purchase = Purchase::whereKey($purchase->id)->lockForUpdate()->firstOrFail();
             $this->assertEditable($purchase);
+            $items = $purchase->items()->with('product')->lockForUpdate()->get();
+            $receivedNow = 0;
 
-            foreach ($purchase->items()->with('product')->get() as $item) {
-                $this->inventory->record($item->product, 'PURCHASE', (int) $item->quantity, [
-                    'unit_cost' => $item->unit_cost, 'reference' => $purchase, 'note' => 'PO ' . $purchase->po_number,
+            foreach ($items as $item) {
+                $remaining = (int) $item->quantity - (int) $item->received_qty;
+                $qty = $quantities === null ? $remaining : (int) ($quantities[$item->id] ?? 0);
+                if ($qty < 0 || $qty > $remaining) {
+                    throw ValidationException::withMessages(['quantities' => "Received quantity for {$item->product->sku} cannot exceed the outstanding {$remaining} units."]);
+                }
+                if ($qty === 0) continue;
+
+                $this->inventory->record($item->product, 'PURCHASE', $qty, [
+                    'unit_cost' => $item->unit_cost, 'reference' => $purchase,
+                    'note' => 'PO ' . $purchase->po_number . ' (partial/full receipt)',
                 ]);
-                $item->update(['received_qty' => $item->quantity]);
+                $item->update(['received_qty' => (int) $item->received_qty + $qty]);
+                $receivedNow += $qty;
             }
+
+            if ($receivedNow === 0) {
+                throw ValidationException::withMessages(['quantities' => 'Enter at least one quantity greater than zero.']);
+            }
+
+            $fullyReceived = $purchase->items()->whereColumn('received_qty', '<', 'quantity')->doesntExist();
             $old = $purchase->status;
-            $purchase->update(['status' => 'RECEIVED', 'received_at' => now()]);
-            ActivityLogger::log('purchase.received', $purchase, ['status' => $old], ['status' => 'RECEIVED']);
+            $purchase->update([
+                'status' => $fullyReceived ? 'RECEIVED' : 'ORDERED',
+                'received_at' => $fullyReceived ? now() : null,
+            ]);
+            ActivityLogger::log($fullyReceived ? 'purchase.received' : 'purchase.partially_received', $purchase,
+                ['status' => $old], ['status' => $purchase->status, 'received_units' => $receivedNow]);
             return $purchase;
         });
     }
