@@ -781,3 +781,105 @@ This is an internal planning estimate, not an accounting ledger or legal determi
 
 ## Validation
 Run PHP syntax checks and verify route registration locally. Database/browser behavior has not been tested against the user's local database. No migration is required.
+
+# Phase 17 — Smart Reorder Approval Workflow
+
+## What this adds
+- Reuses Phase 7 reorder suggestions and the existing `approval_requests` workflow.
+- Changes reorder submission from immediate draft-PO creation to a purchase approval request.
+- Captures supplier, requested date, selected products, quantities, unit costs and estimated subtotal in the approval's proposed-value snapshot.
+- Revalidates that selected products are active and still at/below their reorder threshold at submission time.
+- Adds a Reorder Approvals page. Once an existing approver approves the request, an authorised user can convert it into a DRAFT purchase order.
+- Uses a database transaction and row lock to prevent the same approval being converted twice.
+
+## Files
+- `app/Http/Controllers/ReorderApprovalController.php` (new)
+- `resources/views/reorders/index.blade.php` (updated: submits for approval)
+- `resources/views/reorders/approvals.blade.php` (new)
+
+## Installation
+1. Back up `resources/views/reorders/index.blade.php` if it exists.
+2. Extract the ZIP into the Laravel project root.
+3. In `routes/web.php`, inside the existing authenticated route group, add these routes. Keep the existing Phase 7 `GET /reorders` route; replace the old `POST /reorders/purchase` route with the new approval route.
+
+```php
+use App\Http\Controllers\ReorderApprovalController;
+
+Route::post('/reorders/approval', [ReorderApprovalController::class, 'store'])
+    ->middleware('can:purchases.create')->name('reorders.approval');
+Route::get('/reorders/approvals', [ReorderApprovalController::class, 'index'])
+    ->middleware('can:approvals.view')->name('reorders.approvals');
+Route::post('/reorders/approvals/{approvalRequest}/draft', [ReorderApprovalController::class, 'createDraft'])
+    ->middleware('can:purchases.create')->name('reorders.approvals.draft');
+```
+
+4. Ensure the `ApprovalController` routes are present and approvers have the existing approval-review permissions. The existing approval page handles approve/reject; this patch does not replace it.
+5. Run:
+
+```bash
+php artisan optimize:clear
+php artisan route:list --name=reorders
+php artisan route:list --name=approvals
+```
+
+6. Open `/reorders`, select products and submit the plan. Review it under `/approvals`. After approval, open `/reorders/approvals` and click **Create draft PO**.
+
+## Important behaviour
+- No new migration is required; it reuses the existing `approval_requests` table.
+- The estimate is quantity × unit cost and excludes GST, shipping and other charges. The generated draft PO is recalculated by the existing `PurchaseService`.
+- An approved plan creates only a DRAFT PO. It does not mark the PO ordered, send supplier email, submit an external PO, make a payment, or change stock.
+- The existing Phase 7 direct draft-PO route may remain in routes for backward compatibility, but the updated reorder screen no longer uses it. Remove or permission-restrict that route if your policy requires all reorder-created POs to pass approval.
+- This is an internal purchase workflow; no marketplace API calls are made.
+
+## Validation
+PHP syntax and ZIP integrity are checked during packaging. Local database/browser execution is not available here; verify the routes and workflow in your local environment.
+
+# Phase 18 – Supplier Relationship Management
+
+## Included files
+- `app/Models/SupplierInteraction.php`
+- `app/Http/Controllers/SupplierRelationshipController.php`
+- `database/migrations/2026_11_04_000018_create_supplier_interactions_table.php`
+- `resources/views/suppliers/relationship.blade.php`
+
+## Install
+1. Back up existing files if any, then extract this ZIP into the Laravel project root.
+2. In `routes/web.php`, add the import with the other controller imports:
+
+```php
+use App\Http\Controllers\SupplierRelationshipController;
+```
+
+3. Inside the existing `Route::middleware('auth')->group(...)`, add:
+
+```php
+Route::get('/supplier-relationships', [SupplierRelationshipController::class, 'index'])
+    ->middleware('can:purchases.view')->name('supplier-relationships.index');
+Route::post('/supplier-relationships', [SupplierRelationshipController::class, 'store'])
+    ->middleware('can:purchases.create')->name('supplier-relationships.store');
+Route::patch('/supplier-relationships/{interaction}/status', [SupplierRelationshipController::class, 'updateStatus'])
+    ->middleware('can:purchases.edit')->name('supplier-relationships.status');
+```
+
+4. Run:
+
+```bash
+php artisan migrate
+php artisan optimize:clear
+php artisan route:list --name=supplier-relationships
+```
+
+5. Open `http://127.0.0.1/laravel/seller-automation/supplier-relationships`.
+
+## Features
+- Supplier communication notes, follow-ups, document references and issue records.
+- Due/expiry date tracking and overdue indicators.
+- Status workflow: Open, In Progress, Done, Cancelled.
+- Supplier, type and status filters; paginated activity register.
+- Uses existing `purchases.view`, `purchases.create`, and `purchases.edit` permissions.
+
+## Notes
+- The migration creates one new `supplier_interactions` table; index names are deliberately short for MySQL compatibility.
+- Document records store a reference number and description only; this phase does not upload or store document files.
+- No emails, supplier messages, payments, purchase orders, inventory changes, or marketplace API calls are sent or performed.
+- Existing supplier, purchase, and supplier-review records are not modified.

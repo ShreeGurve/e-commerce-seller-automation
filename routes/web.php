@@ -325,6 +325,18 @@ Route::middleware('auth')->group(function () {
     });
     Route::get('/reports/{key}/export/{format}', [ReportController::class, 'export'])->middleware('can:reports.export')->where(['key' => '[a-z_]+', 'format' => 'csv|xlsx'])->name('reports.export');
 
+    Route::get('/supplier-relationships', [\App\Http\Controllers\SupplierRelationshipController::class, 'index'])
+        ->middleware('can:purchases.view')
+        ->name('supplier-relationships.index');
+
+    Route::post('/supplier-relationships', [\App\Http\Controllers\SupplierRelationshipController::class, 'store'])
+        ->middleware('can:purchases.create')
+        ->name('supplier-relationships.store');
+
+    Route::patch('/supplier-relationships/{interaction}/status', [\App\Http\Controllers\SupplierRelationshipController::class, 'updateStatus'])
+        ->middleware('can:purchases.edit')
+        ->name('supplier-relationships.status');
+
     // Modules not built yet
     Route::get('/m/{module}', ModuleController::class)->name('module');
 });
