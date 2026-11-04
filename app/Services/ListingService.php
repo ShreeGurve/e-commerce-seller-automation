@@ -57,6 +57,11 @@ class ListingService
     public function publish(Listing $listing, ListingVersion $v): Listing
     {
         if ($v->listing_id !== $listing->id) throw ValidationException::withMessages(['version' => 'That version belongs to another listing.']);
+        $approved = ListingReview::where('listing_id', $listing->id)
+            ->where('listing_version_id', $v->id)->where('status', 'APPROVED')->exists();
+        if (! $approved) {
+            throw ValidationException::withMessages(['version' => 'This version must be approved internally before it can be marked as live.']);
+        }
         $old = $listing->published_version_id;
         $listing->update(['published_version_id' => $v->id, 'status' => 'LIVE']);
         ActivityLogger::log('listing.published', $listing, ['published_version' => $old], ['published_version' => $v->id]);

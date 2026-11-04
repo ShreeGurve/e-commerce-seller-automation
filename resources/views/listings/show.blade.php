@@ -29,6 +29,86 @@
             </div>
         @endif
     </div>
+    @php
+        $latestReview = $listing->latestReview;
+        $currentReview = $latestReview && $latestReview->listing_version_id === ($v->id ?? null) ? $latestReview : null;
+    @endphp
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Internal review workflow</span>
+            @if ($currentReview)
+                <span class="badge text-bg-{{ $currentReview->status === 'APPROVED' ? 'success' : ($currentReview->status === 'PENDING' ? 'warning' : 'danger') }}">
+                    {{ \App\Models\ListingReview::STATUSES[$currentReview->status] ?? $currentReview->status }}
+                </span>
+            @else
+                <span class="badge text-bg-secondary">Not submitted</span>
+            @endif
+        </div>
+        <div class="card-body">
+            @if ($currentReview)
+                <div class="small text-muted mb-2">
+                    Version v{{ $currentReview->version->version_no ?? '—' }} · requested by {{ $currentReview->requester->name ?? '—' }}
+                    · {{ $currentReview->requested_at?->format('d M Y H:i') }}
+                    @if ($currentReview->reviewer)
+                        · reviewed by {{ $currentReview->reviewer->name }} {{ $currentReview->reviewed_at?->format('d M Y H:i') }}
+                    @endif
+                </div>
+                @if ($currentReview->review_note)
+                    <div class="alert alert-{{ $currentReview->status === 'CHANGES_REQUESTED' ? 'warning' : 'light' }} py-2 mb-3">
+                        <strong>Reviewer note:</strong> {{ $currentReview->review_note }}
+                    </div>
+                @endif
+                @if ($can && $currentReview->status === 'PENDING')
+                    <div class="row g-3">
+                        <div class="col-lg-6">
+                            <form method="POST" action="{{ route('listings.reviews.approve', [$listing, $currentReview]) }}">
+                                @csrf
+                                <label class="form-label small">Approval note (optional)</label>
+                                <input name="review_note" class="form-control form-control-sm mb-2" maxlength="2000" placeholder="Looks good for manual marketplace application">
+                                <button class="btn btn-sm btn-success">Approve this version</button>
+                            </form>
+                        </div>
+                        <div class="col-lg-6">
+                            <form method="POST" action="{{ route('listings.reviews.request-changes', [$listing, $currentReview]) }}">
+                                @csrf
+                                <label class="form-label small">Changes required *</label>
+                                <input name="review_note" class="form-control form-control-sm mb-2" maxlength="2000" required placeholder="Explain what needs to be changed">
+                                <button class="btn btn-sm btn-outline-warning">Request changes</button>
+                            </form>
+                        </div>
+                    </div>
+                @endif
+            @endif
+            @if ($can && $v && ! $currentReview)
+                <form method="POST" action="{{ route('listings.request-review', $listing) }}" class="mt-2">
+                    @csrf
+                    <button class="btn btn-sm btn-outline-primary">Submit current version for review</button>
+                </form>
+            @endif
+            @if ($currentReview && $currentReview->status === 'CHANGES_REQUESTED')
+                <div class="small text-warning mt-2">Please edit the listing and save a new version before requesting another review.</div>
+            @endif
+            <div class="small text-muted mt-2">Approval is tracked per version. Editing creates a new version and requires a new review. Approval does not publish anything to Amazon or Flipkart.</div>
+        </div>
+        @if ($listing->reviews->count())
+            <div class="table-responsive border-top">
+                <table class="table table-sm align-middle mb-0">
+                    <thead><tr><th>Version</th><th>Status</th><th>Requested by</th><th>Reviewed by</th><th>Note</th></tr></thead>
+                    <tbody>
+                    @foreach ($listing->reviews as $review)
+                        <tr>
+                            <td>v{{ $review->version->version_no ?? '—' }}</td>
+                            <td>{{ \App\Models\ListingReview::STATUSES[$review->status] ?? $review->status }}</td>
+                            <td>{{ $review->requester->name ?? '—' }}</td>
+                            <td>{{ $review->reviewer->name ?? '—' }}</td>
+                            <td class="small">{{ $review->review_note ?: '—' }}</td>
+                        </tr>
+                    @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    </div>
     @if ($v)
         <div class="row g-3">
             <div class="col-lg-4">

@@ -40,7 +40,7 @@ class ListingController extends Controller
 
     public function show(Listing $listing)
     {
-        $listing->load(['product.brand', 'marketplace', 'current', 'published']);
+        $listing->load(['product.brand', 'marketplace', 'current', 'published', 'reviews.requester:id,name', 'reviews.reviewer:id,name', 'latestReview']);
         $versions = $listing->versions()->with('author:id,name')->get();
         $v = $listing->current;
         $text = $v ? mb_strtolower($v->title . ' ' . implode(' ', $v->bullets ?? []) . ' ' . $v->description . ' ' . $v->backend_keywords) : '';
@@ -89,6 +89,15 @@ class ListingController extends Controller
     public function status(Request $request, Listing $listing)
     {
         $d = $request->validate(['status' => ['required', Rule::in(array_keys(Listing::STATUSES))]]);
+        if ($d['status'] === 'LIVE') {
+            $approved = $listing->published_version_id
+                && ListingReview::where('listing_id', $listing->id)
+                    ->where('listing_version_id', $listing->published_version_id)
+                    ->where('status', 'APPROVED')->exists();
+            if (! $approved) {
+                return back()->withErrors(['status' => 'A listing can only be marked Live after its published version is approved.']);
+            }
+        }
         $old = $listing->status; $listing->update($d);
         ActivityLogger::log('listing.status_changed', $listing, ['status' => $old], ['status' => $d['status']]);
         return back()->with('success', 'Status updated.');
@@ -98,6 +107,80 @@ class ListingController extends Controller
     {
         $this->service->rescore($listing);
         return back()->with('success', 'Score recalculated with your current keywords and rules.');
+    }
+
+    public function requestReview(Request $request, Listing $listing)
+    {
+        $versionId = $listing->current_version_id;
+        if (! $versionId) {
+            return back()->withErrors(['review' => 'Save a listing version before requesting review.']);
+        }
+
+        $existingReview = ListingReview::where('listing_id', $listing->id)
+            ->where('listing_version_id', $versionId)->latest('id')->first();
+        if ($existingReview?->status === 'PENDING') {
+            return back()->with('info', 'This listing version is already waiting for review.');
+        }
+        if ($existingReview?->status === 'APPROVED') {
+            return back()->with('info', 'This listing version has already been approved.');
+        }
+        if ($existingReview?->status === 'CHANGES_REQUESTED') {
+            return back()->withErrors(['review' => 'Edit and save a new version before requesting another review.']);
+        }
+
+        $review = ListingReview::create([
+            'listing_id' => $listing->id,
+            'listing_version_id' => $versionId,
+            'status' => 'PENDING',
+            'requested_by' => $request->user()->id,
+            'requested_at' => now(),
+        ]);
+        ActivityLogger::log('listing.review_requested', $listing, null, [
+            'review_id' => $review->id, 'version_id' => $versionId,
+        ]);
+
+        return back()->with('success', 'Version submitted for internal review.');
+    }
+
+    public function approveReview(Request $request, Listing $listing, ListingReview $review)
+    {
+        if ($review->listing_id !== $listing->id || $review->status !== 'PENDING') {
+            abort(404);
+        }
+        if ($review->listing_version_id !== $listing->current_version_id) {
+            return back()->withErrors(['review' => 'This review is for an older version. Submit the current version for review instead.']);
+        }
+
+        $review->update([
+            'status' => 'APPROVED',
+            'reviewed_by' => $request->user()->id,
+            'reviewed_at' => now(),
+            'review_note' => $request->validate(['review_note' => 'nullable|string|max:2000'])['review_note'] ?? null,
+        ]);
+        ActivityLogger::log('listing.review_approved', $listing, ['review_status' => 'PENDING'], ['review_status' => 'APPROVED', 'version_id' => $review->listing_version_id]);
+
+        return back()->with('success', 'Listing version approved.');
+    }
+
+    public function requestChanges(Request $request, Listing $listing, ListingReview $review)
+    {
+        if ($review->listing_id !== $listing->id || $review->status !== 'PENDING') {
+            abort(404);
+        }
+        if ($review->listing_version_id !== $listing->current_version_id) {
+            return back()->withErrors(['review' => 'This review is for an older version and cannot be actioned as the current review.']);
+        }
+
+        $data = $request->validate(['review_note' => 'required|string|max:2000']);
+        $review->update([
+            'status' => 'CHANGES_REQUESTED',
+            'reviewed_by' => $request->user()->id,
+            'reviewed_at' => now(),
+            'review_note' => $data['review_note'],
+        ]);
+        ActivityLogger::log('listing.review_changes_requested', $listing, ['review_status' => 'PENDING'], ['review_status' => 'CHANGES_REQUESTED', 'version_id' => $review->listing_version_id]);
+
+        return back()->with('success', 'Changes requested. The author can edit the listing and submit a new version.');
     }
 
     private function validated(Request $request): array

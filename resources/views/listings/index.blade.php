@@ -47,6 +47,7 @@
                         <th class="text-center">Version</th>
                         <th class="text-center">Live version</th>
                         <th class="text-center">Score</th>
+                        <th>Review</th>
                         <th>Updated</th>
                     </tr>
                 </thead>
@@ -74,10 +75,19 @@
                             <td class="text-center"><span
                                     class="badge text-bg-{{ $sc >= 80 ? 'success' : ($sc >= 60 ? 'warning' : 'danger') }} fs-6">{{ number_format($sc, 0) }}</span>
                             </td>
+                            <td>
+                                @if ($l->latestReview)
+                                    <span class="badge text-bg-{{ $l->latestReview->status === 'APPROVED' ? 'success' : ($l->latestReview->status === 'PENDING' ? 'warning' : 'danger') }}">
+                                        {{ \App\Models\ListingReview::STATUSES[$l->latestReview->status] ?? $l->latestReview->status }}
+                                    </span>
+                                @else
+                                    <span class="text-muted small">Not submitted</span>
+                                @endif
+                            </td>
                             <td class="small text-muted text-nowrap">{{ $l->updated_at->diffForHumans() }}</td>
                         </tr>
                         @empty<tr>
-                                <td colspan="7" class="text-center text-muted py-5">No listings yet. Create one to write,
+                                <td colspan="8" class="text-center text-muted py-5">No listings yet. Create one to write,
                                     score and version your copy.</td>
                             </tr>
                         @endforelse

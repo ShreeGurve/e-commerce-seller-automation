@@ -14,4 +14,6 @@ class Listing extends Model
     public function versions() { return $this->hasMany(ListingVersion::class)->orderByDesc('version_no'); }
     public function current() { return $this->belongsTo(ListingVersion::class, 'current_version_id'); }
     public function published() { return $this->belongsTo(ListingVersion::class, 'published_version_id'); }
+    public function reviews() { return $this->hasMany(ListingReview::class)->latest('id'); }
+    public function latestReview() { return $this->hasOne(ListingReview::class)->latestOfMany(); }
 }

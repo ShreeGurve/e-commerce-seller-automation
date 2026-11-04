@@ -149,14 +149,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/marketplace-connections/{marketplace}/verify', [MarketplaceConnectionController::class, 'verify'])->middleware(['can:settings.manage', 'throttle:6,1'])->name('marketplaces.connections.verify');
     Route::delete('/marketplace-connections/{connection}', [MarketplaceConnectionController::class, 'destroy'])->middleware('can:settings.manage')->name('marketplaces.connections.destroy');
 
-    // Marketplace operations workspace (local catalogue mapping; no API writes).
-    Route::get('/marketplace-operations', [MarketplaceController::class, 'operations'])
-        ->middleware('can:products.view')->name('marketplaces.operations');
-    Route::post('/marketplace-operations/mappings', [MarketplaceController::class, 'storeMapping'])
-        ->middleware('can:products.edit')->name('marketplaces.operations.mappings.store');
-    Route::delete('/marketplace-operations/mappings/{mapping}', [MarketplaceController::class, 'destroyMapping'])
-        ->middleware('can:products.edit')->name('marketplaces.operations.mappings.destroy');
-
     // Marketplace hubs (Amazon / Flipkart / ...)
     Route::get('/marketplaces/{code}', [MarketplaceController::class, 'show'])->middleware('can:orders.view')->name('marketplaces.show');
 
@@ -240,6 +232,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/listings/{listing}/rescore', [ListingController::class, 'rescore'])->name('listings.rescore');
         Route::post('/listings/{listing}/publish/{version}', [ListingController::class, 'publish'])->name('listings.publish');
         Route::post('/listings/{listing}/restore/{version}', [ListingController::class, 'restore'])->name('listings.restore');
+        Route::post('/listings/{listing}/request-review', [ListingController::class, 'requestReview'])->name('listings.request-review');
+        Route::post('/listings/{listing}/reviews/{review}/approve', [ListingController::class, 'approveReview'])->name('listings.reviews.approve');
+        Route::post('/listings/{listing}/reviews/{review}/request-changes', [ListingController::class, 'requestChanges'])->name('listings.reviews.request-changes');
     });
     Route::get('/listings/{listing}', [ListingController::class, 'show'])->middleware('can:listings.view')->name('listings.show');
     Route::get('/listings/{listing}/compare', [ListingController::class, 'compare'])->middleware('can:listings.view')->name('listings.compare');
