@@ -138,6 +138,7 @@ class ProfitService
     public function report(array $f): array
     {
         $base = OrderProfit::query()->whereBetween('order_date', [$f['from'], $f['to']])
+            ->whereHas('order', fn ($q) => $q->where('source', '!=', 'TEST')->where('status', '!=', 'CANCELLED'))
             ->when($f['marketplace_id'] ?? null, fn ($q, $v) => $q->where('marketplace_id', $v))
             ->when($f['product_id'] ?? null, fn ($q, $v) => $q->where('product_id', $v))
             ->when($f['category_id'] ?? null, fn ($q, $v) => $q->whereIn('product_id', Product::where('category_id', $v)->select('id')));

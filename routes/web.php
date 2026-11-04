@@ -216,6 +216,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/finance/expenses/{expense}', [ExpenseController::class, 'destroy'])->name('expenses.destroy');
         Route::post('/finance/expense-categories', [ExpenseController::class, 'storeCategory'])->name('expenses.categories.store');
     });
+
     Route::get('/finance/expenses', [ExpenseController::class, 'index'])->middleware('can:finance.view')->name('expenses.index');
     Route::get('/finance/expenses/{expense}/attachment', [ExpenseController::class, 'attachment'])->middleware('can:finance.view')->name('expenses.attachment');
 
@@ -233,6 +234,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/finance/reconciliation/{reconciliationIssue}/ignore', [ReconciliationController::class, 'ignore'])->name('reconciliation.ignore');
         Route::post('/finance/reconciliation/{reconciliationIssue}/reopen', [ReconciliationController::class, 'reopen'])->name('reconciliation.reopen');
     });
+
+    Route::get('/finance/profit/export', [ProfitController::class, 'export'])
+        ->middleware('can:finance.view')
+        ->name('profit.export');
 
     // Advertising (reports come from the import wizard)
     Route::middleware('can:advertising.view')->prefix('ads')->name('ads.')->group(function () {
