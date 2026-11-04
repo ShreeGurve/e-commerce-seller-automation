@@ -697,6 +697,7 @@
                 ['Inventory', 'bi-boxes', route('inventory.index'), 'inventory*', 'inventory.view', false],
             ],
             'Sales' => [
+                ['Marketplace Operations', 'bi-grid-3x3-gap', route('marketplaces.operations'), 'marketplace-operations*', 'products.view', false],
                 ['Marketplace Connections', 'bi-plug', route('marketplaces.connections'), 'marketplace-connections*', 'settings.manage', false],
                 ['Orders', 'bi-receipt', route('orders.index'), 'orders*', 'orders.view', false],
                 ['Returns', 'bi-arrow-return-left', route('returns.index'), 'returns*', 'returns.view', false],

@@ -149,6 +149,14 @@ Route::middleware('auth')->group(function () {
     Route::post('/marketplace-connections/{marketplace}/verify', [MarketplaceConnectionController::class, 'verify'])->middleware(['can:settings.manage', 'throttle:6,1'])->name('marketplaces.connections.verify');
     Route::delete('/marketplace-connections/{connection}', [MarketplaceConnectionController::class, 'destroy'])->middleware('can:settings.manage')->name('marketplaces.connections.destroy');
 
+    // Marketplace operations workspace (local catalogue mapping; no API writes).
+    Route::get('/marketplace-operations', [MarketplaceController::class, 'operations'])
+        ->middleware('can:products.view')->name('marketplaces.operations');
+    Route::post('/marketplace-operations/mappings', [MarketplaceController::class, 'storeMapping'])
+        ->middleware('can:products.edit')->name('marketplaces.operations.mappings.store');
+    Route::delete('/marketplace-operations/mappings/{mapping}', [MarketplaceController::class, 'destroyMapping'])
+        ->middleware('can:products.edit')->name('marketplaces.operations.mappings.destroy');
+
     // Marketplace hubs (Amazon / Flipkart / ...)
     Route::get('/marketplaces/{code}', [MarketplaceController::class, 'show'])->middleware('can:orders.view')->name('marketplaces.show');
 
