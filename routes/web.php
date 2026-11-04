@@ -283,3 +283,5 @@ Route::middleware('auth')->group(function () {
     // Modules not built yet
     Route::get('/m/{module}', ModuleController::class)->name('module');
 });
+
+require __DIR__ . '/marketplace_listing_phase4.php';
