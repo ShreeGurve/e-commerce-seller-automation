@@ -152,6 +152,19 @@ Route::middleware('auth')->group(function () {
     // Marketplace hubs (Amazon / Flipkart / ...)
     Route::get('/marketplaces/{code}', [MarketplaceController::class, 'show'])->middleware('can:orders.view')->name('marketplaces.show');
 
+    // Marketplace Operations
+    Route::get('/marketplace-operations', [MarketplaceController::class, 'operations'])
+        ->middleware('can:products.view')
+        ->name('marketplaces.operations');
+
+    Route::post('/marketplace-operations/mappings', [MarketplaceController::class, 'storeMapping'])
+        ->middleware('can:products.edit')
+        ->name('marketplaces.operations.mappings.store');
+
+    Route::delete('/marketplace-operations/mappings/{mapping}', [MarketplaceController::class, 'destroyMapping'])
+        ->middleware('can:products.edit')
+        ->name('marketplaces.operations.mappings.destroy');
+
     // Import engine (CSV / Excel). Same permission as editing orders.
     Route::middleware(\App\Http\Middleware\CanImport::class)->prefix('imports')->name('imports.')->group(function () {
         Route::get('/', [ImportController::class, 'index'])->name('index');
