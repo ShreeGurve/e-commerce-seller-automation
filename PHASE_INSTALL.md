@@ -1002,3 +1002,56 @@ Expected command: `suppliers:documents-expiry-notify`.
 
 ## Verification note
 PHP syntax and ZIP integrity are checked during packaging. Database, scheduler execution and browser rendering must be verified in the user's local environment.
+
+# Phase 21 – Supplier Risk Scoring & Vendor Reliability Intelligence
+
+## Included files
+- `app/Http/Controllers/SupplierRiskController.php`
+- `resources/views/suppliers/risk.blade.php`
+
+No migration or model changes are required. The score reads the existing supplier, purchase, supplier review, supplier document and supplier interaction records from earlier phases.
+
+## Add routes
+Add these routes inside the existing authenticated route group in `routes/web.php`:
+
+```php
+Route::get('/supplier-risk', [\App\Http\Controllers\SupplierRiskController::class, 'index'])
+    ->middleware('can:purchases.view')
+    ->name('supplier-risk.index');
+
+Route::get('/supplier-risk/export', [\App\Http\Controllers\SupplierRiskController::class, 'export'])
+    ->middleware('can:purchases.view')
+    ->name('supplier-risk.export');
+```
+
+## Score model
+The internal score is 0–100:
+- Delivery reliability: 35%
+- Supplier review ratings (delivery, quality, pricing): 35%
+- Document compliance: 20%
+- Open/overdue supplier issues: 10%
+
+Risk bands: LOW = 80–100, MEDIUM = 60–79, HIGH = below 60.
+
+When a supplier has no history for a component, that component uses a neutral 50-point baseline. Delivery performance is calculated only from received purchase orders that have both an expected delivery date and received timestamp. Document compliance uses approved, non-expired documents as valid. Open and overdue ISSUE interactions reduce the issue score.
+
+This is an internal operational indicator. It is not a credit score, legal compliance certification, or external risk assessment.
+
+## Install
+1. Extract and merge the ZIP contents into the Laravel project root.
+2. Add both routes above inside the authenticated route group.
+3. Run:
+
+```powershell
+php artisan optimize:clear
+php artisan route:list --name=supplier-risk
+```
+
+4. Open:
+`http://127.0.0.1/laravel/seller-automation/supplier-risk`
+
+## Notes
+- No migrations.
+- No external API calls, supplier messages, purchase order submissions, payments, or inventory changes.
+- CSV export respects search and risk filters.
+- Requires previous supplier, supplier review, purchase, Phase 18 interaction, and Phase 19 document tables to be installed.

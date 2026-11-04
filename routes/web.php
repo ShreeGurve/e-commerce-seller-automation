@@ -355,9 +355,19 @@ Route::middleware('auth')->group(function () {
         ->middleware('can:purchases.edit')
         ->name('supplier-documents.review');
 
+    // Phase 20: Supplier Compliance Management
     Route::get('/supplier-compliance', [\App\Http\Controllers\SupplierComplianceController::class, 'index'])
         ->middleware('can:purchases.view')
         ->name('supplier-compliance.index');
+
+    // Phase 21: Supplier Risk Management
+    Route::get('/supplier-risk', [\App\Http\Controllers\SupplierRiskController::class, 'index'])
+        ->middleware('can:purchases.view')
+        ->name('supplier-risk.index');
+
+    Route::get('/supplier-risk/export', [\App\Http\Controllers\SupplierRiskController::class, 'export'])
+        ->middleware('can:purchases.view')
+        ->name('supplier-risk.export');
 
     // Modules not built yet
     Route::get('/m/{module}', ModuleController::class)->name('module');
