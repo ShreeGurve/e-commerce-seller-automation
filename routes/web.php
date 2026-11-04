@@ -369,6 +369,20 @@ Route::middleware('auth')->group(function () {
         ->middleware('can:purchases.view')
         ->name('supplier-risk.export');
 
+    // Phase 22: Supplier Sourcing Management
+    Route::get('/supplier-sourcing', [\App\Http\Controllers\SupplierSourcingController::class, 'index'])
+        ->middleware('can:purchases.view')
+        ->name('supplier-sourcing.index');
+
+    // Phase 23: Supplier Cost Intelligence
+    Route::get('/purchases/cost-intelligence', [\App\Http\Controllers\PurchaseCostIntelligenceController::class, 'index'])
+        ->middleware('can:purchases.view')
+        ->name('purchase-cost-intelligence.index');
+
+    Route::get('/purchases/cost-intelligence/export', [\App\Http\Controllers\PurchaseCostIntelligenceController::class, 'export'])
+        ->middleware('can:purchases.view')
+        ->name('purchase-cost-intelligence.export');
+
     // Modules not built yet
     Route::get('/m/{module}', ModuleController::class)->name('module');
 });

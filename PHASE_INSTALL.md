@@ -1055,3 +1055,91 @@ php artisan route:list --name=supplier-risk
 - No external API calls, supplier messages, purchase order submissions, payments, or inventory changes.
 - CSV export respects search and risk filters.
 - Requires previous supplier, supplier review, purchase, Phase 18 interaction, and Phase 19 document tables to be installed.
+
+# Phase 22 – Smart Supplier Sourcing & Recommendations
+
+## Included files
+- `app/Http/Controllers/SupplierSourcingController.php`
+- `resources/views/sourcing/recommendations.blade.php`
+
+No migration or model changes are required.
+
+## Routes
+Add inside the existing authenticated route group in `routes/web.php`:
+
+```php
+Route::get('/supplier-sourcing', [\App\Http\Controllers\SupplierSourcingController::class, 'index'])
+    ->middleware('can:purchases.view')
+    ->name('supplier-sourcing.index');
+```
+
+## Install
+1. Extract and merge the ZIP into the Laravel project root.
+2. Add the route above inside the authenticated group.
+3. Run:
+
+```powershell
+php artisan optimize:clear
+php artisan route:list --name=supplier-sourcing
+```
+
+4. Open:
+`http://127.0.0.1/laravel/seller-automation/supplier-sourcing`
+
+## Recommendation method
+Compares suppliers with received purchase history for the selected product:
+- Delivery reliability: 35%
+- Supplier review ratings: 35%
+- Historical average unit-cost competitiveness: 30%
+
+The historical cost is calculated from received purchase line items. It is not a live supplier quote. Missing review or delivery history receives a neutral baseline. Scores are decision-support guidance, not guarantees.
+
+## Safety and scope
+- No external supplier outreach or quote requests.
+- No purchase order creation or submission.
+- No payments, stock changes or marketplace API calls.
+- Uses the existing `purchase_items`, `purchases`, `suppliers`, and `supplier_reviews` tables.
+
+# Phase 23 – Purchase Cost Intelligence & Price Negotiation
+
+## Included
+- `app/Http/Controllers/PurchaseCostIntelligenceController.php`
+- `resources/views/purchases/cost-intelligence.blade.php`
+
+No migration or model changes.
+
+## Routes
+Add inside the authenticated route group in `routes/web.php`:
+
+```php
+Route::get('/purchases/cost-intelligence', [\App\Http\Controllers\PurchaseCostIntelligenceController::class, 'index'])
+    ->middleware('can:purchases.view')
+    ->name('purchase-cost-intelligence.index');
+
+Route::get('/purchases/cost-intelligence/export', [\App\Http\Controllers\PurchaseCostIntelligenceController::class, 'export'])
+    ->middleware('can:purchases.view')
+    ->name('purchase-cost-intelligence.export');
+```
+
+## Install
+1. Extract and merge the ZIP in the Laravel project root.
+2. Add both routes inside the authenticated route group.
+3. Run:
+```powershell
+php artisan optimize:clear
+php artisan route:list --name=purchase-cost-intelligence
+```
+4. Open:
+`http://127.0.0.1/laravel/seller-automation/purchases/cost-intelligence`
+
+## Method
+- Uses received purchase order lines only.
+- Groups cost history by product and supplier.
+- Compares latest and previous received unit cost.
+- Calculates average, low and high historical unit costs.
+- Shows an indicative negotiation target at 3% below historical average.
+- Supports product, supplier and received-date filters and CSV export.
+
+The 3% target is a planning assumption, not a live quote or guaranteed saving. No supplier communication, price updates, PO creation, payment, inventory change or marketplace API call is made.
+
+Requires existing `purchase_items`, `purchases`, `products` and `suppliers` tables.
