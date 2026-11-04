@@ -15,7 +15,7 @@ class DashboardService
         $tot = fn (string $table, string $cols, string $from, string $to) => DB::table($table)->whereBetween('date', [$from, $to])->when($mp, fn ($q, $v) => $q->where('marketplace_id', $v))->selectRaw($cols)->first();
 
         $s = $tot('daily_sales', 'COALESCE(SUM(orders),0) orders, COALESCE(SUM(units),0) units, COALESCE(SUM(gross_sales),0) sales, COALESCE(SUM(cancelled_orders),0) cancelled', $f['from'], $f['to']);
-        $p = $tot('daily_profit', 'COALESCE(SUM(revenue),0) revenue, COALESCE(SUM(cogs),0) cogs, COALESCE(SUM(fees),0) fees, COALESCE(SUM(refunds),0) refunds, COALESCE(SUM(recovery),0) recovery, COALESCE(SUM(ads),0) ads, COALESCE(SUM(profit),0) profit, COALESCE(SUM(lines),0) lines, COALESCE(SUM(actual_lines),0) actual', $f['from'], $f['to']);
+        $p = $tot('daily_profit', 'COALESCE(SUM(revenue),0) revenue, COALESCE(SUM(cogs),0) cogs, COALESCE(SUM(fees),0) fees, COALESCE(SUM(refunds),0) refunds, COALESCE(SUM(recovery),0) recovery, COALESCE(SUM(ads),0) ads, COALESCE(SUM(profit),0) profit, COALESCE(SUM(`lines`), 0) AS total_lines, COALESCE(SUM(actual_lines),0) actual', $f['from'], $f['to']);
         $a = $tot('daily_advertising', 'COALESCE(SUM(impressions),0) imp, COALESCE(SUM(clicks),0) clicks, COALESCE(SUM(spend),0) spend, COALESCE(SUM(sales),0) sales, COALESCE(SUM(orders),0) orders', $f['from'], $f['to']);
         $expenses = (float) Expense::whereBetween('expense_date', [$f['from'], $f['to']])->when($mp, fn ($q, $v) => $q->where('marketplace_id', $v))->sum('amount');
         $returns = ProductReturn::whereBetween('return_date', [$f['from'], $f['to']])->when($mp, fn ($q, $v) => $q->where('marketplace_id', $v))->count();
@@ -29,7 +29,7 @@ class DashboardService
             'acos' => $adSales > 0 ? $adSpend / $adSales * 100 : null, 'roas' => $adSpend > 0 ? $adSales / $adSpend : null, 'tacos' => $sales > 0 ? $adSpend / $sales * 100 : null,
             'clicks' => (int) $a->clicks, 'impressions' => (int) $a->imp, 'returns' => $returns, 'returnRate' => $orders > 0 ? $returns / $orders * 100 : null,
             'cancelRate' => ($orders + (int) $s->cancelled) > 0 ? (int) $s->cancelled / ($orders + (int) $s->cancelled) * 100 : null,
-            'settledPct' => (int) $p->lines > 0 ? (int) $p->actual / (int) $p->lines * 100 : null,
+            'settledPct' => (int) $p->total_lines > 0 ? (int) $p->actual / (int) $p->total_lines * 100 : null,
         ];
 
         // the period right before this one, same length, for "up / down" arrows

@@ -1143,3 +1143,54 @@ php artisan route:list --name=purchase-cost-intelligence
 The 3% target is a planning assumption, not a live quote or guaranteed saving. No supplier communication, price updates, PO creation, payment, inventory change or marketplace API call is made.
 
 Requires existing `purchase_items`, `purchases`, `products` and `suppliers` tables.
+# Phase 24 – Purchase Budgeting & Procurement Planning
+
+## Included files
+- `app/Models/PurchaseBudget.php`
+- `app/Http/Controllers/PurchaseBudgetController.php`
+- `database/migrations/2026_11_04_000024_create_purchase_budgets_table.php`
+- `resources/views/purchases/budget-planning.blade.php`
+
+## Routes
+Add inside the existing authenticated group in `routes/web.php`:
+
+```php
+Route::get('/purchases/budgets', [\App\Http\Controllers\PurchaseBudgetController::class, 'index'])
+    ->middleware('can:purchases.view')
+    ->name('purchase-budgets.index');
+
+Route::post('/purchases/budgets', [\App\Http\Controllers\PurchaseBudgetController::class, 'store'])
+    ->middleware('can:purchases.create')
+    ->name('purchase-budgets.store');
+
+Route::get('/purchases/budgets/export', [\App\Http\Controllers\PurchaseBudgetController::class, 'export'])
+    ->middleware('can:purchases.view')
+    ->name('purchase-budgets.export');
+```
+
+## Install
+1. Extract and merge the ZIP into the Laravel project root.
+2. Add all three routes inside the authenticated route group.
+3. Run:
+
+```powershell
+php artisan migrate
+php artisan optimize:clear
+php artisan route:list --name=purchase-budgets
+```
+
+4. Open:
+`http://127.0.0.1/laravel/seller-automation/purchases/budgets`
+
+## Calculation scope
+- Monthly budget is an internal amount set by an authorized user.
+- Actual spend uses RECEIVED purchase orders grouped by `purchase_date` in the selected month.
+- Forecast is the arithmetic average of the previous three calendar months' received purchase totals.
+- The view shows budget utilization, remaining/over-budget amount and forecast variance.
+- CSV export contains saved monthly budgets.
+
+This phase is overall monthly procurement budgeting only. It does not claim category-wise actuals because purchase-line category mapping is not introduced here.
+
+## Safety
+No automatic purchase orders, supplier outreach, payment actions, inventory updates or marketplace API calls.
+

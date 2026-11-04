@@ -59,13 +59,36 @@ Route::middleware('auth')->group(function () {
     Route::get('/purchases', [PurchaseController::class, 'index'])->middleware('can:purchases.view')->name('purchases.index');
     Route::get('/purchases/create', [PurchaseController::class, 'create'])->middleware('can:purchases.create')->name('purchases.create');
     Route::post('/purchases', [PurchaseController::class, 'store'])->middleware('can:purchases.create')->name('purchases.store');
-    Route::get('/purchases/{purchase}', [PurchaseController::class, 'show'])->middleware('can:purchases.view')->name('purchases.show');
-    Route::get('/purchases/{purchase}/edit', [PurchaseController::class, 'edit'])->middleware('can:purchases.edit')->name('purchases.edit');
-    Route::put('/purchases/{purchase}', [PurchaseController::class, 'update'])->middleware('can:purchases.edit')->name('purchases.update');
-    Route::post('/purchases/{purchase}/receive', [PurchaseController::class, 'receive'])->middleware('can:purchases.edit')->name('purchases.receive');
-    Route::post('/purchases/{purchase}/receive-quantities', [PurchaseController::class, 'receiveQuantities'])->middleware('can:purchases.edit')->name('purchases.receive-quantities');
-    Route::post('/purchases/{purchase}/cancel', [PurchaseController::class, 'cancel'])->middleware('can:purchases.edit')->name('purchases.cancel');
-    Route::post('/purchases/{purchase}/payment', [PurchaseController::class, 'payment'])->middleware('can:purchases.edit')->name('purchases.payment');
+
+    // Phase 23: Supplier Cost Intelligence
+    Route::get('/purchases/cost-intelligence', [\App\Http\Controllers\PurchaseCostIntelligenceController::class, 'index'])
+        ->middleware('can:purchases.view')
+        ->name('purchase-cost-intelligence.index');
+
+    Route::get('/purchases/cost-intelligence/export', [\App\Http\Controllers\PurchaseCostIntelligenceController::class, 'export'])
+        ->middleware('can:purchases.view')
+        ->name('purchase-cost-intelligence.export');
+
+    // Phase 24: Purchase Budgeting & Planning
+    Route::get('/purchases/budgets', [\App\Http\Controllers\PurchaseBudgetController::class, 'index'])
+        ->middleware('can:purchases.view')
+        ->name('purchase-budgets.index');
+
+    Route::post('/purchases/budgets', [\App\Http\Controllers\PurchaseBudgetController::class, 'store'])
+        ->middleware('can:purchases.create')
+        ->name('purchase-budgets.store');
+
+    Route::get('/purchases/budgets/export', [\App\Http\Controllers\PurchaseBudgetController::class, 'export'])
+        ->middleware('can:purchases.view')
+        ->name('purchase-budgets.export');
+
+    Route::get('/purchases/{purchase}', [PurchaseController::class, 'show'])->whereNumber('purchase')->middleware('can:purchases.view')->name('purchases.show');
+    Route::get('/purchases/{purchase}/edit', [PurchaseController::class, 'edit'])->whereNumber('purchase')->middleware('can:purchases.edit')->name('purchases.edit');
+    Route::put('/purchases/{purchase}', [PurchaseController::class, 'update'])->whereNumber('purchase')->middleware('can:purchases.edit')->name('purchases.update');
+    Route::post('/purchases/{purchase}/receive', [PurchaseController::class, 'receive'])->whereNumber('purchase')->middleware('can:purchases.edit')->name('purchases.receive');
+    Route::post('/purchases/{purchase}/receive-quantities', [PurchaseController::class, 'receiveQuantities'])->whereNumber('purchase')->middleware('can:purchases.edit')->name('purchases.receive-quantities');
+    Route::post('/purchases/{purchase}/cancel', [PurchaseController::class, 'cancel'])->whereNumber('purchase')->middleware('can:purchases.edit')->name('purchases.cancel');
+    Route::post('/purchases/{purchase}/payment', [PurchaseController::class, 'payment'])->whereNumber('purchase')->middleware('can:purchases.edit')->name('purchases.payment');
 
     // Phase 7: reorder planning
     Route::get('/reorders', [ReorderController::class, 'index'])->middleware('can:purchases.view')->name('reorders.index');
@@ -373,15 +396,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/supplier-sourcing', [\App\Http\Controllers\SupplierSourcingController::class, 'index'])
         ->middleware('can:purchases.view')
         ->name('supplier-sourcing.index');
-
-    // Phase 23: Supplier Cost Intelligence
-    Route::get('/purchases/cost-intelligence', [\App\Http\Controllers\PurchaseCostIntelligenceController::class, 'index'])
-        ->middleware('can:purchases.view')
-        ->name('purchase-cost-intelligence.index');
-
-    Route::get('/purchases/cost-intelligence/export', [\App\Http\Controllers\PurchaseCostIntelligenceController::class, 'export'])
-        ->middleware('can:purchases.view')
-        ->name('purchase-cost-intelligence.export');
 
     // Modules not built yet
     Route::get('/m/{module}', ModuleController::class)->name('module');
