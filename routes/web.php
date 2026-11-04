@@ -1,5 +1,5 @@
 <?php
-use App\Http\Controllers\{ReportController, PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController, AutomationController};
+use App\Http\Controllers\{ReportController, PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController, AutomationController, FulfilmentController, ListingReadinessController};
 use App\Http\Controllers\MarketplaceConnectionController;
 use App\Http\Controllers\ReorderController;
 use App\Http\Controllers\SupplierAnalyticsController;
@@ -301,6 +301,22 @@ Route::post('/inventory/{product}/stock-count', [InventoryController::class, 'st
     ->middleware('can:inventory.manage')
     ->name('inventory.stock-count');
 
-require __DIR__ . '/marketplace_listing_phase4.php';
-require __DIR__ . '/marketplace_fulfilment_phase5.php';
-require __DIR__ . '/marketplace_test_orders_phase5.php';
+Route::middleware('auth')->group(function () {
+
+    // Fulfilment (pack, dispatch, pickup, files)
+    Route::get('/fulfilment-queue', [FulfilmentController::class, 'index'])->middleware('can:orders.view')->name('fulfilment.index');
+    Route::put('/orders/{order}/fulfilment', [FulfilmentController::class, 'update'])->middleware('can:orders.edit')->name('fulfilment.update');
+    Route::post('/orders/{order}/fulfilment/pack', [FulfilmentController::class, 'pack'])->middleware('can:orders.edit')->name('fulfilment.pack');
+    Route::post('/orders/{order}/fulfilment/dispatch', [FulfilmentController::class, 'dispatch'])->middleware('can:orders.edit')->name('fulfilment.dispatch');
+    Route::post('/orders/{order}/fulfilment/pickup', [FulfilmentController::class, 'pickup'])->middleware('can:orders.edit')->name('fulfilment.pickup');
+    Route::get('/orders/{order}/fulfilment/files/{type}', [FulfilmentController::class, 'file'])->middleware('can:orders.view')->name('fulfilment.file');
+
+    // Test orders (for testing fulfilment and returns)
+    Route::get('/test-orders/create', [OrderController::class, 'createTest'])->middleware('can:orders.edit')->name('test-orders.create');
+    Route::post('/test-orders', [OrderController::class, 'storeTest'])->middleware('can:orders.edit')->name('test-orders.store');
+});
+
+Route::middleware(['auth', 'can:listings.view'])->prefix('listing-readiness')->name('listing-readiness.')->group(function () {
+    Route::get('/', [ListingReadinessController::class, 'index'])->name('index');
+    Route::get('/export', [ListingReadinessController::class, 'export'])->name('export');
+});
