@@ -740,6 +740,7 @@
                 ],
                 ['Listings', 'bi-card-text', route('listings.index'), 'listings*', 'listings.view', false],
                 ['Keywords', 'bi-search', route('keywords.index'), 'keywords*', 'listings.view', false],
+                ['Business Analytics', 'bi-speedometer2', route('analytics.business'), 'analytics/business*', 'reports.view', false],
                 ['Reports', 'bi-file-earmark-bar-graph', route('reports.index'), 'reports*', 'reports.view', false],
             ],
             'System' => [

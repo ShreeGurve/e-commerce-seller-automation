@@ -4,6 +4,15 @@
 @section('content')
     @php $T=\App\Models\ReconciliationIssue::TYPES; @endphp
     <div class="row g-3 mb-3">
+        <div class="col-6 col-xl-3"><div class="card h-100"><div class="card-body"><div class="small text-muted">Open financial issues</div><div class="sg-bignum">{{ number_format($risk['openCount']) }}</div></div></div></div>
+        <div class="col-6 col-xl-3"><div class="card h-100"><div class="card-body"><div class="small text-muted">Potential exposure</div><div class="sg-bignum text-danger">₹{{ number_format($risk['exposure'], 2) }}</div><div class="small text-muted">Absolute value of open differences</div></div></div></div>
+        <div class="col-6 col-xl-3"><div class="card h-100"><div class="card-body"><div class="small text-muted">High-risk / aged issues</div><div class="sg-bignum text-warning">{{ number_format($risk['criticalCount']) }}</div><div class="small text-muted">Difference ≥ ₹1,000 in magnitude or open 7+ days</div></div></div></div>
+        <div class="col-6 col-xl-3"><div class="card h-100"><div class="card-body"><div class="small text-muted">Open 7+ days</div><div class="sg-bignum">{{ number_format($risk['agedCount']) }}</div></div></div></div>
+    </div>
+    @if($marketplaceRisk->isNotEmpty())
+        <div class="card mb-3"><div class="card-header fw-semibold">Marketplace financial risk</div><div class="table-responsive"><table class="table table-sm mb-0"><thead><tr><th>Marketplace</th><th class="text-end">Open issues</th><th class="text-end">Potential exposure</th></tr></thead><tbody>@foreach($marketplaceRisk as $mr)<tr><td>{{ $mr->marketplace }}</td><td class="text-end">{{ number_format($mr->issue_count) }}</td><td class="text-end">₹{{ number_format((float)$mr->exposure, 2) }}</td></tr>@endforeach</tbody></table></div></div>
+    @endif
+    <div class="row g-3 mb-3">
         @foreach ($T as $k => $l)
             @php $b=$byType[$k] ?? null; @endphp
             <div class="col-6 col-xl"><a class="text-decoration-none" href="{{ route('reconciliation.index', ['type' => $k]) }}">
@@ -26,6 +35,7 @@
                     class="badge text-bg-secondary">Waiting for payout {{ $orderStatus['PENDING'] ?? 0 }}</span>
             </div>
             <div class="ms-auto d-flex gap-2">
+                <a class="btn btn-sm btn-outline-secondary" href="{{ route('reconciliation.export', request()->query()) }}"><i class="bi bi-download"></i> Export CSV</a>
                 @foreach (['OPEN' => 'Open', 'IGNORED' => 'Ignored', 'RESOLVED' => 'Closed', 'all' => 'All'] as $k => $l)
                     <a href="{{ route('reconciliation.index', ['status' => $k]) }}"
                         class="btn btn-sm btn-{{ $status === $k ? 'primary' : 'outline-secondary' }}">{{ $l }}</a>
@@ -56,6 +66,9 @@
                         <tr>
                             <td><span class="fw-semibold">{{ $T[$i->issue_type] ?? $i->issue_type }}</span>
                                 <div class="small text-muted">{{ $i->message }}</div>
+                                @if($i->status === 'OPEN' && $i->detected_at)
+                                    <div class="small mt-1"><span class="badge text-bg-{{ $i->detected_at->lte(now()->subDays(7)) ? 'danger' : 'light' }}">{{ $i->detected_at->diffForHumans() }}</span></div>
+                                @endif
                                 @if ($i->note)
                                     <div class="small fst-italic">Note: {{ $i->note }}</div>
                                 @endif

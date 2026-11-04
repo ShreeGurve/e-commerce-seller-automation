@@ -4,8 +4,8 @@ use App\Http\Controllers\MarketplaceConnectionController;
 use App\Http\Controllers\ReorderController;
 use App\Http\Controllers\SupplierAnalyticsController;
 use App\Http\Controllers\InventoryForecastController;
-use App\Http\Controllers\PricingRecommendationController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\BusinessAnalyticsController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\LoginController;
@@ -223,6 +223,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/finance/settlements', [SettlementController::class, 'index'])->middleware('can:finance.view')->name('settlements.index');
     Route::get('/finance/settlements/{settlement}', [SettlementController::class, 'show'])->middleware('can:finance.view')->name('settlements.show');
     Route::get('/finance/reconciliation', [ReconciliationController::class, 'index'])->middleware('can:finance.view')->name('reconciliation.index');
+
+    Route::get('/finance/reconciliation/export', [ReconciliationController::class, 'export'])
+        ->middleware('can:finance.view')
+        ->name('reconciliation.export');
+
     Route::middleware('can:finance.manage')->group(function () {
         Route::post('/finance/reconciliation/run', [ReconciliationController::class, 'run'])->middleware('throttle:6,1')->name('reconciliation.run');
         Route::post('/finance/reconciliation/{reconciliationIssue}/ignore', [ReconciliationController::class, 'ignore'])->name('reconciliation.ignore');
@@ -281,18 +286,6 @@ Route::middleware('auth')->group(function () {
         Route::post('/keywords/{keyword}/rank', [KeywordController::class, 'rank'])->name('keywords.rank');
     });
 
-    // Phase 10: internal pricing recommendation and approval workflow (never publishes marketplace prices).
-    Route::get('/pricing-recommendations', [PricingRecommendationController::class, 'index'])
-        ->middleware('can:products.view')->name('pricing-recommendations.index');
-    Route::post('/pricing/{product}/{marketplace}/recommendations', [PricingRecommendationController::class, 'store'])
-        ->middleware('can:products.edit')->name('pricing-recommendations.store');
-    Route::post('/pricing-recommendations/{pricingRecommendation}/approve', [PricingRecommendationController::class, 'approve'])
-        ->name('pricing-recommendations.approve');
-    Route::post('/pricing-recommendations/{pricingRecommendation}/reject', [PricingRecommendationController::class, 'reject'])
-        ->name('pricing-recommendations.reject');
-    Route::post('/pricing-recommendations/{pricingRecommendation}/record', [PricingRecommendationController::class, 'apply'])
-        ->middleware('can:products.edit')->name('pricing-recommendations.apply');
-
     // Pricing intelligence (cost + fees => break-even / minimum / target price). Advice only.
     Route::get('/pricing', [PricingController::class, 'index'])->middleware('can:products.view')->name('pricing.index');
     Route::get('/pricing/{product}/{marketplace}', [PricingController::class, 'show'])->middleware('can:products.view')->name('pricing.show');
@@ -301,6 +294,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/pricing/{product}/{marketplace}/competitors', [PricingController::class, 'competitor'])->name('pricing.competitor');
         Route::delete('/pricing/competitors/{competitorPrice}', [PricingController::class, 'deleteCompetitor'])->name('pricing.competitor.delete');
     });
+
+    // Phase 11: internal sales analytics and business decision dashboard
+    Route::get('/analytics/business', [BusinessAnalyticsController::class, 'index'])->middleware('can:reports.view')->name('analytics.business');
+    Route::get('/analytics/business/export', [BusinessAnalyticsController::class, 'export'])->middleware('can:reports.export')->name('analytics.business.export');
 
     // Reports (+ CSV / Excel / print)
     Route::middleware('can:reports.view')->prefix('reports')->name('reports.')->group(function () {

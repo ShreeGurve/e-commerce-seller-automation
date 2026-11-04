@@ -468,3 +468,162 @@ PHP syntax checks and ZIP integrity checks were run for this patch. Runtime/data
 - If a product has a brand assigned to another business, non-super-admin users cannot submit a recommendation for it.
 - If your current fee/cost configuration cannot produce a safe minimum price, the recommendation is blocked until configuration is corrected.
 - PHP syntax and ZIP integrity checks are included in the delivery validation; run Laravel migrations and browser checks in your own environment.
+
+## PHASE 10 – PRICING UI REFRESH
+
+Included:
+- resources/views/pricing/index.blade.php
+
+This is a presentation-only refresh of the existing pricing index page.
+It preserves the existing controller variables, pricing calculations, filters,
+pagination, product detail links, and recommendation/approval link.
+No database migration or route changes are required.
+
+Install:
+1. Back up resources/views/pricing/index.blade.php.
+2. Extract this ZIP into the Laravel project root and replace the included file.
+3. Run:
+   php artisan view:clear
+   php artisan optimize:clear
+4. Refresh /pricing.
+
+The KPI values are calculated from the existing $counts collection; no sample
+or fabricated business figures are used.
+
+## PHASE 11 – SALES ANALYTICS & BUSINESS DECISION ENGINE
+
+Files:
+- app/Http/Controllers/BusinessAnalyticsController.php
+- resources/views/analytics/business.blade.php
+- routes/web.php (route import + two routes)
+- resources/views/layouts/app.blade.php (sidebar entry)
+
+No migration required. Uses existing order_profits, orders, products and marketplaces tables.
+TEST-source and CANCELLED orders are excluded. Revenue and profit use stored order-profit snapshots; actual_profit is preferred where present, otherwise estimated_profit.
+
+Install:
+1. Back up routes/web.php and resources/views/layouts/app.blade.php.
+2. Extract this ZIP into the Laravel project root, replacing included files.
+3. Run:
+   php artisan optimize:clear
+   php artisan route:list --name=analytics.business
+4. Open /analytics/business.
+
+Permissions:
+- View: reports.view
+- Export: reports.export
+
+No marketplace API calls, external competitor calls, automated price changes or supplier orders are performed.
+
+## PHASE 11 SQL FIX
+
+Replace:
+app/Http/Controllers/BusinessAnalyticsController.php
+
+Fix:
+Renames the aggregate alias `lines` to `line_count`, avoiding the MySQL reserved keyword parse error. No schema or route changes.
+
+Then run:
+php artisan optimize:clear
+
+# Phase 12 — Automated Business Alerts & Action Centre
+
+## What this patch adds
+- Upgrades the existing Automation page into a Business Action Centre with priority summaries, rule management, alert search/filtering and direct links to the affected record.
+- Adds three internal automation triggers:
+  - **Purchase order delivery overdue** — ordered POs past their expected delivery date.
+  - **Order awaiting dispatch** — self-fulfilled, non-TEST orders still CONFIRMED/PACKED after the configured number of days.
+  - **Forecast recommends reorder** — latest saved forecast per product with a suggested reorder quantity.
+- Keeps existing low-stock, claim-deadline, negative-profit and advertising ACOS triggers.
+- Negative-profit and dispatch checks explicitly exclude TEST orders.
+- Uses existing `automation_rules`, `automation_logs`, and Laravel database notifications. No new table or migration.
+- All actions are internal review links. No marketplace API calls, listing changes, price publishing, PO submission, or courier actions.
+
+## Files in this patch
+- `app/Models/AutomationRule.php`
+- `app/Services/AutomationService.php`
+- `app/Http/Controllers/AutomationController.php`
+- `resources/views/automation/index.blade.php`
+
+## Installation (Windows / Laravel)
+1. Take a backup of these four existing files.
+2. Extract this ZIP into the Laravel project root and allow the four files to be replaced, preserving the folder structure.
+3. From the project root run:
+
+```bash
+php artisan optimize:clear
+php artisan route:list --name=automation
+```
+
+4. Open:
+
+`http://127.0.0.1/laravel/seller-automation/automation`
+
+5. Add rules for the new triggers and click **Run checks now**. Suggested thresholds:
+   - Overdue purchase: `0` (any day past expected date)
+   - Delayed fulfilment: `2` (days)
+   - Forecast reorder: `0` (threshold is not used by this trigger)
+
+## Notes
+- The forecast-reorder trigger requires at least one saved Phase 9 forecast snapshot. Visit Inventory Forecast and save a snapshot first.
+- Overdue purchase alerts require the PO expected-delivery date to be populated.
+- Delayed fulfilment checks only self-fulfilled orders in CONFIRMED or PACKED status. Marketplace-fulfilled orders are not included.
+- The current automation log fingerprint behavior is retained: the same rule/record condition is not repeatedly re-created on every run.
+
+## Validation
+The patch should be syntax-checked with `php -l` on the four PHP files after extraction. Database/browser behavior must be verified in the user's local environment; no local database credentials are available in this build environment.
+
+# Phase 13 — Smart Reconciliation & Financial Risk Monitoring
+
+## What this patch adds
+- Extends the existing Finance > Reconciliation screen; it does not create a duplicate finance module.
+- Adds summary cards for open issues, potential exposure (sum of absolute open differences), high-risk/aged issues, and issues open for 7+ days.
+- Adds marketplace-wise open issue counts and potential exposure.
+- Adds CSV export that respects the current status/type filters.
+- Shows issue age beside open reconciliation items.
+- Excludes order-linked TEST orders from risk summaries, marketplace risk, and CSV export. Settlement-only/unlinked issues remain visible because they cannot be attributed to a TEST order.
+- No schema changes, no migrations, and no external marketplace operations.
+
+## Files in this patch
+- `app/Http/Controllers/ReconciliationController.php`
+- `resources/views/reconciliation/index.blade.php`
+
+## Installation (Windows / Laravel)
+1. Back up the two matching files in your project.
+2. Extract the ZIP into the Laravel project root and replace those two files.
+3. In `routes/web.php`, locate the existing reconciliation index route:
+
+```php
+Route::get('/finance/reconciliation', [ReconciliationController::class, 'index'])->middleware('can:finance.view')->name('reconciliation.index');
+```
+
+Immediately below it, add:
+
+```php
+Route::get('/finance/reconciliation/export', [ReconciliationController::class, 'export'])->middleware('can:finance.view')->name('reconciliation.export');
+```
+
+Do not replace the entire routes file; retain your existing Phase 12 and other route additions.
+
+4. Run:
+
+```bash
+php artisan optimize:clear
+php artisan route:list --name=reconciliation
+php artisan route:list --name=reconciliation.export
+```
+
+5. Open:
+
+`http://127.0.0.1/laravel/seller-automation/finance/reconciliation`
+
+Use **Export CSV** to download the current filtered issue list.
+
+## Interpretation
+- Potential exposure is the sum of the absolute value of each open issue's `difference`; it is a monitoring indicator, not a confirmed recoverable amount.
+- High-risk/aged count includes issues with an absolute difference of at least ₹1,000 OR an age of 7 days or more.
+- Marketplace grouping uses the linked settlement marketplace. Issues without a linked settlement appear under “Unlinked / unknown”.
+- TEST order-linked issues are excluded. Settlement-only issues remain included where no order is linked.
+
+## Validation
+Run `php -l app/Http/Controllers/ReconciliationController.php` after extraction. The build environment has no access to your local database/browser, so live query and UI behavior must be verified in your local app. No migration is required.
