@@ -337,6 +337,24 @@ Route::middleware('auth')->group(function () {
         ->middleware('can:purchases.edit')
         ->name('supplier-relationships.status');
 
+    // Phase 19: Supplier Document Vault & Compliance Management
+
+    Route::get('/supplier-documents', [\App\Http\Controllers\SupplierDocumentController::class, 'index'])
+        ->middleware('can:purchases.view')
+        ->name('supplier-documents.index');
+
+    Route::post('/supplier-documents', [\App\Http\Controllers\SupplierDocumentController::class, 'store'])
+        ->middleware('can:purchases.create')
+        ->name('supplier-documents.store');
+
+    Route::get('/supplier-documents/{document}/download', [\App\Http\Controllers\SupplierDocumentController::class, 'download'])
+        ->middleware('can:purchases.view')
+        ->name('supplier-documents.download');
+
+    Route::patch('/supplier-documents/{document}/review', [\App\Http\Controllers\SupplierDocumentController::class, 'review'])
+        ->middleware('can:purchases.edit')
+        ->name('supplier-documents.review');
+
     // Modules not built yet
     Route::get('/m/{module}', ModuleController::class)->name('module');
 });
