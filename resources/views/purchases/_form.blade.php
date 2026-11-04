@@ -31,6 +31,9 @@
     <div class="col-md-2"><label class="form-label">Purchase date *</label><input type="date" name="purchase_date"
             value="{{ old('purchase_date', optional($purchase->purchase_date)->toDateString() ?? now()->toDateString()) }}"
             class="form-control" required></div>
+    <div class="col-md-2"><label class="form-label">Expected delivery</label><input type="date" name="expected_delivery_date"
+            value="{{ old('expected_delivery_date', optional($purchase->expected_delivery_date)->toDateString()) }}"
+            min="{{ old('purchase_date', optional($purchase->purchase_date)->toDateString() ?? now()->toDateString()) }}" class="form-control"><div class="form-text">Used for supplier on-time tracking.</div></div>
     <div class="col-md-2"><label class="form-label">Status</label><select name="status" class="form-select">
             @foreach (['DRAFT' => 'Draft', 'ORDERED' => 'Ordered'] as $k => $l)
                 <option value="{{ $k }}" @selected($f('status', 'DRAFT') == $k)>{{ $l }}</option>

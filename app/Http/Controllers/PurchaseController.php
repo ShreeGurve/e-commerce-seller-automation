@@ -98,6 +98,7 @@ class PurchaseController extends Controller
         $v = $request->validate([
             'supplier_id' => 'required|exists:suppliers,id',
             'purchase_date' => 'required|date',
+            'expected_delivery_date' => 'nullable|date|after_or_equal:purchase_date',
             'status' => ['required', Rule::in(['DRAFT', 'ORDERED'])],
             'invoice_number' => 'nullable|string|max:60', 'invoice_date' => 'nullable|date',
             'shipping_charges' => $money, 'other_charges' => $money, 'notes' => 'nullable|string|max:2000',

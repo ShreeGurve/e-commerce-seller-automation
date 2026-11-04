@@ -2,6 +2,7 @@
 use App\Http\Controllers\{ReportController, PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController, AutomationController};
 use App\Http\Controllers\MarketplaceConnectionController;
 use App\Http\Controllers\ReorderController;
+use App\Http\Controllers\SupplierAnalyticsController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\Auth\PasswordResetController;
@@ -67,6 +68,12 @@ Route::middleware('auth')->group(function () {
     // Phase 7: reorder planning
     Route::get('/reorders', [ReorderController::class, 'index'])->middleware('can:purchases.view')->name('reorders.index');
     Route::post('/reorders/purchase', [ReorderController::class, 'createPurchase'])->middleware('can:purchases.create')->name('reorders.purchase');
+
+    // Phase 8: supplier performance, purchase analytics and internal ratings
+    Route::get('/supplier-analytics', [SupplierAnalyticsController::class, 'index'])->middleware('can:purchases.view')->name('supplier-analytics.index');
+    Route::get('/supplier-analytics/export', [SupplierAnalyticsController::class, 'export'])->middleware('can:purchases.view')->name('supplier-analytics.export');
+    Route::get('/supplier-analytics/{supplier}', [SupplierAnalyticsController::class, 'show'])->middleware('can:purchases.view')->name('supplier-analytics.show');
+    Route::post('/supplier-analytics/{supplier}/reviews', [SupplierAnalyticsController::class, 'review'])->middleware('can:purchases.edit')->name('supplier-analytics.review');
 
     // Inventory
     Route::get('/inventory', [InventoryController::class, 'index'])->middleware('can:inventory.view')->name('inventory.index');
