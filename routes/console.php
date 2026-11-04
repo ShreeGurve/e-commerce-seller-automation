@@ -10,3 +10,7 @@ Artisan::command('inspire', function () {
 
 // Phase 8: evaluate internal automation rules hourly.
 Schedule::command('automation:run')->hourly()->withoutOverlapping();
+
+Schedule::command('suppliers:documents-expiry-notify --days=30')
+    ->dailyAt('08:00')
+    ->withoutOverlapping();

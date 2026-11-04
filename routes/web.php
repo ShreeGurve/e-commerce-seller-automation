@@ -355,6 +355,10 @@ Route::middleware('auth')->group(function () {
         ->middleware('can:purchases.edit')
         ->name('supplier-documents.review');
 
+    Route::get('/supplier-compliance', [\App\Http\Controllers\SupplierComplianceController::class, 'index'])
+        ->middleware('can:purchases.view')
+        ->name('supplier-compliance.index');
+
     // Modules not built yet
     Route::get('/m/{module}', ModuleController::class)->name('module');
 });

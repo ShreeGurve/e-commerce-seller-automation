@@ -883,3 +883,122 @@ php artisan route:list --name=supplier-relationships
 - Document records store a reference number and description only; this phase does not upload or store document files.
 - No emails, supplier messages, payments, purchase orders, inventory changes, or marketplace API calls are sent or performed.
 - Existing supplier, purchase, and supplier-review records are not modified.
+
+# Phase 19 – Supplier Document Vault & Compliance Management
+
+Additive patch for the Seller Automation Laravel application. No full project replacement is required.
+
+## Included files
+- `app/Models/SupplierDocument.php`
+- `app/Http/Controllers/SupplierDocumentController.php`
+- `database/migrations/2026_11_04_000019_create_supplier_documents_table.php`
+- `resources/views/suppliers/documents.blade.php`
+
+## 1. Copy files
+Extract this ZIP into the Laravel project root and allow the four files to merge into their matching folders. Do not replace existing supplier or relationship files.
+
+## 2. Add routes
+Inside the existing authenticated route group in `routes/web.php`, add:
+
+```php
+Route::get('/supplier-documents', [\App\Http\Controllers\SupplierDocumentController::class, 'index'])
+    ->middleware('can:purchases.view')->name('supplier-documents.index');
+Route::post('/supplier-documents', [\App\Http\Controllers\SupplierDocumentController::class, 'store'])
+    ->middleware('can:purchases.create')->name('supplier-documents.store');
+Route::get('/supplier-documents/{document}/download', [\App\Http\Controllers\SupplierDocumentController::class, 'download'])
+    ->middleware('can:purchases.view')->name('supplier-documents.download');
+Route::patch('/supplier-documents/{document}/review', [\App\Http\Controllers\SupplierDocumentController::class, 'review'])
+    ->middleware('can:purchases.edit')->name('supplier-documents.review');
+```
+
+## 3. Run migration and clear cache
+
+```powershell
+php artisan migrate
+php artisan optimize:clear
+php artisan route:list --name=supplier-documents
+```
+
+Expected routes: index (GET), store (POST), download (GET), review (PATCH).
+
+## 4. Open module
+
+`http://127.0.0.1/laravel/seller-automation/supplier-documents`
+
+## Security and behaviour
+- Files are stored on Laravel's private `local` disk, never in `public` storage. No `storage:link` is required.
+- Downloads pass through an authenticated, permission-protected controller; files are not exposed by public URLs.
+- Upload accepts PDF/JPG/JPEG/PNG/WEBP up to 10 MB.
+- New documents enter `PENDING`; users with `purchases.edit` can approve, reject or return to pending with notes.
+- Expiry indicators show expired and expiring-within-30-days records. This phase displays compliance status in the module; it does not send email or scheduled notifications.
+- Deleting or changing a review status does not automatically delete stored files. Supplier deletion cascades the document database records; consider archiving suppliers rather than deleting them when retaining compliance evidence is required.
+- No external supplier communications, marketplace calls, payments, purchase orders or inventory changes are performed.
+
+## Verification
+PHP syntax and ZIP integrity checks are performed when packaging. Run the migration and verify the routes in your local environment. Database/browser testing is not claimed.
+
+# Phase 20 – Supplier Compliance Alerts & Expiry Reminders
+
+Additive patch for Seller Automation. This builds on the Phase 19 `supplier_documents` table and does not replace Phase 18/19 files.
+
+## Included files
+- `app/Console/Commands/NotifySupplierDocumentExpiry.php`
+- `app/Notifications/SupplierDocumentExpiryNotification.php`
+- `app/Http/Controllers/SupplierComplianceController.php`
+- `resources/views/suppliers/compliance.blade.php`
+- `routes-console-addition.txt` (one scheduler line to merge into `routes/console.php`)
+
+## 1. Copy files
+Extract this ZIP into the Laravel project root and merge the files into their matching folders. Keep the existing Phase 19 document vault files.
+
+## 2. Add the web route
+Add inside the existing authenticated route group in `routes/web.php`:
+
+```php
+Route::get('/supplier-compliance', [\App\Http\Controllers\SupplierComplianceController::class, 'index'])
+    ->middleware('can:purchases.view')
+    ->name('supplier-compliance.index');
+```
+
+The page links to the existing Phase 19 named routes `supplier-documents.index` and `supplier-documents.download`.
+
+## 3. Schedule the daily reminder
+Open `routes/console.php`. Keep the existing `Schedule` import and existing `automation:run` schedule. Add this line:
+
+```php
+Schedule::command('suppliers:documents-expiry-notify --days=30')->dailyAt('08:00')->withoutOverlapping();
+```
+
+Laravel's scheduler must be invoked by the host once per minute. For local Windows development, either run the command manually each day or keep this running in a separate terminal:
+
+```powershell
+php artisan schedule:work
+```
+
+On a production Linux host, configure the usual Laravel scheduler cron entry (`* * * * * php /path/to/artisan schedule:run`).
+
+## 4. Clear cache and verify
+
+```powershell
+php artisan optimize:clear
+php artisan route:list --name=supplier-compliance
+php artisan list suppliers
+php artisan suppliers:documents-expiry-notify --days=30
+```
+
+Expected command: `suppliers:documents-expiry-notify`.
+
+## 5. Open the page
+
+`http://127.0.0.1/laravel/seller-automation/supplier-compliance`
+
+## Behaviour and safety
+- The compliance page lists expired documents and documents due within selected 7/30/60-day windows. It includes only PENDING and APPROVED documents with an expiry date.
+- The command creates Laravel database notifications for active users who have `purchases.view` or `automation.view`, plus Super Admin users.
+- Notifications are deduplicated by document ID, expiry date and expired/upcoming state, so hourly/daily reruns do not repeatedly notify for the same expiry event. If the expiry date changes, a new reminder can be generated.
+- Default reminder window is 30 days; manual runs can use `--days=60` etc. The scheduled line uses 30 days.
+- Notifications are in-app/database notifications only. No email, SMS, WhatsApp, supplier communication, marketplace API, purchase order, payment or inventory action occurs.
+- Uses the existing Phase 19 migration and Laravel notifications table; this phase adds no database migration. If the app does not have Laravel's `notifications` table, check that the existing notifications migration has been run before executing the command.
+
+## Verification note
+PHP syntax and ZIP integrity are checked during packaging. Database, scheduler execution and browser rendering must be verified in the user's local environment.

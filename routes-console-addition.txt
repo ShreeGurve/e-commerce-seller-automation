@@ -1,0 +1,2 @@
+// Phase 20: notify users about supplier documents that are expired or due within 30 days.
+Schedule::command('suppliers:documents-expiry-notify --days=30')->dailyAt('08:00')->withoutOverlapping();
