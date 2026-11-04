@@ -4,6 +4,7 @@ use App\Http\Controllers\MarketplaceConnectionController;
 use App\Http\Controllers\ReorderController;
 use App\Http\Controllers\SupplierAnalyticsController;
 use App\Http\Controllers\InventoryForecastController;
+use App\Http\Controllers\PricingRecommendationController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\Auth\PasswordResetController;
@@ -279,6 +280,18 @@ Route::middleware('auth')->group(function () {
         Route::delete('/keywords/{keyword}', [KeywordController::class, 'destroy'])->name('keywords.destroy');
         Route::post('/keywords/{keyword}/rank', [KeywordController::class, 'rank'])->name('keywords.rank');
     });
+
+    // Phase 10: internal pricing recommendation and approval workflow (never publishes marketplace prices).
+    Route::get('/pricing-recommendations', [PricingRecommendationController::class, 'index'])
+        ->middleware('can:products.view')->name('pricing-recommendations.index');
+    Route::post('/pricing/{product}/{marketplace}/recommendations', [PricingRecommendationController::class, 'store'])
+        ->middleware('can:products.edit')->name('pricing-recommendations.store');
+    Route::post('/pricing-recommendations/{pricingRecommendation}/approve', [PricingRecommendationController::class, 'approve'])
+        ->name('pricing-recommendations.approve');
+    Route::post('/pricing-recommendations/{pricingRecommendation}/reject', [PricingRecommendationController::class, 'reject'])
+        ->name('pricing-recommendations.reject');
+    Route::post('/pricing-recommendations/{pricingRecommendation}/record', [PricingRecommendationController::class, 'apply'])
+        ->middleware('can:products.edit')->name('pricing-recommendations.apply');
 
     // Pricing intelligence (cost + fees => break-even / minimum / target price). Advice only.
     Route::get('/pricing', [PricingController::class, 'index'])->middleware('can:products.view')->name('pricing.index');

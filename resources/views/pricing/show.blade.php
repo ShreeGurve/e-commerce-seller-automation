@@ -29,6 +29,34 @@
         <a href="{{ route('pricing.index', ['marketplace_id' => $mp->id]) }}"
             class="btn btn-sm btn-outline-secondary">&larr; All prices</a>
     </div>
+    @can('products.edit')
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Submit a price recommendation</span>
+                <a href="{{ route('pricing-recommendations.index') }}" class="small">View approval queue</a>
+            </div>
+            <div class="card-body">
+                <div class="small text-muted mb-2">
+                    Suggested target: {{ $a['target_price'] !== null ? '₹'.number_format($a['target_price']/100, 2) : 'Not available' }}.
+                    Minimum safe price: {{ $a['min_price'] !== null ? '₹'.number_format($a['min_price']/100, 2) : 'Not calculable' }}.
+                    Prices below the calculated minimum are blocked.
+                </div>
+                <form method="POST" action="{{ route('pricing-recommendations.store', [$p, $mp]) }}" class="row g-2 align-items-end">
+                    @csrf
+                    <div class="col-md-3">
+                        <label class="form-label small">Proposed price (₹)</label>
+                        <input type="number" step="0.01" min="0.01" max="9999999" name="proposed_price"
+                            class="form-control" value="{{ $a['target_price'] !== null ? number_format($a['target_price']/100, 2, '.', '') : '' }}" required>
+                    </div>
+                    <div class="col-md-7">
+                        <label class="form-label small">Reason for change</label>
+                        <input name="reason" class="form-control" maxlength="255" placeholder="e.g. Improve margin / respond to market" required>
+                    </div>
+                    <div class="col-md-2"><button class="btn btn-primary w-100">Submit for approval</button></div>
+                </form>
+            </div>
+        </div>
+    @endcan
     <div class="row g-3 mb-3">
         @foreach ([['Price now', $inr2($a['current']), null], ['Break-even', $inr($a['break_even']), '₹0 profit'], ['Minimum price', $inr($a['min_price']), $a['profit_target_mode'] === 'absolute' ? 'profit ₹' . number_format($a['desired_profit_min'] / 100, 2) . ' / unit' : 'margin ' . $a['min_margin'] . '%'], ['Target price', $inr($a['target_price']), $a['profit_target_mode'] === 'absolute' ? 'profit ₹' . number_format($a['desired_profit_max'] / 100, 2) . ' / unit' : 'margin ' . $a['target_margin'] . '%'], ['Margin now', $x && $x['margin'] !== null ? round($x['margin'], 1) . '%' : '—', $x ? 'profit ' . $inr2($x['profit']) . ' / unit' : null], ['Max discount', $a['max_discount'] !== null ? $a['max_discount'] . '%' : '—', 'before hitting the minimum']] as [$l, $v, $s])
             <div class="col-6 col-xl-2">

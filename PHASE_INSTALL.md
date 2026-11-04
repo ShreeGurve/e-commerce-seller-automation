@@ -283,7 +283,7 @@ The system calculates variance against the locked current available quantity. A 
 - The count is a manual physical stocktake; it is not a warehouse scan or marketplace stock sync.
 - Test/manual stock remains internal. No external APIs are called.
 
-PHASE 7 — SUPPLIER REORDERING & PURCHASE PLANNING
+## PHASE 7 — SUPPLIER REORDERING & PURCHASE PLANNING
 
 This patch builds on the supplier, purchase-order and inventory modules already present in the uploaded project. It adds:
 - Reorder Planning screen at /reorders.
@@ -381,3 +381,90 @@ replacement project.
 5. Run `php artisan test --filter=MarketplaceWriteGateTest` and then `php artisan test`.
 
 Do not enable `*_API_CALLS_ENABLED` or `MARKETPLACE_PUSH_ENABLED` in production until seller access and real API operation contracts have been implemented and tested.
+
+
+# Seller Automation — Phase 9: Inventory Forecasting & Demand Planning
+
+## Included
+- Internal demand forecasting from historical order items.
+- Test orders (`orders.source = TEST`) are excluded.
+- Only CONFIRMED, PACKED, SHIPPED, DELIVERED and CLOSED orders count as demand. Cancelled, returned and refunded orders are excluded.
+- Product-level average daily demand and selectable 7/14/30/60-day demand horizon.
+- Estimated stock-out dates using available stock less reserved stock.
+- Suggested replenishment quantity based on forecast demand during lead time + safety stock days, less current sellable stock and outstanding quantities on ORDERED purchase orders.
+- Forecast snapshots and retrospective accuracy comparison after each forecast period completes.
+- Sidebar navigation entry: Inventory Forecast.
+
+## Important calculation notes
+- Lookback window can be 30, 60 or 90 calendar days, including today.
+- Lead time and safety stock days are user-adjustable on the forecast screen; the application does not currently maintain a per-supplier lead-time field.
+- Incoming quantities count only purchase items on purchases with status ORDERED. Draft and cancelled purchase orders are excluded.
+- Stock position = max(available quantity − reserved quantity, 0) + outstanding ordered purchase quantities.
+- Suggested reorder quantity = max(forecast daily demand × (lead time days + safety stock days) − stock position, 0), rounded up to whole units.
+- The demand forecast is a simple historical average, not a machine-learning prediction. Promotions, seasonality, stockout-constrained sales and returns are not modelled.
+- Accuracy is calculated as 100 − absolute error / actual units × 100. When actual demand is zero, accuracy is 0% if a positive quantity was forecast and 100% if zero was forecast.
+- Forecast snapshots are saved per active product. Accuracy becomes available after the forecast end date has passed.
+
+## Installation
+1. Back up the application folder and database.
+2. Extract/merge this ZIP over the Laravel project root. Preserve `.env` and do not delete existing files.
+3. Run:
+
+```bash
+php artisan migrate
+php artisan optimize:clear
+php artisan route:list --name=inventory-forecast
+```
+
+4. Open `/inventory-forecast` under the existing application base URL.
+5. Choose lookback, forecast horizon, lead time and safety stock days, then click Calculate.
+6. Use Save forecast snapshot to preserve the prediction for later accuracy comparison.
+7. Use Reorder Planning to create a draft PO after reviewing supplier, quantities and costs.
+
+## Routes added
+- `GET /inventory-forecast` — `inventory-forecast.index` (`purchases.view`)
+- `POST /inventory-forecast/snapshot` — `inventory-forecast.snapshot` (`purchases.edit`)
+
+## Safety
+- No inventory quantities are modified by forecasting.
+- No purchase orders are created automatically.
+- No supplier is contacted and no payments are made.
+- No marketplace APIs are called.
+- Existing manual reorder and purchase workflows remain unchanged.
+
+## Validation
+PHP syntax checks and ZIP integrity checks were run for this patch. Runtime/database/browser testing requires the user's local `.env`, MySQL database and Composer dependencies.
+
+
+# Phase 10 – Intelligent Pricing & Profit Optimization
+
+## Included
+- Internal pricing recommendation records with tenant ownership, proposed/current/minimum price, expected per-unit profit and margin.
+- Submission from the existing pricing detail screen.
+- Minimum-price protection: a recommendation cannot be submitted below the current calculated minimum. If the minimum cannot be calculated, submission is blocked.
+- Reviewer approval/rejection with notes and audit logging.
+- Approved recommendation can be recorded to internal `price_history` after a fresh minimum-price check.
+- Approval and recording never call marketplace APIs or publish a price.
+- Existing pricing engine, channel fee rules, competitor price capture and what-if simulation remain in place.
+
+## Install
+1. Back up the project and database.
+2. Extract this ZIP into the Laravel project root, replacing the included files.
+3. Run:
+   ```bash
+   php artisan migrate
+   php artisan optimize:clear
+   php artisan route:list --name=pricing-recommendations
+   ```
+4. Open the Pricing page, select a product/channel, and submit a recommendation.
+5. A reviewer (Super Admin or user with `settings.manage` / `users.manage`) can approve or reject it in Pricing Recommendations.
+6. After approval, a user with `products.edit` can select **Record internal price**. This only adds an internal price-history record. Update the marketplace manually if and when appropriate.
+
+## Notes
+- No `migrate:fresh`.
+- No marketplace API calls, auto repricing, scraping, supplier calls, or automatic marketplace writes.
+- Existing price-history records are not modified.
+- Approval applies to internal recommendation workflow only.
+- If a product has a brand assigned to another business, non-super-admin users cannot submit a recommendation for it.
+- If your current fee/cost configuration cannot produce a safe minimum price, the recommendation is blocked until configuration is corrected.
+- PHP syntax and ZIP integrity checks are included in the delivery validation; run Laravel migrations and browser checks in your own environment.
