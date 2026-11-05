@@ -145,7 +145,7 @@ Route::middleware('auth')->group(function () {
 
     // Phases 33–35: manual supplier payment, credit note and statement workflows
     Route::get('/purchases/supplier-payments', [\App\Http\Controllers\SupplierPaymentController::class, 'index'])
-        ->middleware('can:purchases.view')->name('supplier-payments.index');
+        ->middleware('can:purchases.view')->name('supplier-invoice-payments.index');
     Route::post('/purchases/invoice-matching/{match}/payments', [\App\Http\Controllers\SupplierPaymentController::class, 'store'])
         ->middleware('can:purchases.create')->name('supplier-payments.store');
 
