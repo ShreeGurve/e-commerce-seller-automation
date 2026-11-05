@@ -126,6 +126,32 @@ Route::middleware('auth')->group(function () {
     Route::post('/purchases/invoice-matching/{match}/line-checks', [\App\Http\Controllers\PurchaseInvoiceLineCheckController::class, 'store'])
         ->middleware('can:purchases.create')->name('purchase-invoice-line-checks.store');
 
+    // Phases 30–32: supplier invoice documents, GST checks and processing review
+    Route::get('/purchases/invoice-documents', [\App\Http\Controllers\PurchaseInvoiceDocumentController::class, 'index'])
+        ->middleware('can:purchases.view')->name('purchase-invoice-documents.index');
+    Route::post('/purchases/invoice-matching/{match}/document', [\App\Http\Controllers\PurchaseInvoiceDocumentController::class, 'upload'])
+        ->middleware('can:purchases.create')->name('purchase-invoice-documents.upload');
+    Route::get('/purchases/invoice-matching/{match}/document', [\App\Http\Controllers\PurchaseInvoiceDocumentController::class, 'download'])
+        ->middleware('can:purchases.view')->name('purchase-invoice-documents.download');
+    Route::post('/purchases/invoice-matching/{match}/gst-validation', [\App\Http\Controllers\PurchaseInvoiceDocumentController::class, 'validateGst'])
+        ->middleware('can:purchases.edit')->name('purchase-invoice-documents.gst-validation');
+
+    // Phases 33–35: manual supplier payment, credit note and statement workflows
+    Route::get('/purchases/supplier-payments', [\App\Http\Controllers\SupplierPaymentController::class, 'index'])
+        ->middleware('can:purchases.view')->name('supplier-payments.index');
+    Route::post('/purchases/invoice-matching/{match}/payments', [\App\Http\Controllers\SupplierPaymentController::class, 'store'])
+        ->middleware('can:purchases.create')->name('supplier-payments.store');
+
+    Route::get('/purchases/supplier-credit-notes', [\App\Http\Controllers\SupplierCreditNoteController::class, 'index'])
+        ->middleware('can:purchases.view')->name('supplier-credit-notes.index');
+    Route::post('/purchases/supplier-credit-notes', [\App\Http\Controllers\SupplierCreditNoteController::class, 'store'])
+        ->middleware('can:purchases.create')->name('supplier-credit-notes.store');
+    Route::post('/purchases/supplier-credit-notes/{credit}/apply', [\App\Http\Controllers\SupplierCreditNoteController::class, 'apply'])
+        ->middleware('can:purchases.edit')->name('supplier-credit-notes.apply');
+
+    Route::get('/purchases/supplier-statements', [\App\Http\Controllers\SupplierAccountStatementController::class, 'index'])
+        ->middleware('can:purchases.view')->name('supplier-statements.index');
+
     Route::get('/purchases/{purchase}', [PurchaseController::class, 'show'])->whereNumber('purchase')->middleware('can:purchases.view')->name('purchases.show');
     Route::get('/purchases/{purchase}/edit', [PurchaseController::class, 'edit'])->whereNumber('purchase')->middleware('can:purchases.edit')->name('purchases.edit');
     Route::put('/purchases/{purchase}', [PurchaseController::class, 'update'])->whereNumber('purchase')->middleware('can:purchases.edit')->name('purchases.update');

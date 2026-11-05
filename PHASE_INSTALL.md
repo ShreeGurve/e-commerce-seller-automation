@@ -1412,3 +1412,105 @@ Both routes are registered inside the authenticated group and before the dynamic
 
 ## Validation
 PHP syntax and ZIP integrity checks are performed when packaging. Run the migration and route checks locally before using the module.
+
+# Seller Automation – Package 1 (Phases 30–32)
+## Supplier Invoice Automation
+
+This integrated package includes the Phase 25–29 purchase quality, returns, settlement, invoice matching and line reconciliation files/routes, plus the new Phase 30–32 invoice-document workflow.
+
+### Included phases
+- **Phase 30 – Invoice document vault:** upload PDF/JPG/JPEG/PNG/WEBP invoices to Laravel's private local storage, retain original filename/MIME/size, and download through an authenticated controller route.
+- **Phase 31 – GSTIN checks:** validate GSTIN format, compare supplier GSTIN with the supplier master record, compare state-code prefixes, and capture place of supply and review notes.
+- **Phase 32 – Invoice processing review:** centralized invoice-document queue with document status, GST validation status, manual review and navigation to total/line reconciliation.
+
+### Important OCR limitation
+This package provides secure document intake and an OCR-ready manual-review workflow. It does **not** run OCR or automatically extract text. No OCR service/library or API credentials were supplied in the project baseline. OCR must be connected and tested separately before claiming automated extraction. Uploaded documents remain private; no public storage symlink is required.
+
+### Prerequisites
+- Laravel 13, PHP 8.3+
+- Existing Seller Automation database and migrations
+- Phases 25–29 installed, including `purchase_invoice_matches`
+- Existing `purchases.view`, `purchases.create`, and `purchases.edit` permissions
+
+### Installation
+1. Back up `routes/web.php` and the database.
+2. Extract the ZIP into the Laravel project root, preserving the directory structure and merging/overwriting included files.
+3. Run:
+   ```bash
+   php artisan migrate
+   php artisan optimize:clear
+   php artisan route:list --path=purchases
+   ```
+4. Verify the new named routes:
+   ```bash
+   php artisan route:list --name=purchase-invoice-documents
+   ```
+   Expected: 4 routes.
+5. Open:
+   ```
+   /purchases/invoice-documents
+   ```
+   under your existing application base URL.
+
+### Storage and file safety
+- Files are stored on Laravel's `local` disk under `private/supplier-invoices/{match_id}`.
+- Allowed formats: PDF, JPG, JPEG, PNG, WEBP.
+- Maximum upload size: 10 MB.
+- Downloads pass through authenticated `purchases.view` route.
+- Re-uploading replaces the previous file for that invoice match.
+
+### GST validation scope
+- Checks GSTIN structure and state-code positions only.
+- Compares supplier GSTIN to the GSTIN saved in the supplier master when present.
+- State-code comparison produces a review note; it does not decide tax liability.
+- It does not connect to GSTN, validate registration status, determine HSN/SAC rates, or file returns. Confirm tax treatment with the invoice and applicable GST rules.
+
+### Safeguards
+- Does not modify purchase totals, stock, supplier balances, payments or accounting ledgers.
+- Does not send supplier communications.
+- No Amazon/Flipkart API calls.
+- Invoice totals and line items continue to be checked through the existing Phase 28/29 modules.
+
+### Verification
+Run `php artisan route:list --name=purchase-invoice-documents` and test upload/download using a non-production sample invoice. Check `storage/logs/laravel.log` if a local error occurs.
+
+# Seller Automation — Package 2 (Phases 33–35)
+
+## Included
+- **Phase 33 — Supplier Invoice Payment Records:** record manually completed payments against supplier invoices, with date, method and transaction reference; partial payment and remaining balance tracking.
+- **Phase 34 — Supplier Credit Notes:** record supplier credit notes, link them to an invoice or supplier return, and apply available credit to an invoice from the same supplier.
+- **Phase 35 — Supplier Account Statements:** invoice-level statement showing invoice value, recorded payments, applied credits and outstanding balance, with supplier filter.
+
+## Important operating boundaries
+- This is a **manual record-keeping workflow**. It does not initiate bank, UPI, card or cash payments.
+- It does not automatically update purchase `amount_paid`, supplier master balances, accounting ledgers, or tax records.
+- Payment entries are treated as confirmed records of payments already made externally.
+- Credit applications are internal records only.
+- No marketplace API activity is enabled.
+
+## Install
+1. Back up your database and `routes/web.php`.
+2. Extract this ZIP into the Laravel project root, preserving folders and allowing the included `routes/web.php` to replace the existing file.
+3. Run:
+
+```bash
+php artisan migrate
+php artisan optimize:clear
+php artisan route:list --name=supplier-payments
+php artisan route:list --name=supplier-credit-notes
+php artisan route:list --name=supplier-statements
+```
+
+## Pages
+- `/purchases/supplier-payments`
+- `/purchases/supplier-credit-notes`
+- `/purchases/supplier-statements`
+
+Use an authenticated account with the existing `purchases.view`, `purchases.create`, and `purchases.edit` permissions as appropriate.
+
+## Notes
+- This package builds on Package 1 (Phases 30–32) and carries forward the integrated routes and selected prior phase files.
+- Supplier table is expected to use the existing `id` and `name` columns, and purchases to use `supplier_id`.
+- The invoice balance shown here is calculated from invoice total minus confirmed payment records and applied credit notes.
+- The statement is invoice-based; it is not a full double-entry accounting ledger or statutory supplier statement.
+- Run the commands above and verify in your own local environment. This package has been syntax-checked, but not run against your local database or browser.
