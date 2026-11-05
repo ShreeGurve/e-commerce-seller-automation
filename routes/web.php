@@ -1,5 +1,5 @@
 <?php
-use App\Http\Controllers\{ReportController, PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController, AutomationController, FulfilmentController, ListingReadinessController};
+use App\Http\Controllers\{ReportController, PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController, AutomationController, FulfilmentController, ListingReadinessController, SupplierReturnController};
 use App\Http\Controllers\MarketplaceConnectionController;
 use App\Http\Controllers\ReorderController;
 use App\Http\Controllers\SupplierAnalyticsController;
@@ -59,7 +59,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/purchases', [PurchaseController::class, 'index'])->middleware('can:purchases.view')->name('purchases.index');
     Route::get('/purchases/create', [PurchaseController::class, 'create'])->middleware('can:purchases.create')->name('purchases.create');
     Route::post('/purchases', [PurchaseController::class, 'store'])->middleware('can:purchases.create')->name('purchases.store');
-    // Specific purchase feature routes must precede the dynamic {purchase} routes.
+
+    // Phase 23: Supplier Cost Intelligence
     Route::get('/purchases/cost-intelligence', [\App\Http\Controllers\PurchaseCostIntelligenceController::class, 'index'])
         ->middleware('can:purchases.view')
         ->name('purchase-cost-intelligence.index');
@@ -67,16 +68,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/purchases/cost-intelligence/export', [\App\Http\Controllers\PurchaseCostIntelligenceController::class, 'export'])
         ->middleware('can:purchases.view')
         ->name('purchase-cost-intelligence.export');
-
-    // Phase 25: Purchase Receiving Quality Control
-    Route::get('/purchases/quality-control', [\App\Http\Controllers\PurchaseQualityInspectionController::class, 'index'])
-        ->middleware('can:purchases.view')->name('purchase-quality.index');
-    Route::get('/purchases/quality-control/create', [\App\Http\Controllers\PurchaseQualityInspectionController::class, 'create'])
-        ->middleware('can:purchases.create')->name('purchase-quality.create');
-    Route::post('/purchases/quality-control', [\App\Http\Controllers\PurchaseQualityInspectionController::class, 'store'])
-        ->middleware('can:purchases.create')->name('purchase-quality.store');
-    Route::patch('/purchases/quality-control/{inspection}', [\App\Http\Controllers\PurchaseQualityInspectionController::class, 'update'])
-        ->middleware('can:purchases.edit')->name('purchase-quality.update');
 
     // Phase 24: Purchase Budgeting & Planning
     Route::get('/purchases/budgets', [\App\Http\Controllers\PurchaseBudgetController::class, 'index'])
@@ -90,6 +81,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/purchases/budgets/export', [\App\Http\Controllers\PurchaseBudgetController::class, 'export'])
         ->middleware('can:purchases.view')
         ->name('purchase-budgets.export');
+
     Route::get('/purchases/{purchase}', [PurchaseController::class, 'show'])->whereNumber('purchase')->middleware('can:purchases.view')->name('purchases.show');
     Route::get('/purchases/{purchase}/edit', [PurchaseController::class, 'edit'])->whereNumber('purchase')->middleware('can:purchases.edit')->name('purchases.edit');
     Route::put('/purchases/{purchase}', [PurchaseController::class, 'update'])->whereNumber('purchase')->middleware('can:purchases.edit')->name('purchases.update');
@@ -405,7 +397,38 @@ Route::middleware('auth')->group(function () {
         ->middleware('can:purchases.view')
         ->name('supplier-sourcing.index');
 
-    // Phase 23: Supplier Cost Intelligence
+    // Phase 25: Supplier Returns Management
+    Route::get('/purchases/supplier-returns', [SupplierReturnController::class, 'index'])
+        ->middleware('can:purchases.view')
+        ->name('supplier-returns.index');
+
+    Route::get('/purchases/supplier-returns/create', [SupplierReturnController::class, 'create'])
+        ->middleware('can:purchases.create')
+        ->name('supplier-returns.create');
+
+    Route::post('/purchases/supplier-returns', [SupplierReturnController::class, 'store'])
+        ->middleware('can:purchases.create')
+        ->name('supplier-returns.store');
+
+    Route::patch('/purchases/supplier-returns/{supplierReturn}', [SupplierReturnController::class, 'update'])
+        ->middleware('can:purchases.edit')
+        ->name('supplier-returns.update');
+
+    Route::get('/purchases/quality-control', [\App\Http\Controllers\PurchaseQualityInspectionController::class, 'index'])
+        ->middleware('can:purchases.view')
+        ->name('purchase-quality.index');
+
+    Route::get('/purchases/quality-control/create', [\App\Http\Controllers\PurchaseQualityInspectionController::class, 'create'])
+        ->middleware('can:purchases.create')
+        ->name('purchase-quality.create');
+
+    Route::post('/purchases/quality-control', [\App\Http\Controllers\PurchaseQualityInspectionController::class, 'store'])
+        ->middleware('can:purchases.create')
+        ->name('purchase-quality.store');
+
+    Route::patch('/purchases/quality-control/{inspection}', [\App\Http\Controllers\PurchaseQualityInspectionController::class, 'update'])
+        ->middleware('can:purchases.edit')
+        ->name('purchase-quality.update');
 
     // Modules not built yet
     Route::get('/m/{module}', ModuleController::class)->name('module');
