@@ -1692,3 +1692,98 @@ php artisan route:list --name=governance
 
 ## Validation
 All 438 PHP files in the merged source tree passed `php -l`. ZIP integrity was checked after packaging. Database execution, PHPUnit and browser testing were not run in this environment.
+
+# Seller Automation — Package 8 (Phases 51–53)
+
+## Included
+
+### Phase 51 — Automation Performance Analytics
+- Alert totals, open/resolved/overdue counts.
+- Average resolution hours for resolved alerts.
+- Alert priority distribution and assigned team workload.
+- Uses the existing `business_automation_events` and user relationships.
+
+### Phase 52 — Approval Workflow Analytics
+- Submitted, pending, approved and rejected request counts.
+- Average approval turnaround hours based on `created_at` and `reviewed_at`.
+- Results grouped by approval request type.
+- Uses existing `approval_requests` data; no new approval state transitions.
+
+### Phase 53 — Operational Reports & Export
+- Date filters for reports.
+- CSV exports for alerts, approvals and audit activity.
+- Exports are scoped to the signed-in user's business; superadmins can see all.
+- CSV output includes UTF-8 BOM for spreadsheet compatibility.
+
+## Route and page
+- Page: `/automation/operational-insights`
+- Route: `operational-insights.index`
+- CSV export route: `operational-insights.export`
+- Added an Operational Intelligence entry in the System sidebar.
+
+## Permissions
+- View dashboard: `reports.view`
+- Export CSV: `reports.export`
+
+Both permissions are already included in the existing RolesPermissionsSeeder.
+
+## Installation
+1. Ensure Packages 1–7 and the Package 7 Blade ParseError repair are installed.
+2. Back up `routes/web.php` and `resources/views/layouts/app.blade.php`.
+3. Extract this ZIP into the Laravel project root, preserving folders and replacing included files.
+4. Run:
+
+```bash
+php artisan optimize:clear
+php artisan route:list --name=operational-insights
+```
+
+No database migration is required.
+
+## Notes and limitations
+- This package is read-only; it does not change orders, inventory, supplier payments, approvals or marketplace listings.
+- TEST order sales are not included because these reports measure operational alerts, approval requests and audit activity—not sales revenue or financial KPIs.
+- Alert visibility for non-superadmins follows the existing Package 7 rule: alerts created by users belonging to the same business.
+- Average times are calculated from existing created/resolved/reviewed timestamps. Older records without those timestamps are not included in averages.
+- CSV files contain operational business records and should be handled as confidential.
+
+## Validation
+- 440 PHP files in the merged project tree passed `php -l`.
+- ZIP integrity passed.
+- No database migration was needed.
+- Laravel runtime, PHPUnit and browser tests were not run in this environment.
+
+# Seller Automation — Package 9 (Phases 54–56)
+
+## Included
+- Phase 54 — Automation rule versioning: snapshots are recorded when a rule is created, edited, enabled/paused, or deleted. Final snapshots remain available after deletion.
+- Phase 55 — Read-only dry-run preview: evaluates one selected rule against current data and displays potential matches without creating alerts or notifications.
+- Phase 56 — Execution history and failure tracking: manual full-rule runs are recorded with status, duration, counts, actor, and error details. A failed full-rule run can be retried manually; retry re-evaluates all rules that are enabled at retry time.
+
+## Install
+1. Back up your application files and database.
+2. Extract this ZIP into the Laravel project root, allowing files to merge/overwrite.
+3. Run:
+   ```bash
+   php artisan migrate
+   php artisan optimize:clear
+   php artisan route:list --name=automation
+   ```
+4. Open `/automation`.
+
+## Route names added/updated
+- `automation.update`
+- `automation.preview`
+- `automation.retry`
+Existing `automation.index`, `automation.store`, `automation.toggle`, `automation.destroy`, and `automation.run` remain.
+
+## Important behaviour and boundaries
+- Dry-run is read-only: it calls the existing rule evaluator only. It does not call the alert-creation/notification path.
+- Execution history covers manual full-rule runs initiated from the Automation page. Scheduled CLI executions through `automation:run` are not yet logged by this package.
+- Retry is explicit and manual. It re-runs all rules currently enabled; it does not replay a single failed external job.
+- Automation remains internal-only. No marketplace writes, supplier submissions, payments, or external API calls are introduced.
+- Existing `AutomationService` evaluation logic is retained; TEST order exclusions already present in that service remain unchanged.
+- No existing business automation event/governance tables are altered.
+
+## Notes
+This patch is based on the Package 8 route baseline and includes the corrected `OperationalInsightsController.php` from the Package 8 SQL ambiguity repair. It is a delta patch, not a full project.

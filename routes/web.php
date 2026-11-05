@@ -61,6 +61,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/business-performance/targets', [\App\Http\Controllers\BusinessPerformanceController::class, 'storeTarget'])
         ->middleware('can:reports.export')->name('business-performance.targets.store');
 
+    // Phases 51-53: Operational Intelligence & Reports
+    Route::get('/automation/operational-insights', [\App\Http\Controllers\OperationalInsightsController::class, 'index'])->middleware('can:reports.view')->name('operational-insights.index');
+    Route::get('/automation/operational-insights/export', [\App\Http\Controllers\OperationalInsightsController::class, 'export'])->middleware('can:reports.export')->name('operational-insights.export');
+
     // Phases 48-50: Automation Control & Governance
     Route::get('/automation/control-center', [\App\Http\Controllers\AutomationGovernanceController::class, 'index'])->middleware('can:reports.view')->name('governance.control-center');
     Route::patch('/automation/control-center/alerts/{event}/assign', [\App\Http\Controllers\AutomationGovernanceController::class, 'assignEvent'])->middleware('can:purchases.edit')->name('governance.alerts.assign');
@@ -286,10 +290,14 @@ Route::middleware('auth')->group(function () {
     // Automation engine (rules and internal alerts only; no marketplace writes).
     Route::get('/automation', [AutomationController::class, 'index'])
         ->middleware('can:automation.view')->name('automation.index');
+    Route::get('/automation/rules/{automationRule}/preview', [AutomationController::class, 'preview'])
+        ->middleware('can:automation.view')->name('automation.preview');
     Route::middleware('can:automation.manage')->prefix('automation')->name('automation.')->group(function () {
         Route::post('/rules', [AutomationController::class, 'store'])->name('store');
+        Route::put('/rules/{automationRule}', [AutomationController::class, 'update'])->name('update');
         Route::post('/rules/{automationRule}/toggle', [AutomationController::class, 'toggle'])->name('toggle');
         Route::delete('/rules/{automationRule}', [AutomationController::class, 'destroy'])->name('destroy');
+        Route::post('/executions/{execution}/retry', [AutomationController::class, 'retry'])->middleware('throttle:6,1')->name('retry');
         Route::post('/run', [AutomationController::class, 'run'])->middleware('throttle:6,1')->name('run');
     });
 

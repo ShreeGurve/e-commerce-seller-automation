@@ -53,12 +53,38 @@
             <td class="ps-3 fw-semibold">{{ $rule->name }}</td><td>{{ $triggers[$rule->trigger_key] ?? $rule->trigger_key }}</td><td>{{ $rule->threshold }}</td>
             <td><span class="badge {{ $rule->is_active ? 'text-bg-success' : 'text-bg-secondary' }}">{{ $rule->is_active ? 'Enabled' : 'Paused' }}</span></td>
             <td>{{ $rule->last_run_at?->diffForHumans() ?? 'Never' }}</td><td>{{ number_format($rule->logs_count) }}</td>
-            <td class="text-end pe-3"><div class="d-inline-flex gap-1">
-                @can('automation.manage')<form method="POST" action="{{ route('automation.toggle',$rule) }}">@csrf<button class="btn btn-sm btn-outline-primary">{{ $rule->is_active ? 'Pause' : 'Enable' }}</button></form>
+            <td class="text-end pe-3"><div class="d-inline-flex gap-1 flex-wrap">
+                <a class="btn btn-sm btn-outline-info" href="{{ route('automation.preview',$rule) }}">Dry run</a>
+                @can('automation.manage')
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#editRule{{ $rule->id }}">Edit</button><form method="POST" action="{{ route('automation.toggle',$rule) }}">@csrf<button class="btn btn-sm btn-outline-primary">{{ $rule->is_active ? 'Pause' : 'Enable' }}</button></form>
                 <form method="POST" action="{{ route('automation.destroy',$rule) }}" onsubmit="return confirm('Delete this rule?')">@csrf @method('DELETE')<button class="btn btn-sm btn-outline-danger">Delete</button></form>@endcan
             </div></td>
-        </tr>@empty<tr><td colspan="7" class="text-center text-muted py-4">No rules configured yet. Add a rule to start monitoring your operations.</td></tr>@endforelse</tbody>
+        </tr>
+        @can('automation.manage')
+        <tr class="collapse" id="editRule{{ $rule->id }}"><td colspan="7" class="bg-body-tertiary">
+            <form method="POST" action="{{ route('automation.update',$rule) }}" class="row g-2 align-items-end p-2">@csrf @method('PUT')
+                <div class="col-md-3"><label class="form-label small">Rule name</label><input name="name" class="form-control form-control-sm" value="{{ $rule->name }}" required maxlength="120"></div>
+                <div class="col-md-3"><label class="form-label small">Trigger</label><select name="trigger_key" class="form-select form-select-sm">@foreach($triggers as $key=>$label)<option value="{{ $key }}" @selected($rule->trigger_key===$key)>{{ $label }}</option>@endforeach</select></div>
+                <div class="col-md-2"><label class="form-label small">Threshold</label><input name="threshold" type="number" step=".01" min="0" value="{{ $rule->threshold }}" class="form-control form-control-sm" required></div>
+                <div class="col-md-2"><button class="btn btn-sm btn-primary w-100">Save new version</button></div>
+            </form>
+        </td></tr>
+        @endcan
+        @empty<tr><td colspan="7" class="text-center text-muted py-4">No rules configured yet. Add a rule to start monitoring your operations.</td></tr>@endforelse</tbody>
     </table></div></div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-xl-6"><div class="card h-100"><div class="card-header fw-semibold">Rule change history <span class="small text-muted fw-normal">(latest 40 versions)</span></div>
+            <div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>Rule</th><th>Version</th><th>Change</th><th>By</th><th>Date</th></tr></thead><tbody>
+            @forelse($versions as $version)<tr><td>{{ $version->rule->name ?? 'Deleted rule #'.$version->automation_rule_id }}</td><td>v{{ $version->version_number }}</td><td>{{ ucfirst($version->change_type) }}</td><td>{{ $version->actor->name ?? 'System' }}</td><td class="text-nowrap">{{ $version->created_at->format('d M Y H:i') }}</td></tr>
+            @empty<tr><td colspan="5" class="text-center text-muted py-3">No version changes recorded yet.</td></tr>@endforelse
+            </tbody></table></div></div></div>
+        <div class="col-xl-6"><div class="card h-100"><div class="card-header fw-semibold">Execution history <span class="small text-muted fw-normal">(latest 30 runs)</span></div>
+            <div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>Run</th><th>Status</th><th>Matches</th><th>Started</th><th>Action</th></tr></thead><tbody>
+            @forelse($executions as $execution)<tr><td>#{{ $execution->id }}</td><td><span class="badge {{ $execution->status==='succeeded'?'text-bg-success':($execution->status==='failed'?'text-bg-danger':'text-bg-secondary') }}">{{ ucfirst($execution->status) }}</span>@if($execution->error_message)<div class="small text-danger" title="{{ $execution->error_message }}">{{ \Illuminate\Support\Str::limit($execution->error_message,80) }}</div>@endif</td><td>{{ $execution->matched_count }}</td><td class="text-nowrap">{{ $execution->started_at?->format('d M H:i') }}</td><td>@if($execution->status==='failed')<form method="POST" action="{{ route('automation.retry',$execution) }}" onsubmit="return confirm('Retry this failed run? This re-evaluates all currently enabled rules.')">@csrf<button class="btn btn-sm btn-outline-danger">Retry run</button></form>@else—@endif</td></tr>
+            @empty<tr><td colspan="5" class="text-center text-muted py-3">No execution history yet.</td></tr>@endforelse
+            </tbody></table></div></div></div>
+    </div>
 
     <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-3">
         <div><h5 class="mb-1">Alert history</h5><div class="small ac-muted">Latest 100 matching events. Historical alerts remain available for audit.</div></div>
@@ -75,7 +101,8 @@
             <td><span class="ac-severity ac-{{ in_array($log->severity,['critical','high','medium','low']) ? $log->severity : 'medium' }}">{{ $log->severity }}</span></td>
             <td class="fw-semibold">{{ $log->title }}</td><td class="text-wrap" style="min-width:240px">{{ $log->message }}</td><td>{{ $log->rule->name ?? 'Deleted rule' }}</td>
             <td class="text-end pe-3">@if($log->target_url)<a href="{{ $log->target_url }}" class="btn btn-sm btn-outline-primary">Review <i class="bi bi-arrow-up-right ms-1"></i></a>@else<span class="text-muted small">Review manually</span>@endif</td>
-        </tr>@empty<tr><td colspan="6" class="text-center text-muted py-5"><i class="bi bi-check2-circle fs-3 d-block mb-2"></i>No alerts match these filters.</td></tr>@endforelse</tbody>
+        </tr>
+        @empty<tr><td colspan="6" class="text-center text-muted py-5"><i class="bi bi-check2-circle fs-3 d-block mb-2"></i>No alerts match these filters.</td></tr>@endforelse</tbody>
     </table></div></div>
     <div class="small ac-muted mt-3">Automation is internal-only. It does not publish prices, change listings, place supplier orders or contact marketplaces. TEST orders are excluded from sales and dispatch alerts.</div>
 @endsection

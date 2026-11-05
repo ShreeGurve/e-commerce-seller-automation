@@ -754,6 +754,7 @@
                     false,
                 ],
                 ['Automation Control Center', 'bi-diagram-3', route('governance.control-center'), 'governance.*', 'reports.view', false],
+                ['Operational Intelligence', 'bi-graph-up-arrow', route('operational-insights.index'), 'operational-insights.*', 'reports.view', false],
                 ['Notifications', 'bi-bell', route('notifications.index'), 'notifications.*', 'reports.view', false],
                 ['Approvals', 'bi-check2-square', route('approvals.index'), 'approvals', null, false],
                 ['Users', 'bi-people', route('users.index'), 'users.*', 'users.manage', false],
