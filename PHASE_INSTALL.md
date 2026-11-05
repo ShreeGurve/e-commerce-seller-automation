@@ -1514,3 +1514,41 @@ Use an authenticated account with the existing `purchases.view`, `purchases.crea
 - The invoice balance shown here is calculated from invoice total minus confirmed payment records and applied credit notes.
 - The statement is invoice-based; it is not a full double-entry accounting ledger or statutory supplier statement.
 - Run the commands above and verify in your own local environment. This package has been syntax-checked, but not run against your local database or browser.
+
+# Seller Automation — Package 3 (Phases 36–38)
+
+## Included
+- **Phase 36 — Purchase Requisitions:** internal request header and line items, required date, priority, purpose, and approve/reject review.
+- **Phase 37 — Supplier Quotation Capture & Comparison:** record quotations against approved requisitions, including item unit costs, availability, shipping, tax, other costs and lead time; compare supplier totals.
+- **Phase 38 — Quote Award & Approval Record:** record the selected supplier quote with an award rationale and review history.
+
+## Operating boundaries
+- All requisitions and quotations are entered manually.
+- No emails or RFQs are sent to suppliers automatically.
+- Awarding a quote does **not** submit a purchase order or contact a supplier. Create a purchase order separately through the existing purchase workflow after internal checks.
+- No marketplace API activity, stock movement, payment, supplier balance update or accounting posting is performed.
+- The award comparison is a decision aid; users should consider availability, lead time, terms and quality, not price alone.
+
+## Install
+1. Back up your database and `routes/web.php`.
+2. Extract this ZIP into the Laravel project root, preserving folders and replacing the included `routes/web.php`.
+3. Run:
+
+```bash
+php artisan migrate
+php artisan optimize:clear
+php artisan route:list --name=procurement
+```
+
+## Page
+- `/purchases/procurement`
+
+Access uses the existing `purchases.view`, `purchases.create` and `purchases.edit` permissions.
+
+## Package dependency
+This package carries forward the selected prior files and routes from Package 2 (Phases 33–35), including the corrected MySQL foreign-key names for the Phase 34 credit-note migration. Install Package 2 and its migration fix first.
+
+## Validation and scope
+- PHP syntax validation passed for all PHP files in this ZIP.
+- ZIP integrity checked.
+- Not run against your local database or browser.

@@ -152,6 +152,18 @@ Route::middleware('auth')->group(function () {
     Route::get('/purchases/supplier-statements', [\App\Http\Controllers\SupplierAccountStatementController::class, 'index'])
         ->middleware('can:purchases.view')->name('supplier-statements.index');
 
+    // Phases 36–38: internal procurement requisitions, supplier quotes and award review
+    Route::get('/purchases/procurement', [\App\Http\Controllers\ProcurementAutomationController::class, 'index'])
+        ->middleware('can:purchases.view')->name('procurement.index');
+    Route::post('/purchases/procurement/requisitions', [\App\Http\Controllers\ProcurementAutomationController::class, 'storeRequisition'])
+        ->middleware('can:purchases.create')->name('procurement.requisitions.store');
+    Route::patch('/purchases/procurement/requisitions/{requisition}/review', [\App\Http\Controllers\ProcurementAutomationController::class, 'approveRequisition'])
+        ->middleware('can:purchases.edit')->name('procurement.requisitions.review');
+    Route::post('/purchases/procurement/requisitions/{requisition}/quotes', [\App\Http\Controllers\ProcurementAutomationController::class, 'storeQuote'])
+        ->middleware('can:purchases.create')->name('procurement.quotes.store');
+    Route::patch('/purchases/procurement/requisitions/{requisition}/quotes/{quote}/award', [\App\Http\Controllers\ProcurementAutomationController::class, 'awardQuote'])
+        ->middleware('can:purchases.edit')->name('procurement.quotes.award');
+
     Route::get('/purchases/{purchase}', [PurchaseController::class, 'show'])->whereNumber('purchase')->middleware('can:purchases.view')->name('purchases.show');
     Route::get('/purchases/{purchase}/edit', [PurchaseController::class, 'edit'])->whereNumber('purchase')->middleware('can:purchases.edit')->name('purchases.edit');
     Route::put('/purchases/{purchase}', [PurchaseController::class, 'update'])->whereNumber('purchase')->middleware('can:purchases.edit')->name('purchases.update');
