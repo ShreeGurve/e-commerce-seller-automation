@@ -14,6 +14,7 @@ class Purchase extends Model
         'other_charges' => 'decimal:2', 'total_amount' => 'decimal:2', 'amount_paid' => 'decimal:2'];
     public function supplier() { return $this->belongsTo(Supplier::class)->withTrashed(); }
     public function items() { return $this->hasMany(PurchaseItem::class); }
+    public function invoiceMatch() { return $this->hasOne(PurchaseInvoiceMatch::class); }
     public function creator() { return $this->belongsTo(User::class, 'created_by'); }
     public function isEditable(): bool { return in_array($this->status, ['DRAFT', 'ORDERED'], true); }
     public function balance(): string { return number_format((float) $this->total_amount - (float) $this->amount_paid, 2, '.', ''); }

@@ -1337,3 +1337,78 @@ php artisan route:list --path=purchases/supplier-return-settlements
 
 ## Validation
 PHP syntax and ZIP integrity checks are performed for this patch. Run the migration and browser verification in your local environment.
+# Phase 28 – Supplier Invoice Matching & Purchase Reconciliation
+
+## Included
+- Captures one supplier invoice against an eligible purchase order.
+- Compares invoice total (subtotal + tax + shipping + other charges) with the PO total.
+- Applies a configurable rupee tolerance (default ₹0.01).
+- Flags variances for review; authorized users can accept the variance or reject the match.
+- Dashboard filters and summary KPIs.
+
+## Install
+1. Extract this ZIP into the Laravel project root and merge/overwrite the included files.
+2. The included `routes/web.php` is the integrated route file carrying Phases 25–28. Back up your current file before replacing it. It retains the existing application routes from the latest supplied baseline and puts all specific purchase feature routes before numeric `{purchase}` routes.
+3. Run:
+   ```bash
+   php artisan migrate
+   php artisan optimize:clear
+   php artisan route:list --name=purchase-invoice-matching
+   ```
+4. Expected routes: index, create, store, review (4 routes).
+5. Open `/purchases/invoice-matching` under the application base URL.
+
+## Controls / scope
+- Requires the existing purchase tables and Phases 25–27 migrations for the integrated package.
+- One invoice-match record per purchase order in this phase.
+- Matching is at invoice-total level; it does not yet perform line-by-line SKU/quantity/tax reconciliation or read uploaded PDFs.
+- Does not update purchase amount, payment status, supplier balance, inventory, or accounting ledger.
+- No supplier email, payment, marketplace API, or external action is triggered.
+- Review routes require `purchases.edit`; viewing/creating use existing purchase permissions.
+
+## Notes
+The migration is additive and does not modify existing purchase rows. Existing supplier invoice number/date fields on the purchase are not overwritten.
+
+
+# Phase 29 – Supplier Invoice Line-Level Reconciliation
+
+## Purpose
+Adds line-level matching to Phase 28 invoice records. For each purchase item, record supplier-invoiced quantity and unit cost, then compare them with the received quantity and purchase-order unit cost.
+
+## Prerequisites
+- Phases 25–28 installed.
+- `purchase_invoice_matches`, `purchase_items`, and `purchases` tables exist.
+- The Phase 28 `PurchaseInvoiceMatch` model is present.
+
+## Install
+1. Back up `routes/web.php`.
+2. Extract this ZIP into the Laravel project root and merge/overwrite the included files.
+3. Run:
+   ```bash
+   php artisan migrate
+   php artisan optimize:clear
+   php artisan route:list --name=purchase-invoice-line-checks
+   ```
+4. The route-list command should show 2 routes.
+5. Open `/purchases/invoice-line-checks` under your existing application base URL.
+
+## Routes included
+- `GET /purchases/invoice-line-checks` – list invoice matches and line-check results.
+- `POST /purchases/invoice-matching/{match}/line-checks` – save/recalculate line checks.
+
+Both routes are registered inside the authenticated group and before the dynamic `/purchases/{purchase}` routes. Phase 25–28 routes from the Phase 28 integrated route file are retained.
+
+## Matching rules
+- Invoice quantity is compared with the purchase item's `received_qty` (not ordered quantity).
+- Invoice unit cost is compared with the purchase item's `unit_cost`.
+- A line is `MATCHED` when quantity variance is zero and unit-cost variance for the invoice quantity is within ₹0.01.
+- Otherwise the line is `REVIEW_REQUIRED`.
+- Saving again updates the same purchase-item line check rather than creating duplicates.
+
+## Safeguards
+- This phase is a review tool only. It does not change purchase orders, inventory, supplier balances, payments, invoice totals, or accounting entries.
+- Enter invoice line quantities and costs from the supplier invoice manually. No OCR or PDF parsing is included.
+- No marketplace API or supplier communication is performed.
+
+## Validation
+PHP syntax and ZIP integrity checks are performed when packaging. Run the migration and route checks locally before using the module.

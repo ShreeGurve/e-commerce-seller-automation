@@ -110,6 +110,22 @@ Route::middleware('auth')->group(function () {
     Route::patch('/purchases/supplier-return-settlements/{settlement}/cancel', [\App\Http\Controllers\SupplierReturnSettlementController::class, 'cancel'])
         ->middleware('can:purchases.edit')->name('supplier-return-settlements.cancel');
 
+    // Phase 28: Supplier Invoice Matching & Purchase Reconciliation
+    Route::get('/purchases/invoice-matching', [\App\Http\Controllers\PurchaseInvoiceMatchController::class, 'index'])
+        ->middleware('can:purchases.view')->name('purchase-invoice-matching.index');
+    Route::get('/purchases/invoice-matching/create', [\App\Http\Controllers\PurchaseInvoiceMatchController::class, 'create'])
+        ->middleware('can:purchases.create')->name('purchase-invoice-matching.create');
+    Route::post('/purchases/invoice-matching', [\App\Http\Controllers\PurchaseInvoiceMatchController::class, 'store'])
+        ->middleware('can:purchases.create')->name('purchase-invoice-matching.store');
+    Route::patch('/purchases/invoice-matching/{match}/review', [\App\Http\Controllers\PurchaseInvoiceMatchController::class, 'review'])
+        ->middleware('can:purchases.edit')->name('purchase-invoice-matching.review');
+
+    // Phase 29: Invoice line-level quantity and unit-cost reconciliation
+    Route::get('/purchases/invoice-line-checks', [\App\Http\Controllers\PurchaseInvoiceLineCheckController::class, 'index'])
+        ->middleware('can:purchases.view')->name('purchase-invoice-line-checks.index');
+    Route::post('/purchases/invoice-matching/{match}/line-checks', [\App\Http\Controllers\PurchaseInvoiceLineCheckController::class, 'store'])
+        ->middleware('can:purchases.create')->name('purchase-invoice-line-checks.store');
+
     Route::get('/purchases/{purchase}', [PurchaseController::class, 'show'])->whereNumber('purchase')->middleware('can:purchases.view')->name('purchases.show');
     Route::get('/purchases/{purchase}/edit', [PurchaseController::class, 'edit'])->whereNumber('purchase')->middleware('can:purchases.edit')->name('purchases.edit');
     Route::put('/purchases/{purchase}', [PurchaseController::class, 'update'])->whereNumber('purchase')->middleware('can:purchases.edit')->name('purchases.update');
