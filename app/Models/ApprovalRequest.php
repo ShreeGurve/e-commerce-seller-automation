@@ -43,6 +43,12 @@ class ApprovalRequest extends Model
         });
     }
 
+
+    public function workflowSteps()
+    {
+        return $this->hasMany(ApprovalWorkflowStep::class, 'approval_request_id')->orderBy('step_number');
+    }
+
     public function entity()
     {
         return $this->morphTo();

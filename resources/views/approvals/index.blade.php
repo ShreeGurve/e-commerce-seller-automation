@@ -2,6 +2,9 @@
 @section('title', 'Approvals')
 @section('subtitle', 'Submit requests, review decisions and keep an auditable approval history')
 @section('content')
+    @if (auth()->user()->hasPermission('settings.manage') || auth()->user()->isSuperAdmin())
+        <div class="d-flex justify-content-end mb-3"><a class="btn btn-outline-primary btn-sm" href="{{ route('approval-workflows.index') }}">Configure approval workflows</a></div>
+    @endif
     @if (session('success'))
         <div class="alert alert-success alert-dismissible fade show">
             {{ session('success') }}<button class="btn-close" data-bs-dismiss="alert"></button></div>
@@ -121,6 +124,11 @@
                                     class="badge text-bg-{{ $statusClass }}">{{ str($item->status)->title() }}</span>
                                 @if ($item->reviewer)
                                     <div class="small text-muted mt-1">by {{ $item->reviewer->name }}</div>
+                                @endif
+                                @if ($item->workflowSteps->isNotEmpty())
+                                    <div class="small text-muted mt-1">
+                                        Approval level {{ $item->workflowSteps->where('status', 'approved')->count() }} / {{ $item->workflowSteps->count() }}
+                                    </div>
                                 @endif
                             </td>
                             <td>

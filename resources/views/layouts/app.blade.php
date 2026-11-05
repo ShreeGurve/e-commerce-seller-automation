@@ -690,22 +690,22 @@
         $groups = [
             'Main' => [['Dashboard', 'bi-speedometer2', route('dashboard'), 'dashboard', null, false]],
             'Catalog' => [
-                ['Products', 'bi-box-seam', route('products.index'), 'products*', 'products.view', false],
-                ['Categories', 'bi-tags', route('categories.index'), 'categories*', 'categories.manage', false],
-                ['Suppliers', 'bi-truck', route('suppliers.index'), 'suppliers*', 'purchases.view', false],
-                ['Purchases', 'bi-cart3', route('purchases.index'), 'purchases*', 'purchases.view', false],
+                ['Products', 'bi-box-seam', route('products.index'), 'products.*', 'products.view', false],
+                ['Categories', 'bi-tags', route('categories.index'), 'categories.*', 'categories.manage', false],
+                ['Suppliers', 'bi-truck', route('suppliers.index'), 'suppliers.*', 'purchases.view', false],
+                ['Purchases', 'bi-cart3', route('purchases.index'), 'purchases.*', 'purchases.view', false],
                 ['Purchase Quality Control', 'bi-clipboard-check', route('purchase-quality.index'), 'purchases/quality-control*', 'purchases.view', false],
-                ['Reorder Planning', 'bi-arrow-repeat', route('reorders.index'), 'reorders*', 'purchases.view', false],
-                ['Inventory Forecast', 'bi-graph-up-arrow', route('inventory-forecast.index'), 'inventory-forecast*', 'purchases.view', false],
-                ['Supplier Analytics', 'bi-bar-chart-line', route('supplier-analytics.index'), 'supplier-analytics*', 'purchases.view', false],
-                ['Inventory', 'bi-boxes', route('inventory.index'), 'inventory*', 'inventory.view', false],
+                ['Reorder Planning', 'bi-arrow-repeat', route('reorders.index'), 'reorders.*', 'purchases.view', false],
+                ['Inventory Forecast', 'bi-graph-up-arrow', route('inventory-forecast.index'), 'inventory-forecast.*', 'purchases.view', false],
+                ['Supplier Analytics', 'bi-bar-chart-line', route('supplier-analytics.index'), 'supplier-analytics.*', 'purchases.view', false],
+                ['Inventory', 'bi-boxes', route('inventory.index'), 'inventory.*', 'inventory.view', false],
             ],
             'Sales' => [
-                ['Marketplace Operations', 'bi-grid-3x3-gap', route('marketplaces.operations'), 'marketplace-operations*', 'products.view', false],
-                ['Marketplace Connections', 'bi-plug', route('marketplaces.connections'), 'marketplace-connections*', 'settings.manage', false],
-                ['Orders', 'bi-receipt', route('orders.index'), 'orders*', 'orders.view', false],
-                ['Returns', 'bi-arrow-return-left', route('returns.index'), 'returns*', 'returns.view', false],
-                ['Claims', 'bi-shield-check', route('claims.index'), 'claims*', 'claims.view', false],
+                ['Marketplace Operations', 'bi-grid-3x3-gap', route('marketplaces.operations'), 'marketplace-operations.*', 'products.view', false],
+                ['Marketplace Connections', 'bi-plug', route('marketplaces.connections'), 'marketplace-connections.*', 'settings.manage', false],
+                ['Orders', 'bi-receipt', route('orders.index'), 'orders.*', 'orders.view', false],
+                ['Returns', 'bi-arrow-return-left', route('returns.index'), 'returns.*', 'returns.view', false],
+                ['Claims', 'bi-shield-check', route('claims.index'), 'claims.*', 'claims.view', false],
                 [
                     'Amazon',
                     'bi-amazon',
@@ -722,12 +722,12 @@
                     'orders.view',
                     false,
                 ],
-                ['Imports', 'bi-cloud-upload', route('imports.index'), 'imports*', 'orders.edit', false],
+                ['Imports', 'bi-cloud-upload', route('imports.index'), 'imports.*', 'orders.edit', false],
             ],
             'Growth & Finance' => [
-                ['Advertising', 'bi-megaphone', route('ads.index'), 'ads*', 'advertising.view', false],
+                ['Advertising', 'bi-megaphone', route('ads.index'), 'ads.*', 'advertising.view', false],
                 ['Profit', 'bi-graph-up-arrow', route('profit.index'), 'finance/profit*', 'finance.view', false],
-                ['Pricing', 'bi-tag', route('pricing.index'), 'pricing*', 'products.view', false],
+                ['Pricing', 'bi-tag', route('pricing.index'), 'pricing.*', 'products.view', false],
                 ['Expenses', 'bi-wallet2', route('expenses.index'), 'finance/expenses*', 'finance.view', false],
                 ['Fee rules', 'bi-percent', route('fees.index'), 'finance/fees*', 'finance.view', false],
                 ['Settlements', 'bi-bank', route('settlements.index'), 'finance/settlements*', 'finance.view', false],
@@ -739,10 +739,10 @@
                     'finance.view',
                     false,
                 ],
-                ['Listings', 'bi-card-text', route('listings.index'), 'listings*', 'listings.view', false],
-                ['Keywords', 'bi-search', route('keywords.index'), 'keywords*', 'listings.view', false],
+                ['Listings', 'bi-card-text', route('listings.index'), 'listings.*', 'listings.view', false],
+                ['Keywords', 'bi-search', route('keywords.index'), 'keywords.*', 'listings.view', false],
                 ['Business Analytics', 'bi-speedometer2', route('analytics.business'), 'analytics/business*', 'reports.view', false],
-                ['Reports', 'bi-file-earmark-bar-graph', route('reports.index'), 'reports*', 'reports.view', false],
+                ['Reports', 'bi-file-earmark-bar-graph', route('reports.index'), 'reports.*', 'reports.view', false],
             ],
             'System' => [
                 [
@@ -753,14 +753,15 @@
                     'automation.view',
                     false,
                 ],
-                ['Notifications', 'bi-bell', route('notifications.index'), 'notifications*', 'reports.view', false],
+                ['Automation Control Center', 'bi-diagram-3', route('governance.control-center'), 'governance.*', 'reports.view', false],
+                ['Notifications', 'bi-bell', route('notifications.index'), 'notifications.*', 'reports.view', false],
                 ['Approvals', 'bi-check2-square', route('approvals.index'), 'approvals', null, false],
-                ['Users', 'bi-people', route('users.index'), 'users*', 'users.manage', false],
-                ['Roles & Permissions', 'bi-shield-lock', route('roles.index'), 'roles*', 'roles.manage', false],
-                ['Settings', 'bi-sliders', route('settings.index'), 'settings*', 'settings.manage', false],
+                ['Users', 'bi-people', route('users.index'), 'users.*', 'users.manage', false],
+                ['Roles & Permissions', 'bi-shield-lock', route('roles.index'), 'roles.*', 'roles.manage', false],
+                ['Settings', 'bi-sliders', route('settings.index'), 'settings.*', 'settings.manage', false],
             ],
         ];
-        $isActive = fn($p, $soon) => $soon || str_contains($p, '/') ? request()->is($p) : request()->routeIs($p);
+        $isActive = fn($p, $soon) => $soon ? false : (str_contains($p, '/') ? request()->is($p) : request()->routeIs($p));
         $u = auth()->user();
         try {
             $urgentClaims = $u->can('claims.view') ? \App\Models\Claim::urgentCount() : 0;
@@ -779,11 +780,11 @@
             <a href="{{ route('dashboard') }}" class="{{ request()->routeIs('dashboard') ? 'active' : '' }}"><i
                     class="bi bi-speedometer2"></i>Dashboard</a>
             @can('products.view')
-                <a href="{{ route('products.index') }}" class="{{ request()->routeIs('products*') ? 'active' : '' }}"><i
+                <a href="{{ route('products.index') }}" class="{{ request()->routeIs('products.*') ? 'active' : '' }}"><i
                         class="bi bi-box-seam"></i>Products</a>
             @endcan
             @can('categories.manage')
-                <a href="{{ route('categories.index') }}" class="{{ request()->routeIs('categories*') ? 'active' : '' }}"><i
+                <a href="{{ route('categories.index') }}" class="{{ request()->routeIs('categories.*') ? 'active' : '' }}"><i
                         class="bi bi-tags"></i>Categories</a>
             @endcan
             <div class="dropdown">

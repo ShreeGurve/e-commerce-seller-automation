@@ -55,6 +55,18 @@ Route::middleware('auth')->group(function () {
     Route::put('/suppliers/{supplier}', [SupplierController::class, 'update'])->middleware('can:purchases.edit')->name('suppliers.update');
     Route::delete('/suppliers/{supplier}', [SupplierController::class, 'destroy'])->middleware('can:purchases.edit')->name('suppliers.destroy');
 
+    // Phase 47: monthly business performance targets and scorecard
+    Route::get('/business-performance', [\App\Http\Controllers\BusinessPerformanceController::class, 'index'])
+        ->middleware('can:reports.view')->name('business-performance.index');
+    Route::post('/business-performance/targets', [\App\Http\Controllers\BusinessPerformanceController::class, 'storeTarget'])
+        ->middleware('can:reports.export')->name('business-performance.targets.store');
+
+    // Phases 48-50: Automation Control & Governance
+    Route::get('/automation/control-center', [\App\Http\Controllers\AutomationGovernanceController::class, 'index'])->middleware('can:reports.view')->name('governance.control-center');
+    Route::patch('/automation/control-center/alerts/{event}/assign', [\App\Http\Controllers\AutomationGovernanceController::class, 'assignEvent'])->middleware('can:purchases.edit')->name('governance.alerts.assign');
+    Route::patch('/automation/control-center/alerts/{event}/resolve', [\App\Http\Controllers\AutomationGovernanceController::class, 'resolveEvent'])->middleware('can:purchases.edit')->name('governance.alerts.resolve');
+    Route::post('/automation/control-center/approval-sla', [\App\Http\Controllers\AutomationGovernanceController::class, 'saveSlaPolicy'])->middleware('can:settings.manage')->name('governance.approval-sla.save');
+
     // Phases 42-44: Executive Intelligence & Internal Automation
     Route::get('/executive/intelligence', [\App\Http\Controllers\ExecutiveIntelligenceController::class, 'index'])->middleware('can:purchases.view')->name('executive.intelligence.index');
     Route::get('/executive/intelligence/export', [\App\Http\Controllers\ExecutiveIntelligenceController::class, 'export'])->middleware('can:purchases.view')->name('executive.intelligence.export');
@@ -199,6 +211,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/purchases/{purchase}/cancel', [PurchaseController::class, 'cancel'])->whereNumber('purchase')->middleware('can:purchases.edit')->name('purchases.cancel');
     Route::post('/purchases/{purchase}/payment', [PurchaseController::class, 'payment'])->whereNumber('purchase')->middleware('can:purchases.edit')->name('purchases.payment');
 
+    // Phase 45: Smart reorder recommendations -> internal procurement requisition only
+    Route::get('/reorders/smart', [\App\Http\Controllers\SmartReorderController::class, 'index'])->middleware('can:purchases.view')->name('reorders.smart.index');
+    Route::post('/reorders/smart/generate', [\App\Http\Controllers\SmartReorderController::class, 'generate'])->middleware('can:purchases.create')->name('reorders.smart.generate');
+
     // Phase 7: reorder planning
     Route::get('/reorders', [ReorderController::class, 'index'])->middleware('can:purchases.view')->name('reorders.index');
     Route::post('/reorders/purchase', [ReorderController::class, 'createPurchase'])->middleware('can:purchases.create')->name('reorders.purchase');
@@ -293,6 +309,14 @@ Route::middleware('auth')->group(function () {
         ->name('approvals.reject');
     Route::post('/approvals/{approvalRequest}/cancel', [ApprovalController::class, 'cancel'])
         ->name('approvals.cancel');
+
+    // Phase 46: configurable sequential approval policies (new requests only)
+    Route::get('/approvals/workflows', [\App\Http\Controllers\ApprovalWorkflowController::class, 'index'])
+        ->middleware('can:settings.manage')->name('approval-workflows.index');
+    Route::post('/approvals/workflows', [\App\Http\Controllers\ApprovalWorkflowController::class, 'store'])
+        ->middleware('can:settings.manage')->name('approval-workflows.store');
+    Route::delete('/approvals/workflows/{policy}', [\App\Http\Controllers\ApprovalWorkflowController::class, 'destroy'])
+        ->middleware('can:settings.manage')->name('approval-workflows.destroy');
 
     // Marketplace connector diagnostics (credentials are configured in .env, never stored in the UI).
     Route::get('/marketplace-connections', [MarketplaceConnectionController::class, 'index'])->middleware('can:settings.manage')->name('marketplaces.connections');

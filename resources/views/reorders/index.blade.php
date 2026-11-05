@@ -2,6 +2,7 @@
 @section('title', 'Reorder Planning')
 @section('subtitle', 'Internal stock replenishment suggestions based on inventory thresholds and outstanding ordered quantities')
 @section('content')
+    <div class="d-flex justify-content-end mb-3"><a href="{{ route('reorders.smart.index') }}" class="btn btn-outline-primary btn-sm">Open forecast-based Smart Reorder</a></div>
     <div class="row g-3 mb-3">
         <div class="col-md-6"><div class="card"><div class="card-body"><div class="small text-muted">Products at/below reorder point</div><div class="fs-4 fw-bold">{{ $lowCount }}</div></div></div></div>
         <div class="col-md-6"><div class="card"><div class="card-body"><div class="small text-muted">Suggested units to replenish</div><div class="fs-4 fw-bold">{{ number_format($totalSuggested) }}</div></div></div></div>
