@@ -694,6 +694,7 @@
                 ['Categories', 'bi-tags', route('categories.index'), 'categories*', 'categories.manage', false],
                 ['Suppliers', 'bi-truck', route('suppliers.index'), 'suppliers*', 'purchases.view', false],
                 ['Purchases', 'bi-cart3', route('purchases.index'), 'purchases*', 'purchases.view', false],
+                ['Purchase Quality Control', 'bi-clipboard-check', route('purchase-quality.index'), 'purchases/quality-control*', 'purchases.view', false],
                 ['Reorder Planning', 'bi-arrow-repeat', route('reorders.index'), 'reorders*', 'purchases.view', false],
                 ['Inventory Forecast', 'bi-graph-up-arrow', route('inventory-forecast.index'), 'inventory-forecast*', 'purchases.view', false],
                 ['Supplier Analytics', 'bi-bar-chart-line', route('supplier-analytics.index'), 'supplier-analytics*', 'purchases.view', false],

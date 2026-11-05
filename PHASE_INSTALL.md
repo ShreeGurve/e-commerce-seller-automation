@@ -1194,3 +1194,43 @@ This phase is overall monthly procurement budgeting only. It does not claim cate
 ## Safety
 No automatic purchase orders, supplier outreach, payment actions, inventory updates or marketplace API calls.
 
+# Seller Automation — Phase 25: Purchase Receiving Quality Control
+
+## Included
+- Internal quality inspection records for received purchase quantities.
+- Accepted/rejected quantity capture with validation that the quantities add up to the inspected quantity.
+- Prevents inspecting more units than have been received (including quantities inspected in earlier records).
+- Defect type and inspection notes.
+- Supplier follow-up actions: pending, replacement, refund, credit, or no action.
+- Open/passed/resolved statuses, supplier/status filters, summary KPIs.
+- Navigation link under Purchases.
+
+## Safety and inventory behaviour
+This phase records inspection outcomes only. It does **not** add or deduct inventory, change received quantities, create supplier returns, or submit external requests. This avoids double-counting stock because purchase receiving already updates inventory through the existing purchase service. Use the existing inventory/return workflows for physical stock adjustments.
+
+## Install
+1. Back up the project and database.
+2. Extract this ZIP into the Laravel project root, preserving folders and overwriting included files.
+3. Run:
+
+```bash
+php artisan migrate
+php artisan optimize:clear
+php artisan route:list --name=purchase-quality
+```
+
+4. Open **Purchases → Purchase Quality Control** or `/purchases/quality-control`.
+
+Do not run `migrate:fresh`.
+
+## Permissions
+- View: `purchases.view`
+- Create inspection: `purchases.create`
+- Update supplier follow-up: `purchases.edit`
+
+No new permissions are required.
+
+## Validation notes
+- PHP syntax checks and ZIP integrity checks performed for this patch.
+- Database migration and browser workflow were not run against the user's local environment.
+
