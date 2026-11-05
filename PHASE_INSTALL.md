@@ -1787,3 +1787,53 @@ Existing `automation.index`, `automation.store`, `automation.toggle`, `automatio
 
 ## Notes
 This patch is based on the Package 8 route baseline and includes the corrected `OperationalInsightsController.php` from the Package 8 SQL ambiguity repair. It is a delta patch, not a full project.
+
+# Seller Automation — Package 10: Full Module Integration & Workflow Testing
+
+## Scope
+This package adds a read-only integration audit command and a repeatable workflow verification checklist. It does not add tables, change business records, or call marketplace/supplier/payment APIs.
+
+## Install
+1. Back up the application files.
+2. Extract this ZIP into the Laravel project root.
+3. Run:
+   ```bash
+   php artisan optimize:clear
+   php artisan seller-automation:integration-audit
+   ```
+4. Optional route/source-only audit without a database connection:
+   ```bash
+   php artisan seller-automation:integration-audit --skip-database
+   ```
+
+The command is auto-discovered from `app/Console/Commands` in the standard Laravel application bootstrap. No route registration or migration is required.
+
+## How to interpret the audit
+- PASS means the expected route, source marker, or database table exists.
+- FAIL means inspect the named route/file/table before attempting the affected workflow.
+- A passing audit is a readiness check, not proof that every workflow has been exercised in a browser.
+- The audit is read-only. It never creates, updates, deletes, approves, pays, transfers, or submits anything.
+
+## Manual workflow test order
+Run these in a staging/test database with non-production sample records:
+
+1. Supplier invoice: create an invoice match, add line checks, upload a document, download it with an authorized account, and review GST format status.
+2. Supplier payments and credits: record a partial payment, verify the remaining balance, create a credit note, apply it once, and confirm it cannot be over-applied.
+3. Procurement: create a requisition, review it, capture quotes from at least two suppliers, award one quote, and confirm no purchase order is silently created.
+4. Warehouse: create two locations, add opening balances, draft a transfer, dispatch, receive, and verify source/destination quantities. Then create and finalize a stock count.
+5. Approvals and governance: submit a request, approve/reject/cancel using authorized roles, assign and resolve an alert, and review audit history.
+6. Operational insights: compare date-filtered totals with the underlying rows and download each CSV export.
+7. Automation: create and edit a rule, verify version history, preview it in dry-run, run it manually, inspect execution history, and retry only a deliberately failed staging execution.
+8. TEST order safety: create a TEST order and verify it does not change profit, sales, advertising attribution, or financial report totals.
+
+## Safety boundaries
+- Do not run destructive stock, payment, approval, or retry scenarios against production data.
+- Do not use real supplier banking details.
+- Do not enable marketplace write operations until provider approvals and sandbox verification are complete.
+- TEST orders must remain excluded from financial reporting.
+
+## Troubleshooting
+- Missing routes: run `php artisan route:clear`, then `php artisan route:list`.
+- Missing tables: back up the database, then review `php artisan migrate:status` before running pending migrations.
+- Permission denied: verify the user's assigned role/permissions; do not bypass middleware to make a test pass.
+- Never drop existing tables or reset a production database as a troubleshooting shortcut.
