@@ -1234,3 +1234,106 @@ No new permissions are required.
 - PHP syntax checks and ZIP integrity checks performed for this patch.
 - Database migration and browser workflow were not run against the user's local environment.
 
+# Phase 26 — Supplier Returns & Replacement Management
+
+## Files
+- `app/Models/SupplierReturn.php`
+- `app/Http/Controllers/SupplierReturnController.php`
+- `database/migrations/2026_11_05_000026_create_supplier_returns_table.php`
+- `resources/views/purchases/supplier-returns.blade.php`
+- `resources/views/purchases/supplier-return-create.blade.php`
+
+## 1. Install
+Extract this ZIP into the Laravel project root and merge/overwrite the listed files.
+
+## 2. Add routes
+Add these routes inside the existing authenticated route group in `routes/web.php`. **Place them before** the dynamic route `Route::get('/purchases/{purchase}', ...)`.
+
+```php
+Route::get('/purchases/supplier-returns', [\App\Http\Controllers\SupplierReturnController::class, 'index'])
+    ->middleware('can:purchases.view')->name('supplier-returns.index');
+Route::get('/purchases/supplier-returns/create', [\App\Http\Controllers\SupplierReturnController::class, 'create'])
+    ->middleware('can:purchases.create')->name('supplier-returns.create');
+Route::post('/purchases/supplier-returns', [\App\Http\Controllers\SupplierReturnController::class, 'store'])
+    ->middleware('can:purchases.create')->name('supplier-returns.store');
+Route::patch('/purchases/supplier-returns/{supplierReturn}/status', [\App\Http\Controllers\SupplierReturnController::class, 'updateStatus'])
+    ->middleware('can:purchases.edit')->name('supplier-returns.status');
+```
+
+Keep all Phase 25 quality-control routes above `/purchases/{purchase}` as well. Do not replace the whole `routes/web.php` with an older copy.
+
+## 3. Migrate and clear caches
+```bash
+php artisan migrate
+php artisan optimize:clear
+php artisan route:list --path=purchases/supplier-returns
+```
+
+## 4. Open
+`/purchases/supplier-returns`
+
+## Behaviour and safeguards
+- Returns can only be created against a Phase 25 quality inspection with rejected quantity.
+- Quantity is checked against the inspection's rejected quantity, less quantities already allocated to non-cancelled returns.
+- Workflow: DRAFT → APPROVED → DISPATCHED → REPLACED / REFUNDED / CREDITED → CLOSED. Drafts can be cancelled; approved returns can be cancelled before dispatch.
+- Supplier reference and notes can be updated with each status change.
+- **This module does not change inventory, purchase received quantities, supplier balances, or marketplace data.** Replacement receipt and financial settlement remain manual follow-up tasks; this avoids double posting or inventing accounting entries.
+- Requires Phase 25 migration/table `purchase_quality_inspections` to have been installed first.
+
+## Validation
+PHP syntax checks and ZIP integrity were run when packaging. Local database/browser testing must be completed in the user's environment.
+
+# Phase 27 — Supplier Return Settlement & Replacement Receipt Tracking
+
+## Purpose
+Record evidence that a resolved supplier return resulted in a refund, supplier credit, or replacement delivery. This is a tracking/confirmation register only; it deliberately does not post to accounting, change supplier balances, or alter inventory.
+
+## Files
+- `app/Models/SupplierReturnSettlement.php`
+- `app/Http/Controllers/SupplierReturnSettlementController.php`
+- `database/migrations/2026_11_05_000027_create_supplier_return_settlements_table.php`
+- `resources/views/purchases/supplier-return-settlements.blade.php`
+
+## Dependencies
+Phase 26 must be installed first, including `supplier_returns` table, `SupplierReturn` model, and the Phase 26 routes. Phase 25 quality control routes must remain registered because Phase 26 screens link back to that module.
+
+## Installation
+1. Extract/merge this ZIP into the Laravel project root.
+2. Add the routes below **inside the authenticated route group** and before the dynamic `/purchases/{purchase}` route. Keep Phase 25 and Phase 26 routes in place and above that dynamic route.
+
+```php
+Route::get('/purchases/supplier-return-settlements', [\App\Http\Controllers\SupplierReturnSettlementController::class, 'index'])
+    ->middleware('can:purchases.view')->name('supplier-return-settlements.index');
+Route::post('/purchases/supplier-return-settlements', [\App\Http\Controllers\SupplierReturnSettlementController::class, 'store'])
+    ->middleware('can:purchases.create')->name('supplier-return-settlements.store');
+Route::patch('/purchases/supplier-return-settlements/{settlement}/confirm', [\App\Http\Controllers\SupplierReturnSettlementController::class, 'confirm'])
+    ->middleware('can:purchases.edit')->name('supplier-return-settlements.confirm');
+Route::patch('/purchases/supplier-return-settlements/{settlement}/cancel', [\App\Http\Controllers\SupplierReturnSettlementController::class, 'cancel'])
+    ->middleware('can:purchases.edit')->name('supplier-return-settlements.cancel');
+```
+
+3. Run:
+
+```bash
+php artisan migrate
+php artisan optimize:clear
+php artisan route:list --path=purchases/supplier-return-settlements
+```
+
+4. Open `/purchases/supplier-return-settlements`.
+
+## Workflow
+- Select a return already resolved in Phase 26.
+- Record a REFUND or CREDIT amount, or the quantity of replacement units received.
+- New records begin as PENDING.
+- A user with purchase edit permission confirms or cancels the record.
+- Confirmed entries appear in summary totals; cancelled entries are excluded.
+
+## Safeguards / limitations
+- Does not create journal entries, payment transactions, supplier ledger entries, or inventory movements.
+- Replacement quantity is validated against the original return quantity, but stock receipt must still be completed through the existing purchase receiving workflow to avoid duplicate inventory posting.
+- Multiple pending records can be entered for one return to support staged settlements; only confirmed records are counted in summary totals. Avoid confirming duplicate supplier evidence.
+- No marketplace API calls.
+
+## Validation
+PHP syntax and ZIP integrity checks are performed for this patch. Run the migration and browser verification in your local environment.
