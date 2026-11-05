@@ -1588,3 +1588,36 @@ Access uses existing `products.view` and `products.edit` permissions.
 - PHP syntax validation passed for all PHP files in this ZIP.
 - ZIP integrity checked.
 - Not run against your local database or browser.
+
+# Seller Automation — Package 5 (Phases 42–44)
+
+## Included
+- **Phase 42 — Executive Intelligence:** operational snapshot for supplier invoice records/payments, procurement requests/quotes, warehouse SKU counts/quantities, transfers and stock-count drafts.
+- **Phase 43 — Internal Automation Rules:** configurable low-stock, overdue-requisition and invoice-review rules. Evaluation creates deduplicated internal alerts; users can resolve alerts.
+- **Phase 44 — Executive Snapshot Export:** downloadable CSV of the supported operational metrics.
+
+## Important scope and safety
+- This is an operational snapshot of the supplier/procurement/warehouse modules in Packages 1–4, not a replacement for the existing sales/profit analytics dashboard.
+- It does not query sales/orders, so TEST orders are not included.
+- Warehouse quantity is a mixed-unit total and is not a monetary stock valuation.
+- Supplier invoice totals are recorded invoice amounts, not revenue, sales or profit.
+- Rule evaluation is manual (button click). It creates internal alerts only. No scheduled jobs, email notifications, external API calls, marketplace writes, stock sync, payment, or purchase order creation.
+- Access uses existing `purchases.view` and `purchases.edit` permissions.
+
+## Install
+1. Install Packages 1–4 first, including the Package 2 MySQL foreign-key fix.
+2. Back up your database and `routes/web.php`.
+3. Extract this ZIP into the Laravel project root, preserving folders and replacing the included `routes/web.php`.
+4. Run:
+
+```bash
+php artisan migrate
+php artisan optimize:clear
+php artisan route:list --name=executive.intelligence
+```
+
+## Page
+`/executive/intelligence`
+
+## Validation
+PHP syntax and ZIP integrity were checked when packaging. Database/browser execution was not run against your local environment.

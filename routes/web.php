@@ -55,6 +55,13 @@ Route::middleware('auth')->group(function () {
     Route::put('/suppliers/{supplier}', [SupplierController::class, 'update'])->middleware('can:purchases.edit')->name('suppliers.update');
     Route::delete('/suppliers/{supplier}', [SupplierController::class, 'destroy'])->middleware('can:purchases.edit')->name('suppliers.destroy');
 
+    // Phases 42-44: Executive Intelligence & Internal Automation
+    Route::get('/executive/intelligence', [\App\Http\Controllers\ExecutiveIntelligenceController::class, 'index'])->middleware('can:purchases.view')->name('executive.intelligence.index');
+    Route::get('/executive/intelligence/export', [\App\Http\Controllers\ExecutiveIntelligenceController::class, 'export'])->middleware('can:purchases.view')->name('executive.intelligence.export');
+    Route::post('/executive/intelligence/rules', [\App\Http\Controllers\ExecutiveIntelligenceController::class, 'saveRule'])->middleware('can:purchases.edit')->name('executive.intelligence.rules.save');
+    Route::post('/executive/intelligence/evaluate', [\App\Http\Controllers\ExecutiveIntelligenceController::class, 'evaluate'])->middleware('can:purchases.edit')->name('executive.intelligence.evaluate');
+    Route::patch('/executive/intelligence/events/{event}/resolve', [\App\Http\Controllers\ExecutiveIntelligenceController::class, 'resolveEvent'])->middleware('can:purchases.edit')->name('executive.intelligence.events.resolve');
+
     // Purchases
     Route::get('/purchases', [PurchaseController::class, 'index'])->middleware('can:purchases.view')->name('purchases.index');
     Route::get('/purchases/create', [PurchaseController::class, 'create'])->middleware('can:purchases.create')->name('purchases.create');
