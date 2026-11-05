@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 class SupplierPaymentController extends Controller {
     public function index() {
-        $invoices = PurchaseInvoiceMatch::with(['purchase.supplier','payments'])
+        $invoices = PurchaseInvoiceMatch::with(['purchase.supplier','payments','creditApplications'])
             ->latest('supplier_invoice_date')->paginate(20);
         return view('purchases.supplier-payments', compact('invoices'));
     }

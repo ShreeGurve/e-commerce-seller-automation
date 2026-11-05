@@ -6,14 +6,15 @@
     @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
     @foreach($invoices as $invoice)
         @php($paid = (float)$invoice->payments->where('status','CONFIRMED')->sum('amount'))
-        @php($remaining = max(0,(float)$invoice->invoice_total-$paid))
+        @php($credited = (float) $invoice->creditApplications->sum('amount'))
+        @php($remaining = max(0,(float)$invoice->invoice_total-$paid-$credited))
         <div class="card mb-3"><div class="card-body">
             <div class="d-flex justify-content-between flex-wrap">
                 <div><h5>Invoice {{ $invoice->supplier_invoice_number }}</h5>
                     <div>{{ $invoice->purchase?->supplier?->name ?? 'Supplier' }} · PO {{ $invoice->purchase?->po_number }}</div>
                 </div>
                 <div class="text-end">Invoice: ₹{{ number_format((float)$invoice->invoice_total,2) }}<br>
-                    Paid: ₹{{ number_format($paid,2) }} · Balance: <strong>₹{{ number_format($remaining,2) }}</strong></div>
+                    Paid: ₹{{ number_format($paid,2) }} · Credits: ₹{{ number_format($credited,2) }} · Balance: <strong>₹{{ number_format($remaining,2) }}</strong></div>
             </div>
             @if($remaining > 0)
             <form method="POST" action="{{ route('supplier-payments.store',$invoice) }}" class="row g-2 mt-2">
