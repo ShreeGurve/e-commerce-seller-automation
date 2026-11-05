@@ -164,6 +164,26 @@ Route::middleware('auth')->group(function () {
     Route::patch('/purchases/procurement/requisitions/{requisition}/quotes/{quote}/award', [\App\Http\Controllers\ProcurementAutomationController::class, 'awardQuote'])
         ->middleware('can:purchases.edit')->name('procurement.quotes.award');
 
+    // Phases 39–41: warehouse locations, internal transfers and physical stock counts
+    Route::get('/warehouse/intelligence', [\App\Http\Controllers\WarehouseIntelligenceController::class, 'index'])
+        ->middleware('can:products.view')->name('warehouse.intelligence.index');
+    Route::post('/warehouse/locations', [\App\Http\Controllers\WarehouseIntelligenceController::class, 'storeLocation'])
+        ->middleware('can:products.edit')->name('warehouse.locations.store');
+    Route::patch('/warehouse/locations/{location}', [\App\Http\Controllers\WarehouseIntelligenceController::class, 'updateLocation'])
+        ->middleware('can:products.edit')->name('warehouse.locations.update');
+    Route::post('/warehouse/locations/{location}/balances', [\App\Http\Controllers\WarehouseIntelligenceController::class, 'storeBalance'])
+        ->middleware('can:products.edit')->name('warehouse.balances.store');
+    Route::post('/warehouse/transfers', [\App\Http\Controllers\WarehouseIntelligenceController::class, 'storeTransfer'])
+        ->middleware('can:products.edit')->name('warehouse.transfers.store');
+    Route::patch('/warehouse/transfers/{transfer}/dispatch', [\App\Http\Controllers\WarehouseIntelligenceController::class, 'dispatchTransfer'])
+        ->middleware('can:products.edit')->name('warehouse.transfers.dispatch');
+    Route::patch('/warehouse/transfers/{transfer}/receive', [\App\Http\Controllers\WarehouseIntelligenceController::class, 'receiveTransfer'])
+        ->middleware('can:products.edit')->name('warehouse.transfers.receive');
+    Route::post('/warehouse/stock-counts', [\App\Http\Controllers\WarehouseIntelligenceController::class, 'storeCount'])
+        ->middleware('can:products.edit')->name('warehouse.stock-counts.store');
+    Route::patch('/warehouse/stock-counts/{count}/finalize', [\App\Http\Controllers\WarehouseIntelligenceController::class, 'finalizeCount'])
+        ->middleware('can:products.edit')->name('warehouse.stock-counts.finalize');
+
     Route::get('/purchases/{purchase}', [PurchaseController::class, 'show'])->whereNumber('purchase')->middleware('can:purchases.view')->name('purchases.show');
     Route::get('/purchases/{purchase}/edit', [PurchaseController::class, 'edit'])->whereNumber('purchase')->middleware('can:purchases.edit')->name('purchases.edit');
     Route::put('/purchases/{purchase}', [PurchaseController::class, 'update'])->whereNumber('purchase')->middleware('can:purchases.edit')->name('purchases.update');

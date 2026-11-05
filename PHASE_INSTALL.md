@@ -1552,3 +1552,39 @@ This package carries forward the selected prior files and routes from Package 2 
 - PHP syntax validation passed for all PHP files in this ZIP.
 - ZIP integrity checked.
 - Not run against your local database or browser.
+# Seller Automation — Package 4 (Phases 39–41)
+
+## Included
+- **Phase 39 — Warehouse & Location Management:** create internal warehouse, store, 3PL, transit and other locations; maintain SKU-level manual stock balances.
+- **Phase 40 — Inter-Warehouse Transfers:** create transfer drafts, dispatch from a source location and receive into a destination location. Stock is deducted on dispatch and added on receipt, with negative source balances blocked.
+- **Phase 41 — Cycle Count & Stock Reconciliation:** record physical quantities, compare them with internal system balances, review variances and explicitly finalize a count to apply counted quantities.
+
+## Important boundaries
+- These warehouse balances are a separate internal warehouse register using SKU/item text. This package does not assume or alter the existing product stock schema.
+- Opening/manual balances are entered by authorized users.
+- Transfers affect only this package's internal warehouse balances.
+- Finalizing a cycle count overwrites internal balances for the SKUs included in that count. Review the displayed variance before finalizing.
+- No marketplace inventory sync, listing update, order pull, supplier PO submission, payment, or external API write is performed.
+- This package does not automatically import stock from existing inventory records or purchase receiving. Reconcile initial quantities manually.
+
+## Install
+1. Install Packages 1–3 first, including the Package 2 MySQL foreign-key fix.
+2. Back up the database and `routes/web.php`.
+3. Extract this ZIP into the Laravel project root, preserving folders and replacing the included `routes/web.php`.
+4. Run:
+
+```bash
+php artisan migrate
+php artisan optimize:clear
+php artisan route:list --name=warehouse
+```
+
+## Page
+- `/warehouse/intelligence`
+
+Access uses existing `products.view` and `products.edit` permissions.
+
+## Validation
+- PHP syntax validation passed for all PHP files in this ZIP.
+- ZIP integrity checked.
+- Not run against your local database or browser.
