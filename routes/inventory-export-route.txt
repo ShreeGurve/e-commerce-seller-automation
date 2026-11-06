@@ -1,0 +1,8 @@
+<?php
+// Package 15 route addition. Place inside the existing auth middleware group,
+// immediately before the /inventory/{product} route.
+use App\Http\Controllers\InventoryExportController;
+
+Route::get('/inventory/export', InventoryExportController::class)
+    ->middleware('can:inventory.view')
+    ->name('inventory.export');

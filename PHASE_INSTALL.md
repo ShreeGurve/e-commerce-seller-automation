@@ -1961,3 +1961,37 @@ php artisan route:list --name=reports
 - Try `from` later than `to`; the range should continue to normalize as before.
 
 No migrations, new routes, permissions, external API calls or marketplace write actions are included.
+
+# Package 15 — Inventory Register CSV Export
+
+## Files
+- `app/Http/Controllers/InventoryExportController.php`
+- `routes/inventory-export-route.txt` (route snippet to merge)
+
+## Install
+1. Back up your current `routes/web.php`.
+2. Copy the controller into `app/Http/Controllers/`.
+3. Add the route snippet inside the existing `Route::middleware('auth')->group(...)` in `routes/web.php`.
+4. Put the `/inventory/export` route **before** `/inventory/{product}` so `export` is not interpreted as a product identifier.
+5. Run:
+
+```bash
+php artisan optimize:clear
+php artisan route:list --name=inventory.export
+```
+
+## Use
+Open `/inventory/export` while logged in with `inventory.view`.
+Existing register filters are supported:
+- `/inventory/export?q=keyboard`
+- `/inventory/export?stock=low`
+- `/inventory/export?stock=out`
+- `/inventory/export?q=keyboard&stock=low`
+
+The export is read-only, streams in chunks of 500 products, and includes SKU, product name, available/damaged quantity, minimum/reorder levels and stock status. It uses the same low/out-of-stock filter rules as the inventory register. Text values beginning with spreadsheet formula characters are escaped to reduce CSV formula-injection risk.
+
+## Safety / scope
+- No migrations or database writes.
+- Does not modify inventory quantities or ledger records.
+- Does not calculate monetary valuation; current COGS history can have multiple/effective-date considerations and should be handled in a separately verified valuation report.
+- Access is controlled by the existing `inventory.view` permission.
