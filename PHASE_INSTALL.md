@@ -1860,3 +1860,35 @@ The command is auto-discovered from `app/Console/Commands` in a standard Laravel
 Read-only checks for APP_DEBUG, APP_KEY, secure session cookie recommendation, private storage directory, authentication middleware on selected sensitive routes, and optional Spatie-style permission tables/data.
 
 This is a readiness audit, not a penetration test. Middleware inherited through custom route groups may require manual review if flagged. If the project uses a custom permission schema, treat Spatie table checks as informational. The command does not modify configuration, permissions, storage, or business data.
+
+# Package 12 — Navigation & UI/UX Refinement
+
+This is a small, non-destructive patch based on the supplied Seller Automation project ZIP.
+
+## What changes
+- Fixes the Modules and Quick Apps dropdowns: they previously rendered only entries marked `Soon`, while all current modules are marked available. They now show available modules the signed-in user is permitted to access.
+- Adds existing Warehouse Intelligence, Business Performance, Cash Planning and Executive Intelligence routes to the sidebar navigation, using the same permission names as their route middleware.
+- Adds restrained dropdown styling and visible keyboard-focus outlines, while preserving the existing Bootstrap layout, theme colors, collapsed sidebar, and responsive behavior.
+
+## Files
+- `resources/views/layouts/app.blade.php`
+
+## Install
+1. Back up `resources/views/layouts/app.blade.php`.
+2. Copy the file from this package into the same path in your Laravel project.
+3. Run:
+
+```bash
+php artisan view:clear
+php artisan optimize:clear
+```
+
+No migration, route changes, Composer packages, npm packages, or database changes are required.
+
+## Verify
+- Open the application at desktop width and open **Modules** and **Quick Apps**.
+- Confirm the dropdowns show modules allowed by the logged-in user's existing permissions.
+- Confirm Warehouse Intelligence, Business Performance, Cash Planning and Executive Intelligence appear only for users with their existing permissions.
+- Test collapsed sidebar, mobile off-canvas sidebar, dark mode, and keyboard tab focus.
+
+This package does not alter dashboard calculations, financial data, TEST-order handling, marketplace connections, automation rules, or approval logic.

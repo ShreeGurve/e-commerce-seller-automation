@@ -119,6 +119,43 @@
             border-bottom-color: #3874ff
         }
 
+        /* consistent interaction and responsive polish */
+        a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+            outline: 2px solid rgba(56, 116, 255, .75);
+            outline-offset: 2px;
+        }
+
+        .dropdown-menu {
+            background: var(--sg-card);
+            border-color: var(--sg-border);
+            color: var(--sg-text);
+            box-shadow: 0 12px 32px rgba(15, 21, 36, .12);
+        }
+
+        .dropdown-item { color: var(--sg-text); }
+        .dropdown-item:hover, .dropdown-item:focus {
+            color: #3874ff;
+            background: rgba(56, 116, 255, .08);
+        }
+
+        .sg-appgrid a {
+            display: flex;
+            align-items: center;
+            gap: .55rem;
+            min-width: 0;
+            padding: .65rem .55rem;
+            border-radius: .5rem;
+            color: var(--sg-text);
+            text-decoration: none;
+            font-size: .82rem;
+            font-weight: 600;
+        }
+        .sg-appgrid a:hover {
+            color: #3874ff;
+            background: rgba(56, 116, 255, .08);
+        }
+        .sg-appgrid a i { width: 1rem; text-align: center; color: #3874ff; }
+
         /* cards / tables */
         .card {
             background: var(--sg-card);
@@ -699,6 +736,7 @@
                 ['Inventory Forecast', 'bi-graph-up-arrow', route('inventory-forecast.index'), 'inventory-forecast.*', 'purchases.view', false],
                 ['Supplier Analytics', 'bi-bar-chart-line', route('supplier-analytics.index'), 'supplier-analytics.*', 'purchases.view', false],
                 ['Inventory', 'bi-boxes', route('inventory.index'), 'inventory.*', 'inventory.view', false],
+                ['Warehouse Intelligence', 'bi-building-gear', route('warehouse.intelligence.index'), 'warehouse*', 'products.view', false],
             ],
             'Sales' => [
                 ['Marketplace Operations', 'bi-grid-3x3-gap', route('marketplaces.operations'), 'marketplace-operations.*', 'products.view', false],
@@ -742,6 +780,8 @@
                 ['Listings', 'bi-card-text', route('listings.index'), 'listings.*', 'listings.view', false],
                 ['Keywords', 'bi-search', route('keywords.index'), 'keywords.*', 'listings.view', false],
                 ['Business Analytics', 'bi-speedometer2', route('analytics.business'), 'analytics/business*', 'reports.view', false],
+                ['Business Performance', 'bi-speedometer', route('business-performance.index'), 'business-performance*', 'reports.view', false],
+                ['Cash Planning', 'bi-cash-stack', route('cash-planning.index'), 'finance/cash-planning*', 'finance.view', false],
                 ['Reports', 'bi-file-earmark-bar-graph', route('reports.index'), 'reports.*', 'reports.view', false],
             ],
             'System' => [
@@ -755,6 +795,7 @@
                 ],
                 ['Automation Control Center', 'bi-diagram-3', route('governance.control-center'), 'governance.*', 'reports.view', false],
                 ['Operational Intelligence', 'bi-graph-up-arrow', route('operational-insights.index'), 'operational-insights.*', 'reports.view', false],
+                ['Executive Intelligence', 'bi-lightbulb', route('executive.intelligence.index'), 'executive/intelligence*', 'purchases.view', false],
                 ['Notifications', 'bi-bell', route('notifications.index'), 'notifications.*', 'reports.view', false],
                 ['Approvals', 'bi-check2-square', route('approvals.index'), 'approvals', null, false],
                 ['Users', 'bi-people', route('users.index'), 'users.*', 'users.manage', false],
@@ -795,7 +836,7 @@
                     <div class="sg-appgrid">
                         @foreach ($groups as $g => $items)
                             @foreach ($items as [$l, $i, $url, $p, $perm, $soon])
-                                @if ($soon)
+                                @if (!$soon && (!$perm || $u->can($perm)))
                                     <a href="{{ $url }}"><i
                                             class="bi {{ $i }}"></i>{{ $l }}</a>
                                 @endif
@@ -833,7 +874,7 @@
                         @endcan
                         @foreach ($groups as $items)
                             @foreach ($items as [$l, $i, $url, $p, $perm, $soon])
-                                @if ($soon)
+                                @if (!$soon && (!$perm || $u->can($perm)))
                                     <a href="{{ $url }}"><i
                                             class="bi {{ $i }}"></i>{{ $l }}</a>
                                 @endif
