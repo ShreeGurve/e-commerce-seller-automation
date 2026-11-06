@@ -1837,3 +1837,26 @@ Run these in a staging/test database with non-production sample records:
 - Missing tables: back up the database, then review `php artisan migrate:status` before running pending migrations.
 - Permission denied: verify the user's assigned role/permissions; do not bypass middleware to make a test pass.
 - Never drop existing tables or reset a production database as a troubleshooting shortcut.
+
+# Package 11 — Security, Permissions & Data Validation
+
+## Install
+1. Back up your project files.
+2. Extract this ZIP into the Laravel project root.
+3. Run:
+   ```bash
+   php artisan optimize:clear
+   php artisan seller-automation:security-audit
+   ```
+4. Optional:
+   ```bash
+   php artisan seller-automation:security-audit --skip-database
+   php artisan seller-automation:security-audit --strict
+   ```
+
+The command is auto-discovered from `app/Console/Commands` in a standard Laravel application. No migration or route registration is required.
+
+## Scope
+Read-only checks for APP_DEBUG, APP_KEY, secure session cookie recommendation, private storage directory, authentication middleware on selected sensitive routes, and optional Spatie-style permission tables/data.
+
+This is a readiness audit, not a penetration test. Middleware inherited through custom route groups may require manual review if flagged. If the project uses a custom permission schema, treat Spatie table checks as informational. The command does not modify configuration, permissions, storage, or business data.
