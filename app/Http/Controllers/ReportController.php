@@ -20,20 +20,20 @@ class ReportController extends Controller
 
     public function show(Request $request, string $key)
     {
-        $data = $this->reports->run($key, $f = $this->filters($request));
+        $data = $this->reports->run($key, $f = $this->filters($request, $key));
         return view('reports.show', ['data' => $data, 'f' => $f, 'shown' => array_slice($data['rows'], 0, self::SCREEN_ROWS), 'total' => count($data['rows']), 'limit' => self::SCREEN_ROWS,
             'marketplaces' => Marketplace::active()->get(), 'products' => Product::orderBy('sku')->get(['id', 'sku', 'name']), 'categories' => Category::orderBy('name')->get(), 'sorts' => ReportService::SORTS]);
     }
 
     public function print(Request $request, string $key)
     {
-        $data = $this->reports->run($key, $f = $this->filters($request));
+        $data = $this->reports->run($key, $f = $this->filters($request, $key));
         return view('reports.print', ['data' => $data, 'f' => $f, 'mp' => $f['marketplace_id'] ? Marketplace::find($f['marketplace_id'])?->name : null, 'by' => $request->user()->name]);
     }
 
     public function export(Request $request, string $key, string $format)
     {
-        $data = $this->reports->run($key, $f = $this->filters($request));
+        $data = $this->reports->run($key, $f = $this->filters($request, $key));
         ActivityLogger::log('report.exported', null, null, ['report' => $key, 'format' => $format, 'rows' => count($data['rows']), 'from' => $f['from'], 'to' => $f['to']]);
         $name = $key . (in_array('date', $data['filters'], true) ? "-{$f['from']}-to-{$f['to']}" : '-' . now()->toDateString());
 
@@ -69,13 +69,43 @@ class ReportController extends Controller
         return view('reports.daily', ['r' => $this->reports->daily($date, $request->user()), 'date' => $date]);
     }
 
-    private function filters(Request $r): array
+    /** Validate only the filters supported by the selected report before building its query. */
+    private function filters(Request $r, string $key): array
     {
-        $parse = function ($v) { try { return $v ? Carbon::parse($v)->startOfDay() : null; } catch (\Throwable) { return null; } };
-        $to = $parse($r->query('to')) ?? now()->startOfDay(); $from = $parse($r->query('from')) ?? now()->subDays(29)->startOfDay();
+        $catalog = $this->reports->catalog();
+        abort_unless(isset($catalog[$key]), 404);
+        $supported = $catalog[$key]['filters'];
+        $rules = [];
+        if (in_array('date', $supported, true)) {
+            $rules['from'] = ['nullable', 'date_format:Y-m-d'];
+            $rules['to'] = ['nullable', 'date_format:Y-m-d'];
+        }
+        if (in_array('marketplace', $supported, true)) {
+            $rules['marketplace_id'] = ['nullable', 'integer', 'min:1', 'exists:marketplaces,id'];
+        }
+        if (in_array('product', $supported, true)) {
+            $rules['product_id'] = ['nullable', 'integer', 'min:1', 'exists:products,id'];
+        }
+        if (in_array('category', $supported, true)) {
+            $rules['category_id'] = ['nullable', 'integer', 'min:1', 'exists:categories,id'];
+        }
+        if (in_array('sort', $supported, true)) {
+            $rules['sort'] = ['nullable', 'in:' . implode(',', array_keys(ReportService::SORTS))];
+        }
+        if ($rules) $r->validate($rules);
+
+        $from = !empty($r->query('from')) ? Carbon::createFromFormat('!Y-m-d', $r->query('from'))->startOfDay() : now()->subDays(29)->startOfDay();
+        $to = !empty($r->query('to')) ? Carbon::createFromFormat('!Y-m-d', $r->query('to'))->startOfDay() : now()->startOfDay();
+        // Keep the established UX: reversed date ranges are normalized rather than rejected.
         if ($from->gt($to)) [$from, $to] = [$to, $from];
-        return ['from' => $from->toDateString(), 'to' => $to->toDateString(), 'marketplace_id' => $r->query('marketplace_id') ? (int) $r->query('marketplace_id') : null,
-            'product_id' => $r->query('product_id') ? (int) $r->query('product_id') : null, 'category_id' => $r->query('category_id') ? (int) $r->query('category_id') : null,
-            'sort' => array_key_exists($r->query('sort'), ReportService::SORTS) ? $r->query('sort') : 'profit_desc'];
+
+        return [
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'marketplace_id' => in_array('marketplace', $supported, true) && $r->query('marketplace_id') ? (int) $r->query('marketplace_id') : null,
+            'product_id' => in_array('product', $supported, true) && $r->query('product_id') ? (int) $r->query('product_id') : null,
+            'category_id' => in_array('category', $supported, true) && $r->query('category_id') ? (int) $r->query('category_id') : null,
+            'sort' => in_array('sort', $supported, true) && $r->query('sort') ? $r->query('sort') : 'profit_desc',
+        ];
     }
 }

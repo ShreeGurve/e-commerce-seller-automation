@@ -1892,3 +1892,72 @@ No migration, route changes, Composer packages, npm packages, or database change
 - Test collapsed sidebar, mobile off-canvas sidebar, dark mode, and keyboard tab focus.
 
 This package does not alter dashboard calculations, financial data, TEST-order handling, marketplace connections, automation rules, or approval logic.
+
+# Seller Automation — Package 13: Dashboard UX Refinement
+
+## Scope
+This is a view-only refinement based on the supplied project archive.
+
+- Adds compact section-jump navigation for Overview, Action Centre, Trends, Products, Channels and Activity.
+- Improves dashboard card hover/focus presentation and KPI card height consistency.
+- Improves small-screen KPI typography and chart-card spacing.
+- Adds reduced-motion handling and keeps styling scoped to the dashboard.
+- Preserves the existing dashboard controller, KPI calculations, queries, chart datasets, filters, permissions and routes.
+
+## Install
+1. Back up `resources/views/dashboard.blade.php`.
+2. Extract this ZIP into the Laravel project root, overwriting the dashboard view.
+3. Run:
+
+```bash
+php artisan view:clear
+php artisan optimize:clear
+```
+
+No migration, route change, composer package or database operation is required.
+
+## Verify
+- Open `/dashboard` with data available.
+- Click each section-jump link and verify it scrolls to the matching section.
+- Test at desktop and mobile widths, in light and dark mode.
+- Confirm date presets, marketplace filter, dashboard rebuild action, product links and charts still work.
+- Also open the dashboard with an empty/new dataset to verify the setup and error states.
+
+## Validation limits
+This patch was checked against the supplied source structure and its ZIP contents. No live Laravel runtime, database, browser or production environment was available, so runtime/browser behavior is not claimed as tested.
+
+# Package 14 — Report Filter & Export Validation
+
+## What changes
+
+- Validates report filters against the selected report's supported filter set before running report queries.
+- Validates dates strictly as `YYYY-MM-DD` instead of silently replacing malformed date input with defaults.
+- Validates selected marketplace, product and category IDs against existing database records.
+- Validates report sort keys against the existing allow-list.
+- Keeps the existing behavior of swapping reversed date ranges.
+- Keeps existing CSV/XLSX generation, report calculations, export permissions, activity logging and TEST-order safeguards unchanged.
+
+## Files
+
+- `app/Http/Controllers/ReportController.php` — updated filter validation and normalization.
+
+## Install
+
+1. Back up `app/Http/Controllers/ReportController.php`.
+2. Extract this ZIP into the Laravel project root and replace the file.
+3. Run:
+
+```bash
+php artisan optimize:clear
+php artisan route:list --name=reports
+```
+
+## Manual verification
+
+- Open `/reports` and open several reports.
+- Apply valid date, channel, product, category and sort filters where available.
+- Export CSV and XLSX with the same filters and confirm the exported data matches the report.
+- Try an invalid date such as `2026-02-31`, an unknown marketplace/product/category ID, and an unsupported sort value. Laravel should reject invalid filter input rather than silently run a different report.
+- Try `from` later than `to`; the range should continue to normalize as before.
+
+No migrations, new routes, permissions, external API calls or marketplace write actions are included.
