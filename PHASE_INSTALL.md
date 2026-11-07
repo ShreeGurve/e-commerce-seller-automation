@@ -1995,3 +1995,37 @@ The export is read-only, streams in chunks of 500 products, and includes SKU, pr
 - Does not modify inventory quantities or ledger records.
 - Does not calculate monetary valuation; current COGS history can have multiple/effective-date considerations and should be handled in a separately verified valuation report.
 - Access is controlled by the existing `inventory.view` permission.
+
+# Package 16 — Inventory Movement Analytics
+
+## Included
+- `app/Http/Controllers/InventoryMovementAnalyticsController.php`
+- `resources/views/inventory/movement-analytics.blade.php`
+- `routes/inventory-movement-analytics-route.txt`
+- `PACKAGE16_AUDIT_NOTES.md`
+
+## Install
+1. Back up `routes/web.php`.
+2. Copy the controller and Blade view into the matching project paths.
+3. Add the route snippet inside the existing authenticated route group, **before** `/inventory/{product}`.
+4. Run:
+   ```bash
+   php artisan view:clear
+   php artisan optimize:clear
+   php artisan route:list --name=inventory.movement-analytics
+   ```
+5. Visit `/inventory/movement-analytics` with a user who has `inventory.view`.
+
+## Features
+- Date range, transaction type and product/SKU filters.
+- Units in, units out, net damaged change and transaction count.
+- Movement totals by transaction type.
+- Daily net movement trend (up to 90 returned date groups).
+- Most active products and paginated recent ledger rows.
+- Integrity check comparing inventory bucket balances against transaction ledger sums.
+
+## Important
+Read-only analytics. No migrations, stock updates, transaction writes, or inventory valuation recalculation. Net units are calculated from `qty_change`; damaged movement is calculated from `damaged_change`. The integrity check covers existing inventory rows and compares both available and damaged quantities with ledger totals.
+
+## Validation
+PHP syntax and ZIP integrity are checked when packaging. Database/browser runtime testing must be performed in your local Laravel environment.
