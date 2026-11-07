@@ -1,5 +1,5 @@
 <?php
-use App\Http\Controllers\{ReportController, PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController, AutomationController, FulfilmentController, InventoryExportController, InventoryMovementAnalyticsController, ListingReadinessController};
+use App\Http\Controllers\{ReportController, PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController, AutomationController, FulfilmentController, InventoryExportController, InventoryMovementAnalyticsController, InventoryReconciliationController, ListingReadinessController};
 use App\Http\Controllers\MarketplaceConnectionController;
 use App\Http\Controllers\ReorderController;
 use App\Http\Controllers\SupplierAnalyticsController;
@@ -547,6 +547,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/inventory/movement-analytics', [InventoryMovementAnalyticsController::class, 'index'])
         ->middleware('can:inventory.view')
         ->name('inventory.movement-analytics');
+
+    Route::get('/inventory/reconciliation', [InventoryReconciliationController::class, 'index'])
+        ->middleware('can:inventory.view')
+        ->name('inventory.reconciliation');
 
     // Modules not built yet
     Route::get('/m/{module}', ModuleController::class)->name('module');

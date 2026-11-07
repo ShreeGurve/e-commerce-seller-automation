@@ -1,0 +1,3 @@
+// Add inside the authenticated route group in routes/web.php.
+// Place before the dynamic /inventory/{product} route.
+

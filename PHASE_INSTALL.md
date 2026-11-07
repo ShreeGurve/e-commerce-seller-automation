@@ -2029,3 +2029,30 @@ Read-only analytics. No migrations, stock updates, transaction writes, or invent
 
 ## Validation
 PHP syntax and ZIP integrity are checked when packaging. Database/browser runtime testing must be performed in your local Laravel environment.
+
+# Package 17 — Inventory Reconciliation Investigation
+
+## Install
+1. Back up `routes/web.php`.
+2. Copy the controller and Blade view into their matching paths.
+3. Add the route from `routes/inventory-reconciliation-route.txt` inside the existing authenticated route group, before `/inventory/{product}`.
+4. Run:
+   ```bash
+   php artisan view:clear
+   php artisan optimize:clear
+   php artisan route:list --name=inventory.reconciliation
+   ```
+5. Visit `/inventory/reconciliation` as a user with `inventory.view`.
+
+## What it does
+- Uses the existing `InventoryService::mismatches()` canonical comparison.
+- Shows total inventory rows, mismatch count and matched count.
+- Filters by product/SKU and matched/mismatch status.
+- Displays bucket balances and the latest 20 ledger entries.
+- Links to the existing product inventory detail page for investigation.
+
+## Safety
+Read-only. No migrations, database writes, direct stock corrections, or ledger edits. Corrections remain in the existing authorized inventory adjustment workflow. The page compares available and damaged buckets against ledger totals; it does not reconcile reserved, returned or in-transit quantities because the existing immutable ledger tracks only available and damaged deltas.
+
+## Validation
+Static PHP syntax and ZIP integrity are checked during packaging. Run the route and browser/database checks locally after installation.
