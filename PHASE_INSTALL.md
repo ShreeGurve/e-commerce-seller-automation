@@ -2056,3 +2056,56 @@ Read-only. No migrations, database writes, direct stock corrections, or ledger e
 
 ## Validation
 Static PHP syntax and ZIP integrity are checked during packaging. Run the route and browser/database checks locally after installation.
+
+
+### Package 18 — Controlled Stock Corrections
+- Submit a counted quantity against the current available quantity.
+- A request remains pending; submitting it does not change stock.
+- An `inventory.manage` user can approve or reject it.
+- Approval rechecks that stock has not changed since submission, then writes the adjustment through `InventoryService` and links the immutable ledger transaction.
+- Duplicate pending requests for one product are blocked.
+
+### Package 19 — Inventory Reconciliation Reports
+- Status/date filters for correction history.
+- Pending/applied/rejected counts and net applied variance.
+- CSV export with requester/reviewer and audit notes.
+
+### Package 20 — Inventory Automation Monitor
+- Read-only low/out-of-stock signals using existing `minimum_stock` and `reorder_level`.
+- Suggested replenishment quantity = max(minimum stock, reorder level) minus available stock, floored at zero.
+- CSV export. This does not create purchase orders, change stock, or contact marketplaces/suppliers.
+
+## Install
+
+1. Extract this ZIP into the Laravel project root, preserving folder structure.
+2. Add the route declarations from `routes/inventory-batch-18-20-route-snippets.php` inside the existing authenticated route group in `routes/web.php`.
+   - Add the three controller `use` statements at the top of `routes/web.php` if that file uses imports.
+   - Place these static `/inventory/...` routes **before** `/inventory/{product}`. This is important because the dynamic product route can capture static paths.
+   - Merge into your current local `routes/web.php`; do not replace it with an older copy.
+3. Run:
+   ```bash
+   php artisan migrate
+   php artisan optimize:clear
+   php artisan route:list --name=inventory.corrections
+   php artisan route:list --name=inventory.reconciliation-report
+   php artisan route:list --name=inventory.automation
+   ```
+
+## Permissions
+Uses the project's existing custom permissions:
+- `inventory.view` — view correction register, report, and automation monitor.
+- `inventory.manage` — submit, approve, and reject stock correction requests.
+
+No Spatie tables or dependencies are added.
+
+## Important UI entry points
+- Correction review: `/inventory/corrections`
+- Report: `/inventory/reconciliation-report`
+- Automation monitor: `/inventory/automation`
+- To submit a count correction, open an existing inventory product detail page and POST the count form to `route('inventory.corrections.store', $product)` with `counted_qty` and optional `note`. A small form snippet is supplied in `docs/product-detail-form.blade.php`.
+
+## Product detail form snippet
+Copy the contents of `docs/product-detail-form.blade.php` into the relevant product inventory detail view. The form is deliberately supplied as a snippet so this patch does not overwrite your current product detail UI.
+
+## Validation scope
+The package authoring check includes PHP syntax checks and ZIP integrity only. Database migration, browser rendering, permission behavior, and end-to-end approval were not run against your local database/browser. Please run the install commands and test one correction request with a manager account before production use.

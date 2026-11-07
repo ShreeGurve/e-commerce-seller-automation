@@ -1,5 +1,5 @@
 <?php
-use App\Http\Controllers\{ReportController, PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController, AutomationController, FulfilmentController, InventoryExportController, InventoryMovementAnalyticsController, InventoryReconciliationController, ListingReadinessController};
+use App\Http\Controllers\{ReportController, PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController, AutomationController, FulfilmentController, InventoryAutomationController, InventoryCorrectionController, InventoryExportController, InventoryMovementAnalyticsController, InventoryReconciliationController, InventoryReconciliationReportController, ListingReadinessController};
 use App\Http\Controllers\MarketplaceConnectionController;
 use App\Http\Controllers\ReorderController;
 use App\Http\Controllers\SupplierAnalyticsController;
@@ -551,6 +551,25 @@ Route::middleware('auth')->group(function () {
     Route::get('/inventory/reconciliation', [InventoryReconciliationController::class, 'index'])
         ->middleware('can:inventory.view')
         ->name('inventory.reconciliation');
+
+        Route::get('/inventory/corrections', [InventoryCorrectionController::class, 'index'])
+            ->middleware('can:inventory.view')->name('inventory.corrections');
+        Route::post('/inventory/{product}/corrections', [InventoryCorrectionController::class, 'store'])
+            ->middleware('can:inventory.manage')->name('inventory.corrections.store');
+        Route::post('/inventory/corrections/{correction}/approve', [InventoryCorrectionController::class, 'approve'])
+            ->middleware('can:inventory.manage')->name('inventory.corrections.approve');
+        Route::post('/inventory/corrections/{correction}/reject', [InventoryCorrectionController::class, 'reject'])
+            ->middleware('can:inventory.manage')->name('inventory.corrections.reject');
+
+        Route::get('/inventory/reconciliation-report', [InventoryReconciliationReportController::class, 'index'])
+            ->middleware('can:inventory.view')->name('inventory.reconciliation-report');
+        Route::get('/inventory/reconciliation-report/export', [InventoryReconciliationReportController::class, 'export'])
+            ->middleware('can:inventory.view')->name('inventory.reconciliation-report.export');
+
+        Route::get('/inventory/automation', [InventoryAutomationController::class, 'index'])
+            ->middleware('can:inventory.view')->name('inventory.automation');
+        Route::get('/inventory/automation/export', [InventoryAutomationController::class, 'export'])
+            ->middleware('can:inventory.view')->name('inventory.automation.export');
 
     // Modules not built yet
     Route::get('/m/{module}', ModuleController::class)->name('module');
