@@ -1,5 +1,5 @@
 <?php
-use App\Http\Controllers\{ReportController, PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController, AutomationController, FulfilmentController, InventoryAutomationController, InventoryCorrectionController, InventoryExportController, InventoryMovementAnalyticsController, InventoryReconciliationController, InventoryReconciliationReportController, ListingReadinessController};
+use App\Http\Controllers\{ReportController, PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController, AutomationController, FulfilmentController, InventoryAutomationController, InventoryCorrectionController, InventoryExportController, InventoryMovementAnalyticsController, InventoryOperationsController, InventoryReconciliationController, InventoryReconciliationReportController, ListingReadinessController};
 use App\Http\Controllers\MarketplaceConnectionController;
 use App\Http\Controllers\ReorderController;
 use App\Http\Controllers\SupplierAnalyticsController;
@@ -570,6 +570,17 @@ Route::middleware('auth')->group(function () {
             ->middleware('can:inventory.view')->name('inventory.automation');
         Route::get('/inventory/automation/export', [InventoryAutomationController::class, 'export'])
             ->middleware('can:inventory.view')->name('inventory.automation.export');
+
+        Route::get('/inventory/ledger', [InventoryOperationsController::class, 'ledger'])
+            ->middleware('can:inventory.view')->name('inventory.ledger');
+        Route::get('/inventory/ledger/export', [InventoryOperationsController::class, 'ledgerExport'])
+            ->middleware('can:inventory.view')->name('inventory.ledger.export');
+        Route::get('/inventory/inactivity', [InventoryOperationsController::class, 'inactivity'])
+            ->middleware('can:inventory.view')->name('inventory.inactivity');
+        Route::get('/inventory/reservations/audit', [InventoryOperationsController::class, 'reservations'])
+            ->middleware('can:inventory.view')->name('inventory.reservations.audit');
+        Route::get('/inventory/reservations/audit/export', [InventoryOperationsController::class, 'reservationExport'])
+            ->middleware('can:inventory.view')->name('inventory.reservations.export');
 
     // Modules not built yet
     Route::get('/m/{module}', ModuleController::class)->name('module');
