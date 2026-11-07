@@ -1,5 +1,5 @@
 <?php
-use App\Http\Controllers\{ReportController, PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController, AutomationController, FulfilmentController, InventoryAutomationController, InventoryCorrectionController, InventoryExportController, InventoryMovementAnalyticsController, InventoryOperationsController, InventoryReconciliationController, InventoryReconciliationReportController, ListingReadinessController};
+use App\Http\Controllers\{ReportController, PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController, AutomationController, FulfilmentController, InventoryAutomationController, InventoryCorrectionController, InventoryExportController, InventoryHealthController, InventoryMovementAnalyticsController, InventoryMovementCostController, InventoryOperationsController, InventoryReconciliationController, InventoryReconciliationReportController, InventoryValuationController, ListingReadinessController};
 use App\Http\Controllers\MarketplaceConnectionController;
 use App\Http\Controllers\ReorderController;
 use App\Http\Controllers\SupplierAnalyticsController;
@@ -581,6 +581,21 @@ Route::middleware('auth')->group(function () {
             ->middleware('can:inventory.view')->name('inventory.reservations.audit');
         Route::get('/inventory/reservations/audit/export', [InventoryOperationsController::class, 'reservationExport'])
             ->middleware('can:inventory.view')->name('inventory.reservations.export');
+
+        Route::get('/inventory/health', [InventoryHealthController::class, 'index'])
+            ->middleware('can:inventory.view')->name('inventory.health');
+        Route::get('/inventory/health/export', [InventoryHealthController::class, 'export'])
+            ->middleware('can:inventory.view')->name('inventory.health.export');
+
+        Route::get('/inventory/valuation', [InventoryValuationController::class, 'index'])
+            ->middleware('can:inventory.view')->name('inventory.valuation');
+        Route::get('/inventory/valuation/export', [InventoryValuationController::class, 'export'])
+            ->middleware('can:inventory.view')->name('inventory.valuation.export');
+
+        Route::get('/inventory/movement-costs', [InventoryMovementCostController::class, 'index'])
+            ->middleware('can:inventory.view')->name('inventory.movement-costs');
+        Route::get('/inventory/movement-costs/export', [InventoryMovementCostController::class, 'export'])
+            ->middleware('can:inventory.view')->name('inventory.movement-costs.export');
 
     // Modules not built yet
     Route::get('/m/{module}', ModuleController::class)->name('module');
