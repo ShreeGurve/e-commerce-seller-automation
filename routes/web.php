@@ -599,6 +599,14 @@ Route::middleware('auth')->group(function () {
         Route::get('/finance/operations/settlement-performance', [\App\Http\Controllers\FinanceOperationsIntelligenceController::class, 'settlements'])
             ->middleware('can:finance.view')->name('finance.operations.settlement-performance');
 
+        // Place before any dynamic /finance/{...} route if your application has one.
+        Route::get('/finance/operations/cash-forecast', [\App\Http\Controllers\FinancialPlanningIntelligenceController::class, 'cashForecast'])
+            ->middleware('can:finance.view')->name('finance.operations.cash-forecast');
+        Route::get('/finance/operations/working-capital', [\App\Http\Controllers\FinancialPlanningIntelligenceController::class, 'workingCapital'])
+            ->middleware('can:finance.view')->name('finance.operations.working-capital');
+        Route::get('/finance/operations/financial-health', [\App\Http\Controllers\FinancialPlanningIntelligenceController::class, 'financialHealth'])
+            ->middleware('can:finance.view')->name('finance.operations.financial-health');
+
     // Modules not built yet
     Route::get('/m/{module}', ModuleController::class)->name('module');
 });
