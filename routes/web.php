@@ -591,6 +591,13 @@ Route::middleware('auth')->group(function () {
         Route::get('/finance/operations/marketplace-performance', [\App\Http\Controllers\FinanceOperationsInsightController::class, 'marketplacePerformance'])
             ->middleware('can:finance.view')->name('finance.operations.marketplace-performance');
 
+        // Keep these static paths before any /finance/{...} catch-all routes.
+        Route::get('/finance/operations/risk-monitor', [\App\Http\Controllers\FinanceOperationsIntelligenceController::class, 'risk'])
+            ->middleware('can:finance.view')->name('finance.operations.risk-monitor');
+        Route::get('/finance/operations/profit-leakage', [\App\Http\Controllers\FinanceOperationsIntelligenceController::class, 'leakage'])
+            ->middleware('can:finance.view')->name('finance.operations.profit-leakage');
+        Route::get('/finance/operations/settlement-performance', [\App\Http\Controllers\FinanceOperationsIntelligenceController::class, 'settlements'])
+            ->middleware('can:finance.view')->name('finance.operations.settlement-performance');
 
     // Modules not built yet
     Route::get('/m/{module}', ModuleController::class)->name('module');
