@@ -573,6 +573,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/returns/operations/disposition-reconciliation', [OrderOperationsInsightsController::class, 'returnDisposition'])
         ->middleware('can:returns.view')->name('returns.operations.disposition-reconciliation');
 
+        // Add these routes inside the existing authenticated route group in routes/web.php.
+        // Place all three before dynamic routes such as /orders/{order} and /claims/{claim}.
+        Route::get('/orders/operations/refund-reconciliation', [\App\Http\Controllers\CommercialReconciliationController::class, 'refunds'])
+            ->middleware('can:orders.view')->name('orders.operations.refund-reconciliation');
+        Route::get('/claims/operations/recovery-review', [\App\Http\Controllers\CommercialReconciliationController::class, 'claimRecovery'])
+            ->middleware('can:claims.view')->name('claims.operations.recovery-review');
+        Route::get('/orders/operations/settlement-coverage', [\App\Http\Controllers\CommercialReconciliationController::class, 'settlementCoverage'])
+            ->middleware('can:orders.view')->name('orders.operations.settlement-coverage');
+
     // Modules not built yet
     Route::get('/m/{module}', ModuleController::class)->name('module');
 });
