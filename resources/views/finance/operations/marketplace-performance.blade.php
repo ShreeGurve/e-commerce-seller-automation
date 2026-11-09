@@ -1,0 +1,11 @@
+@extends('layouts.app')
+@section('title', 'Marketplace Performance Review')
+@section('subtitle', 'Compare sales, profit, fees and refund impact by channel')
+@section('content')
+<div class="card mb-3"><div class="card-body"><form method="GET" class="row g-2 align-items-end"><div class="col-md-4"><label class="form-label">From</label><input class="form-control" type="date" name="from" value="{{ $from }}"></div><div class="col-md-4"><label class="form-label">To</label><input class="form-control" type="date" name="to" value="{{ $to }}"></div><div class="col-md-4"><button class="btn btn-primary">Apply filters</button></div></form></div></div>
+<div class="alert alert-info">Profit uses actual profit when available and estimated profit otherwise. Refunds are shown separately and are not subtracted again from profit. TEST and cancelled orders are excluded.</div>
+<div class="card"><div class="table-responsive"><table class="table table-hover mb-0"><thead><tr><th>Marketplace</th><th class="text-end">Orders</th><th class="text-end">Units</th><th class="text-end">Revenue (INR)</th><th class="text-end">COGS (INR)</th><th class="text-end">Fees (INR)</th><th class="text-end">Return loss (INR)</th><th class="text-end">Refunds (INR)</th><th class="text-end">Profit (INR)</th><th class="text-end">Margin</th></tr></thead><tbody>
+@forelse($performance as $r)<tr><td class="fw-semibold">{{ $r->name }}</td><td class="text-end">{{ number_format((int)$r->orders) }}</td><td class="text-end">{{ number_format((int)$r->units) }}</td><td class="text-end">{{ number_format((float)$r->revenue,2) }}</td><td class="text-end">{{ number_format((float)$r->cogs,2) }}</td><td class="text-end">{{ number_format((float)$r->fees,2) }}</td><td class="text-end">{{ number_format((float)$r->return_loss,2) }}</td><td class="text-end">{{ number_format((float)$r->refund_amount,2) }}</td><td class="text-end fw-semibold {{ (float)$r->profit < 0 ? 'text-danger' : '' }}">{{ number_format((float)$r->profit,2) }}</td><td class="text-end">{{ number_format((float)$r->margin,1) }}%</td></tr>
+@empty<tr><td colspan="10" class="text-center text-muted py-4">No marketplace profitability data for this period.</td></tr>@endforelse
+</tbody></table></div></div>
+@endsection

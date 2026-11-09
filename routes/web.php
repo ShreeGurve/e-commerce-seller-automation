@@ -582,6 +582,16 @@ Route::middleware('auth')->group(function () {
         Route::get('/orders/operations/settlement-coverage', [\App\Http\Controllers\CommercialReconciliationController::class, 'settlementCoverage'])
             ->middleware('can:orders.view')->name('orders.operations.settlement-coverage');
 
+        // Add these routes inside the existing authenticated routes group.
+        // Keep these static finance routes before any dynamic /finance/{...} route.
+        Route::get('/finance/operations/profitability-exceptions', [\App\Http\Controllers\FinanceOperationsInsightController::class, 'profitabilityExceptions'])
+            ->middleware('can:finance.view')->name('finance.operations.profitability-exceptions');
+        Route::get('/finance/operations/refund-impact', [\App\Http\Controllers\FinanceOperationsInsightController::class, 'refundImpact'])
+            ->middleware('can:finance.view')->name('finance.operations.refund-impact');
+        Route::get('/finance/operations/marketplace-performance', [\App\Http\Controllers\FinanceOperationsInsightController::class, 'marketplacePerformance'])
+            ->middleware('can:finance.view')->name('finance.operations.marketplace-performance');
+
+
     // Modules not built yet
     Route::get('/m/{module}', ModuleController::class)->name('module');
 });
