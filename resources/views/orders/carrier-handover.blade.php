@@ -1,0 +1,10 @@
+@extends('layouts.app')
+@section('title', 'Carrier Handover Reconciliation')
+@section('subtitle', 'Review shipment records against internal pickup and carrier handover evidence')
+@section('content')
+<div class="card mb-3"><div class="card-body"><form class="row g-2"><div class="col-md-3"><label class="form-label">Shipped from</label><input class="form-control" type="date" name="from" value="{{ $from }}"></div><div class="col-md-3"><label class="form-label">Shipped to</label><input class="form-control" type="date" name="to" value="{{ $to }}"></div><div class="col-md-3 align-self-end"><button class="btn btn-primary">Apply</button> <a class="btn btn-outline-secondary" href="{{ route('orders.operations.carrier-handover') }}">Reset</a></div></form></div></div>
+<div class="alert alert-info">This report checks only records stored in Seller Automation. It does not contact a carrier or verify external tracking events.</div>
+<div class="card"><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th>Order</th><th>Shipped</th><th>Carrier</th><th>Tracking</th><th>Pickup recorded</th><th>Handover evidence</th><th>Review</th></tr></thead><tbody>
+@forelse($orders as $order)<tr><td><a href="{{ route('orders.show', $order) }}">{{ $order->order_number }}</a><div class="small text-muted">{{ $order->marketplace?->name }}</div></td><td>{{ $order->shipped_at?->format('d M Y H:i') ?? '—' }}</td><td>{{ $order->fulfillment?->carrier ?: '—' }}</td><td>{{ $order->fulfillment?->tracking_number ?: '—' }}</td><td>{{ $order->fulfillment?->picked_up_at?->format('d M Y H:i') ?: '—' }}</td><td>{{ $order->handover_event?->description ?: ($order->handover_event?->event_type ?? '—') }}</td><td>@if($order->handover_gap)<span class="badge text-bg-warning">Evidence missing</span>@else<span class="badge text-bg-success">Recorded</span>@endif</td></tr>
+@empty<tr><td colspan="7" class="text-center text-muted py-4">No shipped self-fulfilled orders in this date range.</td></tr>@endforelse</tbody></table></div><div class="card-footer">{{ $orders->links() }}</div></div>
+@endsection
