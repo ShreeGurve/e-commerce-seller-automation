@@ -1,5 +1,5 @@
 <?php
-use App\Http\Controllers\{ReportController, PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController, AutomationController, FulfilmentController, ListingReadinessController, OrderOperationsInsightsController};
+use App\Http\Controllers\{ReportController, PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController, AutomationController, ExecutiveDecisionDashboardController, FulfilmentController, KpiTrendController, ListingReadinessController, OrderOperationsInsightsController, ProductPerformanceController};
 use App\Http\Controllers\MarketplaceConnectionController;
 use App\Http\Controllers\ReorderController;
 use App\Http\Controllers\SupplierAnalyticsController;
@@ -606,6 +606,20 @@ Route::middleware('auth')->group(function () {
             ->middleware('can:finance.view')->name('finance.operations.working-capital');
         Route::get('/finance/operations/financial-health', [\App\Http\Controllers\FinancialPlanningIntelligenceController::class, 'financialHealth'])
             ->middleware('can:finance.view')->name('finance.operations.financial-health');
+
+        // Package 57 — Product Performance Scorecard
+        Route::get('/analytics/product-performance', [ProductPerformanceController::class, 'index'])
+            ->middleware('can:reports.view')->name('product-performance.index');
+        Route::get('/analytics/product-performance/export', [ProductPerformanceController::class, 'export'])
+            ->middleware('can:reports.export')->name('product-performance.export');
+
+        // Package 58 — Executive Decision Dashboard
+        Route::get('/executive/decision-dashboard', ExecutiveDecisionDashboardController::class)
+            ->middleware('can:reports.view')->name('executive.decision-dashboard');
+
+        // Package 59 — Six-month KPI Target vs Actual Trends
+        Route::get('/business-performance/trends', [KpiTrendController::class, 'index'])
+            ->middleware('can:reports.view')->name('business-performance.trends');
 
     // Modules not built yet
     Route::get('/m/{module}', ModuleController::class)->name('module');
