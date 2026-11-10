@@ -1,5 +1,5 @@
 <?php
-use App\Http\Controllers\{ReportController, PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController, AutomationController, ExecutiveDecisionDashboardController, FulfilmentController, KpiTrendController, ListingReadinessController, OrderOperationsInsightsController, ProductPerformanceController};
+use App\Http\Controllers\{ReportController, PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController, AutomationController, AutomationTaskController, ExecutiveDecisionDashboardController, FulfilmentController, KpiTrendController, ListingReadinessController, OrderOperationsInsightsController, ProductPerformanceController};
 use App\Http\Controllers\MarketplaceConnectionController;
 use App\Http\Controllers\ReorderController;
 use App\Http\Controllers\SupplierAnalyticsController;
@@ -650,6 +650,23 @@ Route::middleware('auth')->group(function () {
         ->middleware('can:reports.view')->name('automation.alert-priorities.index');
     Route::get('/automation/workflow-monitor', [\App\Http\Controllers\AutomationOperationsController::class, 'workflowMonitor'])
         ->middleware('can:reports.view')->name('automation.workflow-monitor.index');
+
+    Route::get('/automation/tasks', [AutomationTaskController::class, 'index'])->middleware('can:reports.view')->name('automation.tasks.index');
+    Route::post('/automation/tasks', [AutomationTaskController::class, 'store'])->middleware('can:purchases.edit')->name('automation.tasks.store');
+    Route::patch('/automation/tasks/{task}/complete', [AutomationTaskController::class, 'complete'])->middleware('can:purchases.edit')->name('automation.tasks.complete');
+    Route::post('/automation/recurring-tasks', [AutomationTaskController::class, 'storeRecurring'])->middleware('can:purchases.edit')->name('automation.recurring.store');
+    Route::patch('/automation/recurring-tasks/{template}/toggle', [AutomationTaskController::class, 'toggleRecurring'])->middleware('can:purchases.edit')->name('automation.recurring.toggle');
+
+});
+
+Route::middleware('can:reports.view')->prefix('automation/workforce')->name('automation.workforce.')->group(function () {
+    Route::get('/escalations', [\App\Http\Controllers\AutomationWorkforceController::class, 'escalationIndex'])->name('escalations');
+    Route::get('/workload', [\App\Http\Controllers\AutomationWorkforceController::class, 'workloadIndex'])->name('workload');
+    Route::get('/performance', [\App\Http\Controllers\AutomationWorkforceController::class, 'performanceIndex'])->name('performance');
+});
+Route::middleware('can:purchases.edit')->prefix('automation/workforce')->name('automation.workforce.')->group(function () {
+    Route::post('/tasks/{task}/escalate', [\App\Http\Controllers\AutomationWorkforceController::class, 'escalate'])->name('escalate');
+    Route::post('/tasks/{task}/reassign', [\App\Http\Controllers\AutomationWorkforceController::class, 'reassign'])->name('reassign');
 });
 
 Route::post('/inventory/{product}/stock-count', [InventoryController::class, 'stockCount'])
