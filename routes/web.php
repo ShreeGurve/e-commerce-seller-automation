@@ -640,6 +640,16 @@ Route::middleware('auth')->group(function () {
 
     // Modules not built yet
     Route::get('/m/{module}', ModuleController::class)->name('module');
+
+    // Place before any catch-all/dynamic automation routes.
+    Route::get('/automation/task-queue', [\App\Http\Controllers\AutomationOperationsController::class, 'tasks'])
+        ->middleware('can:reports.view')->name('automation.tasks.index');
+    Route::post('/automation/task-queue', [\App\Http\Controllers\AutomationOperationsController::class, 'storeFollowup'])
+        ->middleware('can:purchases.edit')->name('automation.tasks.store');
+    Route::get('/automation/alert-priorities', [\App\Http\Controllers\AutomationOperationsController::class, 'priorities'])
+        ->middleware('can:reports.view')->name('automation.alert-priorities.index');
+    Route::get('/automation/workflow-monitor', [\App\Http\Controllers\AutomationOperationsController::class, 'workflowMonitor'])
+        ->middleware('can:reports.view')->name('automation.workflow-monitor.index');
 });
 
 Route::post('/inventory/{product}/stock-count', [InventoryController::class, 'stockCount'])

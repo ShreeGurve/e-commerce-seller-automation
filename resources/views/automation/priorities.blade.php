@@ -1,0 +1,6 @@
+@extends('layouts.app')
+@section('title', 'Smart Alert Prioritization')
+@section('content')
+<div class="container-fluid py-3"><div class="mb-3"><h1 class="h3 mb-1">Smart Alert Prioritization</h1><p class="text-muted mb-0">A transparent attention score based on severity, configured priority, due date and assignment status. Scores are advisory and do not change stored alert priorities.</p></div>
+<div class="card"><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th>Alert</th><th>Severity</th><th>Stored priority</th><th>Due</th><th>Assigned to</th><th class="text-end">Attention score</th><th>Assessment</th></tr></thead><tbody>@forelse($events as $event)<tr><td><div class="fw-semibold">{{ $event->title }}</div><div class="small text-muted">{{ $event->message }}</div></td><td>{{ ucfirst(strtolower($event->severity)) }}</td><td>{{ ucfirst($event->priority ?: 'normal') }}</td><td>{{ $event->due_at?->format('d M Y H:i') ?? '—' }}</td><td>{{ $event->assignee?->name ?? 'Unassigned' }}</td><td class="text-end fw-semibold">{{ $event->attention_score }}/100</td><td>{{ $event->attention_band }}</td></tr>@empty<tr><td colspan="7" class="text-center text-muted py-4">No open alerts to prioritize.</td></tr>@endforelse</tbody></table></div></div></div>
+@endsection
