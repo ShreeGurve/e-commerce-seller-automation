@@ -61,6 +61,23 @@ Route::middleware('auth')->group(function () {
     Route::post('/business-performance/targets', [\App\Http\Controllers\BusinessPerformanceController::class, 'storeTarget'])
         ->middleware('can:reports.export')->name('business-performance.targets.store');
 
+    Route::get('/business-alerts/kpi-monitor', [\App\Http\Controllers\BusinessAlertIntelligenceController::class, 'kpiMonitor'])
+        ->middleware('can:reports.view')->name('business-alerts.kpi-monitor');
+    Route::post('/business-alerts/kpi-evaluate', [\App\Http\Controllers\BusinessAlertIntelligenceController::class, 'evaluateKpis'])
+        ->middleware('can:reports.export')->name('business-alerts.kpi-evaluate');
+    Route::get('/business-alerts/recommendations', [\App\Http\Controllers\BusinessAlertIntelligenceController::class, 'recommendations'])
+        ->middleware('can:reports.view')->name('business-alerts.recommendations');
+    Route::get('/business-alerts/digest.csv', [\App\Http\Controllers\BusinessAlertIntelligenceController::class, 'digest'])
+        ->middleware('can:reports.export')->name('business-alerts.digest');
+
+    // Packages 63–65: add inside the existing authenticated Route::middleware('auth')->group(...).
+    Route::get('/business-automation/daily-digest', [\App\Http\Controllers\BusinessAutomationInsightsController::class, 'dailyDigest'])
+        ->middleware('can:reports.view')->name('business-automation.daily-digest');
+    Route::get('/business-automation/alert-sla', [\App\Http\Controllers\BusinessAutomationInsightsController::class, 'alertSla'])
+        ->middleware('can:reports.view')->name('business-automation.alert-sla');
+    Route::get('/business-automation/kpi-forecast', [\App\Http\Controllers\BusinessAutomationInsightsController::class, 'kpiForecast'])
+        ->middleware('can:reports.view')->name('business-automation.kpi-forecast');
+
     // Phases 51-53: Operational Intelligence & Reports
     Route::get('/automation/operational-insights', [\App\Http\Controllers\OperationalInsightsController::class, 'index'])->middleware('can:reports.view')->name('operational-insights.index');
     Route::get('/automation/operational-insights/export', [\App\Http\Controllers\OperationalInsightsController::class, 'export'])->middleware('can:reports.export')->name('operational-insights.export');

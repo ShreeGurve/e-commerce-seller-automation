@@ -1,0 +1,9 @@
+@extends('layouts.app')
+@section('title','Executive Action Recommendations')
+@section('subtitle','Suggested next steps based on internal automation alerts')
+@section('content')
+<div class="card mb-3"><div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2"><form method="GET" class="d-flex gap-2 align-items-center"><label class="form-label mb-0">Status</label><select class="form-select" name="status" onchange="this.form.submit()"><option value="OPEN" @selected($status==='OPEN')>Open</option><option value="RESOLVED" @selected($status==='RESOLVED')>Resolved</option><option value="ALL" @selected($status==='ALL')>All</option></select></form><a class="btn btn-outline-primary" href="{{ route('business-alerts.digest') }}">Download alert digest CSV</a></div></div>
+<div class="card"><div class="card-body">@forelse($events as $event)<article class="border-bottom py-3"><div class="d-flex flex-wrap justify-content-between gap-2"><div><span class="badge bg-{{ $event->severity==='HIGH'?'danger':($event->severity==='INFO'?'secondary':'warning') }}">{{ $event->severity }}</span> <strong class="ms-1">{{ $event->title }}</strong></div><span class="small text-muted">{{ $event->created_at?->format('d M Y H:i') }} · {{ $event->status }}</span></div><p class="mb-2 mt-2">{{ $event->message }}</p><div class="rounded bg-light p-3"><div class="small text-uppercase text-muted fw-semibold mb-1">Suggested next step</div>{{ $guidance[$event->event_key] ?? 'Review the source record, confirm the facts and assign an accountable owner before taking action.' }}</div></article>@empty<p class="text-muted mb-0">No alerts match this status.</p>@endforelse</div></div>
+<div class="mt-3">{{ $events->links() }}</div>
+<div class="alert alert-info mt-3 mb-0">Recommendations are guidance only. They do not approve purchases, change inventory, contact suppliers or perform marketplace actions.</div>
+@endsection

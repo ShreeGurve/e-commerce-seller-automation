@@ -1,0 +1,10 @@
+@extends('layouts.app')
+@section('title', 'KPI Trend Forecast')
+@section('content')
+<div class="container-fluid py-3">
+ <div class="mb-3"><h1 class="h3 mb-1">KPI Trend Forecast</h1><p class="text-muted mb-0">A simple straight-line projection based on the previous six complete/current months. Indicative only; not a guaranteed forecast.</p></div>
+ <form method="get" class="mb-3"><select name="metric" class="form-select" style="max-width:280px" onchange="this.form.submit()">@foreach(['sales_value'=>'Order sales value','orders'=>'Non-test orders','fulfilled_orders'=>'Delivered / closed orders','approved_requisitions'=>'Approved requisitions','supplier_payments'=>'Confirmed supplier payments'] as $key=>$label)<option value="{{ $key }}" @selected($metric===$key)>{{ $label }}</option>@endforeach</select></form>
+ <div class="row g-3"><div class="col-lg-7"><div class="card h-100"><div class="card-header fw-semibold">Historical actuals — {{ $meta['label'] }}</div><div class="table-responsive"><table class="table mb-0"><thead><tr><th>Month</th><th class="text-end">Actual</th></tr></thead><tbody>@foreach($history as $point)<tr><td>{{ $point['label'] }}</td><td class="text-end">{{ $meta['unit']==='currency' ? number_format($point['value'],2) : number_format($point['value']) }}</td></tr>@endforeach</tbody></table></div></div></div>
+ <div class="col-lg-5"><div class="card h-100"><div class="card-header fw-semibold">Next three-month projection</div><div class="table-responsive"><table class="table mb-0"><thead><tr><th>Month</th><th class="text-end">Projected</th></tr></thead><tbody>@foreach($forecast as $point)<tr><td>{{ $point['label'] }}</td><td class="text-end">{{ $meta['unit']==='currency' ? number_format($point['value'],2) : number_format($point['value']) }}</td></tr>@endforeach</tbody></table></div><div class="card-body small text-muted">Monthly trend slope: {{ $meta['unit']==='currency' ? number_format($slope,2) : number_format($slope,2) }}. Negative projections are floored at zero. Missing historical data is treated as zero.</div></div></div></div>
+</div>
+@endsection
