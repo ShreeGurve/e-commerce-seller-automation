@@ -657,6 +657,13 @@ Route::middleware('auth')->group(function () {
     Route::post('/automation/recurring-tasks', [AutomationTaskController::class, 'storeRecurring'])->middleware('can:purchases.edit')->name('automation.recurring.store');
     Route::patch('/automation/recurring-tasks/{template}/toggle', [AutomationTaskController::class, 'toggleRecurring'])->middleware('can:purchases.edit')->name('automation.recurring.toggle');
 
+    Route::get('/automation/planning/recommendations', [\App\Http\Controllers\AutomationPlanningController::class, 'recommendations'])->middleware('can:reports.view')->name('automation.planning.recommendations');
+    Route::get('/automation/planning/bottlenecks', [\App\Http\Controllers\AutomationPlanningController::class, 'bottlenecks'])->middleware('can:reports.view')->name('automation.planning.bottlenecks');
+    Route::get('/automation/planning/capacity', [\App\Http\Controllers\AutomationPlanningController::class, 'capacity'])->middleware('can:reports.view')->name('automation.planning.capacity');
+    Route::post('/automation/planning/capacity', [\App\Http\Controllers\AutomationPlanningController::class, 'saveCapacity'])->middleware('can:purchases.edit')->name('automation.planning.capacity.update');
+    Route::post('/automation/planning/task-effort', [\App\Http\Controllers\AutomationPlanningController::class, 'saveEffort'])->middleware('can:purchases.edit')->name('automation.planning.task-effort.update');
+
+
 });
 
 Route::middleware('can:reports.view')->prefix('automation/workforce')->name('automation.workforce.')->group(function () {
