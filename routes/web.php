@@ -663,6 +663,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/automation/planning/capacity', [\App\Http\Controllers\AutomationPlanningController::class, 'saveCapacity'])->middleware('can:purchases.edit')->name('automation.planning.capacity.update');
     Route::post('/automation/planning/task-effort', [\App\Http\Controllers\AutomationPlanningController::class, 'saveEffort'])->middleware('can:purchases.edit')->name('automation.planning.task-effort.update');
 
+    Route::get('/automation/optimization/deadline-risk', [\App\Http\Controllers\AutomationOptimizationController::class, 'deadlineRisk'])->middleware('can:reports.view')->name('automation.optimization.deadline-risk');
+    Route::get('/automation/optimization/dependency-release', [\App\Http\Controllers\AutomationOptimizationController::class, 'dependencyRelease'])->middleware('can:reports.view')->name('automation.optimization.dependency-release');
+    Route::get('/automation/optimization/rebalance-simulator', [\App\Http\Controllers\AutomationOptimizationController::class, 'rebalanceSimulator'])->middleware('can:reports.view')->name('automation.optimization.rebalance-simulator');
+
 
 });
 
