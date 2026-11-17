@@ -667,6 +667,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/automation/optimization/dependency-release', [\App\Http\Controllers\AutomationOptimizationController::class, 'dependencyRelease'])->middleware('can:reports.view')->name('automation.optimization.dependency-release');
     Route::get('/automation/optimization/rebalance-simulator', [\App\Http\Controllers\AutomationOptimizationController::class, 'rebalanceSimulator'])->middleware('can:reports.view')->name('automation.optimization.rebalance-simulator');
 
+    Route::get('/automation/intelligence/aging', [\App\Http\Controllers\AutomationIntelligenceController::class, 'agingAnalysis'])->middleware('can:reports.view')->name('automation.intelligence.aging');
+    Route::get('/automation/intelligence/throughput', [\App\Http\Controllers\AutomationIntelligenceController::class, 'throughputAnalysis'])->middleware('can:reports.view')->name('automation.intelligence.throughput');
+    Route::get('/automation/intelligence/dependency-impact', [\App\Http\Controllers\AutomationIntelligenceController::class, 'dependencyImpact'])->middleware('can:reports.view')->name('automation.intelligence.dependency-impact');
+
 
 });
 

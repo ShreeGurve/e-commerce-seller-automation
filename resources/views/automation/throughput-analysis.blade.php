@@ -1,0 +1,10 @@
+@extends('layouts.app')
+@section('content')
+<div class="container-fluid py-3">
+ <div class="mb-3"><h3 class="mb-1">Task Completion Throughput</h3><p class="text-muted mb-0">Completed work over the last eight weeks, grouped by completion week and assignee.</p></div>
+ <div class="row g-3 mb-3"><div class="col-sm-6 col-xl-3"><div class="card"><div class="card-body"><div class="text-muted small">Completed tasks</div><div class="fs-3 fw-semibold">{{ $total }}</div></div></div></div><div class="col-sm-6 col-xl-3"><div class="card"><div class="card-body"><div class="text-muted small">Reporting start</div><div class="fs-5 fw-semibold">{{ $since->format('d M Y') }}</div></div></div></div></div>
+ <div class="row g-3"><div class="col-xl-6"><div class="card h-100"><div class="card-header fw-semibold">Weekly completion</div><div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>Week starting</th><th class="text-end">Completed</th></tr></thead><tbody>@forelse($weekly as $row)<tr><td>{{ $row->week }}</td><td class="text-end fw-semibold">{{ $row->count }}</td></tr>@empty<tr><td colspan="2" class="text-center text-muted py-4">No completed tasks in this period.</td></tr>@endforelse</tbody></table></div></div></div>
+ <div class="col-xl-6"><div class="card h-100"><div class="card-header fw-semibold">Completion by assignee</div><div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>Assignee</th><th class="text-end">Completed</th><th class="text-end">On time*</th></tr></thead><tbody>@forelse($people as $person)<tr><td>{{ $person->name }}</td><td class="text-end">{{ $person->count }}</td><td class="text-end">{{ $person->on_time }}</td></tr>@empty<tr><td colspan="3" class="text-center text-muted py-4">No completion data available.</td></tr>@endforelse</tbody></table></div></div></div></div>
+ <small class="text-muted d-block mt-2">* Tasks without a due date are included in the on-time count. This is a throughput indicator, not a standalone employee performance rating.</small>
+</div>
+@endsection
