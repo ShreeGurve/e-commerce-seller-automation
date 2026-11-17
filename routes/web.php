@@ -673,6 +673,16 @@ Route::post('/inventory/{product}/stock-count', [InventoryController::class, 'st
     ->middleware('can:inventory.manage')
     ->name('inventory.stock-count');
 
+Route::middleware('can:reports.view')->prefix('automation/insights')->name('automation.insights.')->group(function () {
+    Route::get('/productivity', [\App\Http\Controllers\AutomationInsightsController::class, 'productivity'])->name('productivity');
+    Route::get('/dependencies', [\App\Http\Controllers\AutomationInsightsController::class, 'dependencies'])->name('dependencies');
+    Route::get('/analytics', [\App\Http\Controllers\AutomationInsightsController::class, 'analytics'])->name('analytics');
+});
+Route::middleware('can:purchases.edit')->prefix('automation/insights')->name('automation.insights.')->group(function () {
+    Route::post('/dependencies', [\App\Http\Controllers\AutomationInsightsController::class, 'storeDependency'])->name('dependencies.store');
+    Route::delete('/dependencies/{dependency}', [\App\Http\Controllers\AutomationInsightsController::class, 'destroyDependency'])->name('dependencies.destroy');
+});
+
 Route::middleware('auth')->group(function () {
 
     // Fulfilment (pack, dispatch, pickup, files)
