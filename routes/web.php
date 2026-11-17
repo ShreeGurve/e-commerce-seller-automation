@@ -675,6 +675,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/automation/governance/assignment-health', [\App\Http\Controllers\AutomationGovernanceController::class, 'assignmentHealth'])->middleware('can:reports.view')->name('automation.governance.assignment-health');
     Route::get('/automation/governance/priority-alignment', [\App\Http\Controllers\AutomationGovernanceController::class, 'priorityAlignment'])->middleware('can:reports.view')->name('automation.governance.priority-alignment');
 
+    Route::get('/automation/control-center', [\App\Http\Controllers\AutomationControlCenterController::class, 'overview'])->middleware('can:reports.view')->name('automation.control-center');
+    Route::get('/automation/control-center/export', [\App\Http\Controllers\AutomationControlCenterController::class, 'export'])->middleware('can:reports.view')->name('automation.control-center.export');
+    Route::get('/automation/workflow-readiness', [\App\Http\Controllers\AutomationControlCenterController::class, 'readiness'])->middleware('can:reports.view')->name('automation.workflow-readiness');
+
 
 });
 
