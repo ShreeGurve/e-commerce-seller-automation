@@ -671,6 +671,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/automation/intelligence/throughput', [\App\Http\Controllers\AutomationIntelligenceController::class, 'throughputAnalysis'])->middleware('can:reports.view')->name('automation.intelligence.throughput');
     Route::get('/automation/intelligence/dependency-impact', [\App\Http\Controllers\AutomationIntelligenceController::class, 'dependencyImpact'])->middleware('can:reports.view')->name('automation.intelligence.dependency-impact');
 
+    Route::get('/automation/governance/due-date-compliance', [\App\Http\Controllers\AutomationGovernanceController::class, 'dueDateCompliance'])->middleware('can:reports.view')->name('automation.governance.due-date-compliance');
+    Route::get('/automation/governance/assignment-health', [\App\Http\Controllers\AutomationGovernanceController::class, 'assignmentHealth'])->middleware('can:reports.view')->name('automation.governance.assignment-health');
+    Route::get('/automation/governance/priority-alignment', [\App\Http\Controllers\AutomationGovernanceController::class, 'priorityAlignment'])->middleware('can:reports.view')->name('automation.governance.priority-alignment');
+
 
 });
 
