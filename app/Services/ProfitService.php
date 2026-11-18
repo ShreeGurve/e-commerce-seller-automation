@@ -114,7 +114,15 @@ class ProfitService
                 }
                 OrderProfit::updateOrCreate(['order_item_id' => $item->id], $row);
             }
-            foreach ($o->items->pluck('product_id')->unique() as $pid) $this->ads->allocateKey($o->marketplace_id, $pid, $o->order_date->toDateString());   // ad spend for this product/day is shared across its lines
+            foreach ($o->items->pluck('product_id')->unique() as $pid) {
+                // Allocation is an enrichment step. A missing / malformed ad import must
+                // never prevent the order's profit row and daily summary from being saved.
+                try {
+                    $this->ads->allocateKey($o->marketplace_id, $pid, $o->order_date->toDateString());
+                } catch (\Throwable $e) {
+                    report($e);
+                }
+            }
             $this->touchSummary($o);
         });
     }
@@ -137,8 +145,8 @@ class ProfitService
     /** @param array{from:string,to:string,marketplace_id?:?int,product_id?:?int,category_id?:?int,sort?:string} $f */
     public function report(array $f): array
     {
-        $base = OrderProfit::query()->whereBetween('order_date', [$f['from'], $f['to']])
-            ->whereHas('order', fn ($q) => $q->where('source', '!=', 'TEST')->where('status', '!=', 'CANCELLED'))
+        $base = OrderProfit::query()->whereDate('order_date', '>=', $f['from'])->whereDate('order_date', '<=', $f['to'])
+            ->whereHas('order', fn ($q) => $q->where(fn ($q) => $q->whereNull('source')->orWhere('source', '!=', 'TEST'))->where('status', '!=', 'CANCELLED'))
             ->when($f['marketplace_id'] ?? null, fn ($q, $v) => $q->where('marketplace_id', $v))
             ->when($f['product_id'] ?? null, fn ($q, $v) => $q->where('product_id', $v))
             ->when($f['category_id'] ?? null, fn ($q, $v) => $q->whereIn('product_id', Product::where('category_id', $v)->select('id')));

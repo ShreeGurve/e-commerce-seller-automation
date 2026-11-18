@@ -1,7 +1,7 @@
 <?php
 namespace App\Services;
 
-use App\Models\{Listing, ListingVersion, Marketplace, Product, User};
+use App\Models\{Listing, ListingReview, ListingVersion, Marketplace, Product, User};
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 

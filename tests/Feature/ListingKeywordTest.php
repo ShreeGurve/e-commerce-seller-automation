@@ -2,7 +2,7 @@
 namespace Tests\Feature;
 
 use App\Marketplaces\Amazon\AmazonAdapter;
-use App\Models\{DataImport, Keyword, KeywordGroup, KeywordRanking, Listing, ListingScoreRule, Marketplace, Product, User};
+use App\Models\{DataImport, Keyword, KeywordGroup, KeywordRanking, Listing, ListingReview, ListingScoreRule, Marketplace, Product, User};
 use App\Services\{ImportProcessor, ListingScoreService, ListingService};
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -46,7 +46,13 @@ class ListingKeywordTest extends TestCase
         $this->assertSame('Steel Water Bottle 1 Litre', $l3->current->title);                  // restored copy is a NEW version, history is kept
         $this->assertSame(3, $l3->versions()->count());
 
-        app(ListingService::class)->publish($l3, $l3->versions()->where('version_no', 2)->first());
+        $versionToPublish = $l3->versions()->where('version_no', 2)->first();
+        ListingReview::create([
+            'listing_id' => $l3->id, 'listing_version_id' => $versionToPublish->id, 'status' => 'APPROVED',
+            'requested_by' => $this->u->id, 'reviewed_by' => $this->u->id,
+            'requested_at' => now(), 'reviewed_at' => now(), 'review_note' => 'Approved in feature test.',
+        ]);
+        app(ListingService::class)->publish($l3, $versionToPublish);
         $this->assertSame(['LIVE', 'Steel Water Bottle 1 Litre Insulated'], [$l3->fresh()->status, $l3->fresh()->published->title]);
     }
 

@@ -12,6 +12,18 @@ class DashboardService
     public function build(array $f): array
     {
         $mp = $f['marketplace_id'] ?? null;
+
+        // Daily tables are derived caches. If the requested window has source orders
+        // but no sales summary rows, rebuild that window before calculating KPIs.
+        $hasSummary = DB::table('daily_sales')->whereBetween('date', [$f['from'], $f['to']])
+            ->when($mp, fn ($q, $v) => $q->where('marketplace_id', $v))->exists();
+        if (! $hasSummary) {
+            $hasSourceOrders = DB::table('orders')->whereNull('deleted_at')->where(fn ($q) => $q->whereNull('source')->orWhere('source', '<>', 'TEST'))
+                ->whereBetween('order_date', [$f['from'] . ' 00:00:00', $f['to'] . ' 23:59:59'])
+                ->when($mp, fn ($q, $v) => $q->where('marketplace_id', $v))->exists();
+            if ($hasSourceOrders) app(SummaryService::class)->rebuildRange($f['from'], $f['to']);
+        }
+
         $tot = fn (string $table, string $cols, string $from, string $to) => DB::table($table)->whereBetween('date', [$from, $to])->when($mp, fn ($q, $v) => $q->where('marketplace_id', $v))->selectRaw($cols)->first();
 
         $s = $tot('daily_sales', 'COALESCE(SUM(orders),0) orders, COALESCE(SUM(units),0) units, COALESCE(SUM(gross_sales),0) sales, COALESCE(SUM(cancelled_orders),0) cancelled', $f['from'], $f['to']);
@@ -66,7 +78,7 @@ class DashboardService
         $s = $g('daily_sales', 'SUM(orders) orders, SUM(gross_sales) sales'); $p = $g('daily_profit', 'SUM(profit) profit, SUM(refunds) refunds, SUM(ads) ads, SUM(revenue) revenue'); $a = $g('daily_advertising', 'SUM(spend) spend, SUM(sales) adsales');
         $ret = ProductReturn::whereBetween('return_date', [$f['from'], $f['to']])->when($mp, fn ($q, $v) => $q->where('marketplace_id', $v))->select('marketplace_id', DB::raw('count(*) c'))->groupBy('marketplace_id')->pluck('c', 'marketplace_id');
         $rows = [];
-        foreach (Marketplace::active()->when($mp, fn ($q, $v) => $q->where('id', $v))->get() as $m) {
+        foreach (Marketplace::query()->when($mp, fn ($q, $v) => $q->where('id', $v))->orderBy('sort_order')->orderBy('name')->get() as $m) {
             $sp = (float) ($a[$m->id]->spend ?? 0); $as = (float) ($a[$m->id]->adsales ?? 0); $orders = (int) ($s[$m->id]->orders ?? 0); $rev = (float) ($p[$m->id]->revenue ?? 0); $pr = (float) ($p[$m->id]->profit ?? 0);
             $rows[] = ['id' => $m->id, 'name' => $m->name, 'orders' => $orders, 'sales' => (float) ($s[$m->id]->sales ?? 0), 'profit' => $pr, 'margin' => $rev > 0 ? $pr / $rev * 100 : null,
                 'adSpend' => $sp, 'acos' => $as > 0 ? $sp / $as * 100 : null, 'returns' => (int) ($ret[$m->id] ?? 0), 'refunded' => (float) ($p[$m->id]->refunds ?? 0)];

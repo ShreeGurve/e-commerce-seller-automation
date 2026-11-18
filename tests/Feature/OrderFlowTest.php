@@ -11,6 +11,8 @@ class OrderFlowTest extends TestCase
 {
     use RefreshDatabase;
 
+    private ?User $testUser = null;
+
     protected function setUp(): void
     {
         // SAFETY: RefreshDatabase wipes the database. Only run on in-memory SQLite.
@@ -20,7 +22,7 @@ class OrderFlowTest extends TestCase
         parent::setUp();
     }
 
-    private function user(): User { return User::forceCreate(['name' => 'T', 'email' => 't@test.local', 'password' => 'x']); }
+    private function user(): User { return $this->testUser ??= User::forceCreate(['name' => 'T', 'email' => 't@test.local', 'password' => 'x']); }
     private function product(int $stock = 10): Product
     {
         $p = Product::create(['sku' => 'SKU1', 'name' => 'P1', 'gst_rate' => 18]);

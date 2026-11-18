@@ -60,6 +60,8 @@ return new class extends Migration {
             $t->decimal('actual_profit', 15, 2)->nullable(); // set once settlement data exists (Phase 4b)
             $t->string('profit_status', 10)->default('ESTIMATED');
             $t->timestamp('calculated_at')->nullable();
+            // Eloquent OrderProfit uses the default timestamps; keep schema aligned.
+            $t->timestamps();
             $t->index('order_date');
             $t->index(['product_id', 'order_date']);
             $t->index(['marketplace_id', 'order_date']);

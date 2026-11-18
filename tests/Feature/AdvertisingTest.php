@@ -51,12 +51,20 @@ class AdvertisingTest extends TestCase
         $map = self::M + ['sku' => 'sku'];
 
         $imp = $this->import('ADS_PRODUCT', $csv('40.01'), $map);
-        $this->assertSame(1, $this->processImport($imp)['created']);
+
+        // Process exactly once
+        $result = $this->processImport($imp);
+        $this->assertSame(1, $result['created']);
+
         $ads = collect($this->profits())->pluck(0)->map(fn ($v) => (int) round($v * 100));
         $this->assertSame(4001, $ads->sum());                       // split across the two orders, total exact to the paisa
         $this->assertSame(15999, (int) round(OrderProfit::sum('estimated_profit') * 100));   // 2 x 100.00 profit - 40.01 ads
 
-        $imp->update(['status' => 'MAPPED']);                       // same file again
+        // $imp->update(['status' => 'MAPPED']);                       // same file again
+        // $this->assertSame(1, $this->processImport($imp)['duplicate']);
+        $imp->refresh(); // Get the actual IMPORTED status from the database
+        $imp->update(['status' => 'MAPPED']);
+
         $this->assertSame(1, $this->processImport($imp)['duplicate']);
         $this->assertSame(1, AdvertisingDaily::count());
 

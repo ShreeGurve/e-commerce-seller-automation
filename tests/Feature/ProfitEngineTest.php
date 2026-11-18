@@ -50,7 +50,7 @@ class ProfitEngineTest extends TestCase
 
     public function test_category_rule_beats_generic_rule(): void
     {
-        $c = Category::forceCreate(['name' => 'Kitchen', 'slug' => 'kitchen']);
+        $c = Category::forceCreate(['name' => 'Kitchen']);
         $this->p->update(['category_id' => $c->id]);
         $this->rule('REFERRAL', 5, 0, $c->id);
         $this->order();

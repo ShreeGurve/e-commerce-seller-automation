@@ -48,14 +48,14 @@ class PricingService
     public function currentPrice(Product $p, ?int $marketplaceId): ?array
     {
         $h = PriceHistory::where('product_id', $p->id)->where('marketplace_id', $marketplaceId)->orderByDesc('effective_on')->orderByDesc('id')->first();
-        if ($h) return ['price' => (string) $h->price, 'source' => 'Recorded ' . $h->effective_on->format('d M Y')];
+        if ($h) return ['price' => number_format((float) $h->price, 2, '.', ''), 'source' => 'Recorded ' . $h->effective_on->format('d M Y')];
         if ($marketplaceId !== null) {
             $channelPrice = $p->relationLoaded('marketplaceSettings')
                 ? $p->marketplaceSettings->firstWhere('marketplace_id', $marketplaceId)?->manual_selling_price
                 : $p->marketplaceSettings()->where('marketplace_id', $marketplaceId)->value('manual_selling_price');
-            if ($channelPrice !== null) return ['price' => (string) $channelPrice, 'source' => 'Channel manual selling price override'];
+            if ($channelPrice !== null) return ['price' => number_format((float) $channelPrice, 2, '.', ''), 'source' => 'Channel manual selling price override'];
         }
-        return $p->default_selling_price !== null ? ['price' => (string) $p->default_selling_price, 'source' => 'Product master price'] : null;
+        return $p->default_selling_price !== null ? ['price' => number_format((float) $p->default_selling_price, 2, '.', ''), 'source' => 'Product master price'] : null;
     }
 
     /** fee(P) = a*P + b, found by asking the real fee rules at two prices (so every rule, slab and category is honoured) */
@@ -77,10 +77,10 @@ class PricingService
         $days = (int) SettingsService::get('pricing_lookback_days', 90);
         $r = DB::table('order_profits as p')->join('order_items as i', 'i.id', '=', 'p.order_item_id')
             ->where('p.product_id', $productId)->where('p.marketplace_id', $mp)->where('p.order_date', '>=', now()->subDays($days)->toDateString())
-            ->selectRaw('SUM(p.qty) q, SUM(p.ads_cost) ads, SUM(p.return_loss) rl, SUM(p.cogs) c, SUM((i.cogs_at_sale + i.packaging_at_sale + i.other_cost_at_sale) * i.quantity) full')->first();
+            ->selectRaw('SUM(p.qty) q, SUM(p.ads_cost) ads, SUM(p.return_loss) rl, SUM(p.cogs) c, SUM((i.cogs_at_sale + i.packaging_at_sale + i.other_cost_at_sale) * i.quantity) AS full_cost')->first();
         $q = (int) ($r->q ?? 0);
         if ($q <= 0) return ['ads' => 0.0, 'ret' => 0.0, 'units' => 0, 'days' => $days];
-        $restocked = max((float) $r->full - (float) $r->c, 0);                // cost that came back as sellable stock
+        $restocked = max((float) $r->full_cost - (float) $r->c, 0);                // cost that came back as sellable stock
         return ['ads' => (float) $r->ads * 100 / $q, 'ret' => max(((float) $r->rl - $restocked) * 100 / $q, 0), 'units' => $q, 'days' => $days];
     }
 
@@ -154,8 +154,17 @@ class PricingService
         $paise = Money::p($price);
         if ($paise <= 0) throw ValidationException::withMessages(['competitor_price' => 'Price must be more than zero.']);
         $our = $this->currentPrice($p, $mp->id);
-        $row = CompetitorPrice::updateOrCreate(['product_id' => $p->id, 'marketplace_id' => $mp->id, 'competitor_name' => $name, 'captured_on' => $capturedOn],
-            ['competitor_price' => Money::m($paise), 'our_price' => $our['price'] ?? null, 'source' => $source, 'url' => $url, 'created_by' => $user->id]);
+        $identity = CompetitorPrice::query()
+            ->where('product_id', $p->id)->where('marketplace_id', $mp->id)
+            ->where('competitor_name', $name)->whereDate('captured_on', $capturedOn);
+        $values = ['competitor_price' => Money::m($paise), 'our_price' => $our['price'] ?? null,
+            'source' => $source, 'url' => $url, 'created_by' => $user->id];
+        // DATE columns can be hydrated as midnight timestamps by SQLite; compare by calendar date
+        // so an import/manual correction updates the existing unique row instead of inserting again.
+        $row = $identity->first();
+        if ($row) $row->update($values);
+        else $row = CompetitorPrice::create($values + ['product_id' => $p->id, 'marketplace_id' => $mp->id,
+            'competitor_name' => $name, 'captured_on' => $capturedOn]);
         ActivityLogger::log('competitor_price.saved', $p, null, ['competitor' => $name, 'price' => Money::m($paise), 'date' => $capturedOn]);
         return $row;
     }

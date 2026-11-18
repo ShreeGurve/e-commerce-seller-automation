@@ -14,7 +14,7 @@ class AdAllocationService
     public function allocateRange(string $from, string $to): void
     {
         DB::transaction(function () use ($from, $to) {
-            $spend = AdvertisingDaily::where('level', 'PRODUCT')->whereBetween('date', [$from, $to])->whereNotNull('product_id')
+            $spend = AdvertisingDaily::where('level', 'PRODUCT')->whereDate('date', '>=', $from)->whereDate('date', '<=', $to)->whereNotNull('product_id')
                 ->selectRaw('marketplace_id, product_id, date, SUM(spend) s')->groupBy('marketplace_id', 'product_id', 'date')->get();
             $keys = [];
             foreach ($spend as $s) {
@@ -23,7 +23,7 @@ class AdAllocationService
                 $this->applyGroup((int) $s->marketplace_id, (int) $s->product_id, $d, Money::p($s->s));
             }
             // lines that still carry ad cost although that day/product has no spend any more
-            OrderProfit::whereBetween('order_date', [$from, $to])->where('ads_cost', '>', 0)->chunkById(500, function ($rows) use ($keys) {
+            OrderProfit::whereDate('order_date', '>=', $from)->whereDate('order_date', '<=', $to)->where('ads_cost', '>', 0)->chunkById(500, function ($rows) use ($keys) {
                 foreach ($rows as $r) {
                     if (! isset($keys["{$r->marketplace_id}|{$r->product_id}|{$r->order_date->toDateString()}"])) $this->setAds($r, 0);
                 }

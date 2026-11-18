@@ -58,10 +58,17 @@ class ReportService
 
     private function r_profit(array $f): array
     {
-        $rows = DB::table('daily_profit as s')->join('marketplaces as m', 'm.id', '=', 's.marketplace_id')->whereBetween('s.date', [$f['from'], $f['to']])->when($this->mp($f), fn ($q, $v) => $q->where('s.marketplace_id', $v))
-            ->orderBy('s.date')->orderBy('m.name')->get(['s.date', 'm.name as channel', 's.revenue', 's.cogs', 's.fees', 's.refunds', 's.recovery', 's.ads', 's.profit'])
-            ->map(fn ($r) => ['date' => $this->d($r->date), 'channel' => $r->channel, 'revenue' => (float) $r->revenue, 'cogs' => (float) $r->cogs, 'fees' => (float) $r->fees, 'refunds' => (float) $r->refunds,
-                'recovery' => (float) $r->recovery, 'ads' => (float) $r->ads, 'profit' => (float) $r->profit, 'margin' => $r->revenue > 0 ? $r->profit / $r->revenue * 100 : null])->all();
+        $daily = DB::table('daily_profit as s')->join('marketplaces as m', 'm.id', '=', 's.marketplace_id')->whereBetween('s.date', [$f['from'], $f['to']])->when($this->mp($f), fn ($q, $v) => $q->where('s.marketplace_id', $v))
+            ->orderBy('s.date')->orderBy('m.name')->get(['s.date', 'm.name as channel', 's.revenue', 's.cogs', 's.fees', 's.refunds', 's.recovery', 's.ads', 's.profit']);
+        if ($daily->isEmpty()) {
+            // order_profits is the canonical ledger; the daily table is only a speed cache.
+            $daily = DB::table('order_profits as p')->join('marketplaces as m', 'm.id', '=', 'p.marketplace_id')
+                ->whereBetween('p.order_date', [$f['from'], $f['to']])->when($this->mp($f), fn ($q, $v) => $q->where('p.marketplace_id', $v))
+                ->selectRaw("p.order_date as date, m.name as channel, SUM(p.revenue) revenue, SUM(p.cogs) cogs, SUM(p.fees) fees, SUM(p.return_loss) refunds, SUM(p.recovery) recovery, SUM(p.ads_cost) ads, SUM(COALESCE(p.actual_profit,p.estimated_profit)) profit")
+                ->groupBy('p.order_date', 'p.marketplace_id', 'm.name')->orderBy('p.order_date')->orderBy('m.name')->get();
+        }
+        $rows = $daily->map(fn ($r) => ['date' => $this->d($r->date), 'channel' => $r->channel, 'revenue' => (float) $r->revenue, 'cogs' => (float) $r->cogs, 'fees' => (float) $r->fees, 'refunds' => (float) $r->refunds,
+            'recovery' => (float) $r->recovery, 'ads' => (float) $r->ads, 'profit' => (float) $r->profit, 'margin' => $r->revenue > 0 ? $r->profit / $r->revenue * 100 : null])->all();
         $t = $this->sum($rows, ['revenue', 'cogs', 'fees', 'refunds', 'recovery', 'ads', 'profit']); $t['margin'] = $t['revenue'] > 0 ? round($t['profit'] / $t['revenue'] * 100, 1) : null;
         return ['rows' => $rows, 'totals' => $t, 'note' => 'Profit is real (settlement-based) where the marketplace has paid, otherwise estimated from your fee rules.'];
     }
@@ -181,7 +188,7 @@ class ReportService
     {
         $b = [];
         $key = fn ($d, $r) => substr((string) $d, 0, 7) . '|' . number_format((float) $r, 2, '.', '');
-        $sales = DB::table('order_items as i')->join('orders as o', 'o.id', '=', 'i.order_id')->whereNull('o.deleted_at')->where('o.source', '<>', 'TEST')->where('o.status', '<>', 'CANCELLED')->whereBetween('o.order_date', [$f['from'] . ' 00:00:00', $f['to'] . ' 23:59:59'])
+        $sales = DB::table('order_items as i')->join('orders as o', 'o.id', '=', 'i.order_id')->whereNull('o.deleted_at')->where(fn ($q) => $q->whereNull('o.source')->orWhere('o.source', '<>', 'TEST'))->where('o.status', '<>', 'CANCELLED')->whereBetween('o.order_date', [$f['from'] . ' 00:00:00', $f['to'] . ' 23:59:59'])
             ->when($this->mp($f), fn ($q, $v) => $q->where('o.marketplace_id', $v))->selectRaw('DATE(o.order_date) d, i.gst_rate r, SUM(i.line_total - i.tax_amount) taxable, SUM(i.tax_amount) gst')->groupByRaw('DATE(o.order_date), i.gst_rate')->get();
         foreach ($sales as $r) { $k = $key($r->d, $r->r); $b[$k]['ts'] = ($b[$k]['ts'] ?? 0) + (float) $r->taxable; $b[$k]['og'] = ($b[$k]['og'] ?? 0) + (float) $r->gst; }
         $purch = DB::table('purchase_items as i')->join('purchases as p', 'p.id', '=', 'i.purchase_id')->whereNull('p.deleted_at')->where('p.status', 'RECEIVED')->whereBetween('p.purchase_date', [$f['from'], $f['to']])

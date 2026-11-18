@@ -20,10 +20,10 @@ Route::middleware('guest')->group(function () {
     Route::post('/reset-password', [PasswordResetController::class, 'reset'])->middleware('throttle:6,1')->name('password.update');
 });
 
+Route::get('/', fn () => auth()->check() ? redirect()->route('dashboard') : redirect()->route('login'))->name('home');
+
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
-    // Closure (not Route::redirect) so redirect keeps the /laravel/seller-automation sub-folder.
-    Route::get('/', fn () => redirect()->route('dashboard'));
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
     // Products
@@ -83,7 +83,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/automation/operational-insights/export', [\App\Http\Controllers\OperationalInsightsController::class, 'export'])->middleware('can:reports.export')->name('operational-insights.export');
 
     // Phases 48-50: Automation Control & Governance
-    Route::get('/automation/control-center', [\App\Http\Controllers\AutomationGovernanceController::class, 'index'])->middleware('can:reports.view')->name('governance.control-center');
+    Route::get('/automation/governance/control-center', [\App\Http\Controllers\AutomationGovernanceController::class, 'index'])->middleware('can:reports.view')->name('governance.control-center');
     Route::patch('/automation/control-center/alerts/{event}/assign', [\App\Http\Controllers\AutomationGovernanceController::class, 'assignEvent'])->middleware('can:purchases.edit')->name('governance.alerts.assign');
     Route::patch('/automation/control-center/alerts/{event}/resolve', [\App\Http\Controllers\AutomationGovernanceController::class, 'resolveEvent'])->middleware('can:purchases.edit')->name('governance.alerts.resolve');
     Route::post('/automation/control-center/approval-sla', [\App\Http\Controllers\AutomationGovernanceController::class, 'saveSlaPolicy'])->middleware('can:settings.manage')->name('governance.approval-sla.save');

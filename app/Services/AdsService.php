@@ -10,7 +10,7 @@ class AdsService
     /** marketplace id => the report level used for its totals (no double counting between report types) */
     public function chosenLevels(string $from, string $to, ?int $mp = null): array
     {
-        $found = AdvertisingDaily::whereBetween('date', [$from, $to])->when($mp, fn ($q, $v) => $q->where('marketplace_id', $v))
+        $found = AdvertisingDaily::whereDate('date', '>=', $from)->whereDate('date', '<=', $to)->when($mp, fn ($q, $v) => $q->where('marketplace_id', $v))
             ->select('marketplace_id', 'level')->distinct()->get()->groupBy('marketplace_id');
         $out = [];
         foreach ($found as $id => $rows) {
@@ -31,7 +31,7 @@ class AdsService
     private function base(array $f): Builder
     {
         $chosen = $this->chosenLevels($f['from'], $f['to'], $f['marketplace_id'] ?? null);
-        return $this->scope(AdvertisingDaily::query()->whereBetween('advertising_daily.date', [$f['from'], $f['to']]), $chosen);
+        return $this->scope(AdvertisingDaily::query()->whereDate('advertising_daily.date', '>=', $f['from'])->whereDate('advertising_daily.date', '<=', $f['to']), $chosen);
     }
 
     public function totalSpend(string $from, string $to, ?int $mp = null): float
@@ -65,7 +65,7 @@ class AdsService
     public function targets(string $level, array $f, bool $paginate = true, ?string $sort = null)
     {
         $isKw = $level === 'KEYWORD';
-        $q = AdvertisingDaily::query()->where('advertising_daily.level', $level)->whereBetween('advertising_daily.date', [$f['from'], $f['to']])
+        $q = AdvertisingDaily::query()->where('advertising_daily.level', $level)->whereDate('advertising_daily.date', '>=', $f['from'])->whereDate('advertising_daily.date', '<=', $f['to'])
             ->when($f['marketplace_id'] ?? null, fn ($q, $v) => $q->where('advertising_daily.marketplace_id', $v))
             ->when($f['campaign_id'] ?? null, fn ($q, $v) => $q->where('advertising_daily.campaign_id', $v))
             ->join('advertising_campaigns as c', 'c.id', '=', 'advertising_daily.campaign_id');
@@ -111,7 +111,7 @@ class AdsService
             ->selectRaw('product_id, SUM(qty) units, SUM(revenue) revenue, SUM(return_loss) refunded, SUM(COALESCE(actual_profit, estimated_profit) + ads_cost) profit_before_ads, SUM(ads_cost) ads')
             ->groupBy('product_id')->get();
         if ($p->isEmpty()) return ['increase' => [], 'reduce' => []];
-        $adRows = AdvertisingDaily::where('level', 'PRODUCT')->whereBetween('date', [$f['from'], $f['to']])->when($f['marketplace_id'] ?? null, fn ($q, $v) => $q->where('marketplace_id', $v))
+        $adRows = AdvertisingDaily::where('level', 'PRODUCT')->whereDate('date', '>=', $f['from'])->whereDate('date', '<=', $f['to'])->when($f['marketplace_id'] ?? null, fn ($q, $v) => $q->where('marketplace_id', $v))
             ->selectRaw('product_id, SUM(spend) spend, SUM(sales) sales')->groupBy('product_id')->get()->keyBy('product_id');
         $names = \App\Models\Product::withTrashed()->whereIn('id', $p->pluck('product_id'))->get(['id', 'sku', 'name'])->keyBy('id');
         $units = $p->pluck('units')->map(fn ($u) => (int) $u)->sort()->values();

@@ -54,7 +54,13 @@ class ImportProcessor
                 'ADS_CAMPAIGN', 'ADS_KEYWORD', 'ADS_TERM', 'ADS_PRODUCT' => $this->ads($rows, $commit),
             };
             $summary = $this->summary($rows);
-            if ($commit) { $this->persist($summary, $rows); $this->afterCommit(); }
+            if ($commit) {
+                $this->persist($summary, $rows);
+                $this->afterCommit();
+                // Keep the caller's Eloquent instance in sync with the persisted IMPORTED state.
+                // Callers may intentionally reset a completed import to MAPPED for an idempotency check.
+                $import->refresh();
+            }
             return $summary;
         } catch (\Throwable $e) {
             if ($commit) DataImport::whereKey($import->id)->update(['status' => 'FAILED', 'error_message' => substr($e->getMessage(), 0, 500)]);
@@ -504,8 +510,13 @@ class ImportProcessor
             $given = array_filter(['keyword_type' => $type, 'search_volume' => $vol, 'competition' => $comp, 'relevance' => $rel, 'source' => ($d['source'] ?? '') ?: null], fn ($v) => $v !== null);
             $ex = Keyword::where(['product_id' => $product->id, 'marketplace_id' => $mp, 'key_hash' => $hash])->first();
             $diff = $ex ? array_filter($given, fn ($v, $k) => (string) $ex->{$k} !== (string) $v, ARRAY_FILTER_USE_BOTH) : $given;
-            $groupName = trim($d['group'] ?? ''); $groupChange = $ex && $groupName !== '' && optional($ex->group)->name !== $groupName;
-            $rankChange = $rank !== null && (! $ex || ! KeywordRanking::where(['keyword_id' => $ex->id, 'checked_on' => $rdate->toDateString(), 'rank_type' => 'ORGANIC', 'rank' => $rank])->exists());
+            $groupName = trim($d['group'] ?? '');
+            $existingGroupName = $ex && $ex->group_id
+                ? KeywordGroup::whereKey($ex->group_id)->value('name')
+                : null;
+            $groupChange = $ex && $groupName !== '' && $existingGroupName !== $groupName;
+            $rankChange = $rank !== null && (! $ex || ! KeywordRanking::where('keyword_id', $ex->id)->whereDate('checked_on', $rdate->toDateString())
+                ->where('rank_type', 'ORGANIC')->where('rank', $rank)->exists());
             if ($ex && ! $diff && ! $groupChange && ! $rankChange) { $this->mark($n, 'DUPLICATE', 'Nothing new for this keyword. Skipped.'); continue; }
             $ex ? $upd++ : $new++;
             if (! $commit) { $this->mark($n, 'OK', $ex ? 'Will update this keyword.' : null); continue; }
@@ -544,7 +555,8 @@ class ImportProcessor
             $key = $product->id . '|' . mb_strtolower($name) . '|' . $date->toDateString();
             if (isset($seen[$key])) { $this->mark($n, 'ERROR', 'Same competitor and date appears twice for this product in this file.'); continue; }
             $seen[$key] = true;
-            $ex = CompetitorPrice::where(['product_id' => $product->id, 'marketplace_id' => $mp->id, 'competitor_name' => $name, 'captured_on' => $date->toDateString()])->first();
+            $ex = CompetitorPrice::where('product_id', $product->id)->where('marketplace_id', $mp->id)
+                ->where('competitor_name', $name)->whereDate('captured_on', $date->toDateString())->first();
             if ($ex && Money::p($ex->competitor_price) === Money::p($price)) { $this->mark($n, 'DUPLICATE', 'Same price already saved for that day. Skipped.'); continue; }
             $ex ? $upd++ : $new++;
             if (! $commit) { $this->mark($n, 'OK', $ex ? 'Will update the saved price.' : null); continue; }
