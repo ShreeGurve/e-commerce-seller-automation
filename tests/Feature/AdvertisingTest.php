@@ -41,7 +41,7 @@ class AdvertisingTest extends TestCase
             'status' => 'MAPPED', 'mapping' => $map, 'uploaded_by' => $this->u->id, 'options' => ['date_format' => 'auto']]);
     }
     private const M = ['date' => 'date', 'campaign' => 'campaign', 'impressions' => 'imp', 'clicks' => 'clicks', 'spend' => 'spend', 'sales' => 'sales', 'orders' => 'orders'];
-    private function run(DataImport $i): array { return app(ImportProcessor::class)->run($i, true); }
+    private function processImport(DataImport $i): array { return app(ImportProcessor::class)->run($i, true); }
     private function profits(): array { return OrderProfit::orderBy('id')->get()->map(fn ($r) => [(string) $r->ads_cost, (string) $r->estimated_profit])->all(); }
 
     public function test_product_ad_spend_lands_on_that_products_orders_exactly_and_updates_on_revision(): void
@@ -51,17 +51,17 @@ class AdvertisingTest extends TestCase
         $map = self::M + ['sku' => 'sku'];
 
         $imp = $this->import('ADS_PRODUCT', $csv('40.01'), $map);
-        $this->assertSame(1, $this->run($imp)['created']);
+        $this->assertSame(1, $this->processImport($imp)['created']);
         $ads = collect($this->profits())->pluck(0)->map(fn ($v) => (int) round($v * 100));
         $this->assertSame(4001, $ads->sum());                       // split across the two orders, total exact to the paisa
         $this->assertSame(15999, (int) round(OrderProfit::sum('estimated_profit') * 100));   // 2 x 100.00 profit - 40.01 ads
 
         $imp->update(['status' => 'MAPPED']);                       // same file again
-        $this->assertSame(1, $this->run($imp)['duplicate']);
+        $this->assertSame(1, $this->processImport($imp)['duplicate']);
         $this->assertSame(1, AdvertisingDaily::count());
 
         $rev = $this->import('ADS_PRODUCT', $csv('60.00'), $map);   // marketplace revised the numbers
-        $s = $this->run($rev);
+        $s = $this->processImport($rev);
         $this->assertSame([1, 0], [$s['created'], $s['duplicate']]);
         $this->assertSame(1, AdvertisingDaily::count());            // updated in place
         $this->assertSame(6000, collect($this->profits())->pluck(0)->map(fn ($v) => (int) round($v * 100))->sum());
@@ -71,7 +71,7 @@ class AdvertisingTest extends TestCase
     public function test_orders_created_after_the_ad_report_still_get_their_share(): void
     {
         $csv = "date,campaign,sku,imp,clicks,spend,sales,orders\n{$this->day()},C1,SKU1,100,10,30.00,0,0\n";
-        $this->run($this->import('ADS_PRODUCT', $csv, self::M + ['sku' => 'sku']));   // spend, but no order that day yet
+        $this->processImport($this->import('ADS_PRODUCT', $csv, self::M + ['sku' => 'sku']));   // spend, but no order that day yet
         $this->assertSame(0, OrderProfit::count());
         $this->order('LATE1');
         $this->assertSame('30.00', (string) OrderProfit::first()->ads_cost);
@@ -82,8 +82,8 @@ class AdvertisingTest extends TestCase
     {
         $this->order('A1');
         $h = "date,campaign,sku,imp,clicks,spend,sales,orders\n";
-        $this->run($this->import('ADS_CAMPAIGN', $h . "{$this->day()},C1,,1000,50,100.00,500,3\n", self::M));
-        $this->run($this->import('ADS_PRODUCT', $h . "{$this->day()},C1,SKU1,1000,50,40.00,236,1\n", self::M + ['sku' => 'sku']));
+        $this->processImport($this->import('ADS_CAMPAIGN', $h . "{$this->day()},C1,,1000,50,100.00,500,3\n", self::M));
+        $this->processImport($this->import('ADS_PRODUCT', $h . "{$this->day()},C1,SKU1,1000,50,40.00,236,1\n", self::M + ['sku' => 'sku']));
         $f = ['from' => $this->day(), 'to' => $this->day()];
         $this->assertSame(100.0, app(AdsService::class)->totalSpend($f['from'], $f['to']));       // campaign report wins, not 140
         $r = app(ProfitService::class)->report($f);
@@ -95,7 +95,7 @@ class AdvertisingTest extends TestCase
         $h = "date,campaign,group,keyword,match,imp,clicks,spend,sales,orders\n"; $d = $this->day();
         $csv = $h . "$d,C1,G1,wasted kw,broad,900,40,300.00,0,0\n$d,C1,G1,winner kw,exact,500,30,20.00,200.00,2\n$d,C1,G1,meh kw,phrase,3000,60,50.00,120.00,1\n";
         $map = ['date' => 'date', 'campaign' => 'campaign', 'ad_group' => 'group', 'keyword' => 'keyword', 'match_type' => 'match', 'impressions' => 'imp', 'clicks' => 'clicks', 'spend' => 'spend', 'sales' => 'sales', 'orders' => 'orders'];
-        $this->run($this->import('ADS_KEYWORD', $csv, $map));
+        $this->processImport($this->import('ADS_KEYWORD', $csv, $map));
         $i = app(AdsService::class)->insights(['from' => $d, 'to' => $d]);
         $L = $i['levels']['KEYWORD'];
         $this->assertSame(['wasted kw'], $L['wasted']->pluck('label')->all());
@@ -107,7 +107,7 @@ class AdvertisingTest extends TestCase
     {
         $h = "date,campaign,sku,imp,clicks,spend,sales,orders\n"; $d = $this->day();
         $csv = $h . "$d,C1,NOPE,10,1,5.00,0,0\n$d,C2,SKU1,10,1,5.00,0,0\n$d,C2,SKU1,10,1,6.00,0,0\nnot-a-date,C3,SKU1,1,1,1.00,0,0\n";
-        $s = $this->run($this->import('ADS_PRODUCT', $csv, self::M + ['sku' => 'sku']));
+        $s = $this->processImport($this->import('ADS_PRODUCT', $csv, self::M + ['sku' => 'sku']));
         $this->assertSame([1, 3], [$s['ok'], $s['error']]);       // unknown SKU, repeated key, bad date
     }
 }
