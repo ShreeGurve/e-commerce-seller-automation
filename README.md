@@ -1,109 +1,91 @@
-# Seller Automation — Package 9: Dynamic Pricing Rules & Recommendation Engine
-
-## Prerequisites
-
-Install the validated Seller Automation baseline and Packages 1–8. This package builds on the existing `PricingService`, fee rules, product cost history, competitor-price records, `PricingRecommendation` approval workflow, and internal price history.
+# Seller Automation — Package 11: Marketplace Attribute & Category Mapping
 
 ## What this package adds
 
-- One dynamic pricing rule per product + marketplace.
-- Strategies: target-margin pricing, match lowest recorded competitor, undercut lowest recorded competitor, or price above the lowest recorded competitor.
-- Optional seller-defined floor and ceiling prices.
-- Minimum margin protection, with the existing cost/fee-based minimum price always enforced.
-- A run history showing rules checked, recommendations created, and skipped rules.
-- A manual **Run rules now** action and an Artisan command for scheduling.
-- Generated recommendations enter the existing `pending` approval queue. Existing approval and internal price-history functions remain the only path to record a new price.
+- Configurable attribute profiles per marketplace and category key.
+- Attribute definitions with required/optional flags, text/number/boolean/select/multi-select types, allowed values, length limits, and variant-attribute markers.
+- Listing-version-specific mappings from a controlled list of internal product/listing fields or manually entered values.
+- Bulk save of multiple attribute mappings for a listing.
+- Validation audits for missing required values, invalid types/options/lengths, unapproved mappings, and missing variant values on active product variants.
+- Two-person review: the user who created a mapping cannot approve or reject their own mapping.
+- Validation history and a mapping workspace.
 
-## Safety and data-source limits
+## Scope and marketplace safety
 
-- No automatic Amazon or Flipkart price publication is implemented or enabled.
-- This package does not scrape competitor pages or claim access to live competitor prices. Competitor strategies use only competitor prices already entered/imported into the existing `competitor_prices` table from sources the seller is authorized to use.
-- If a competitor price is unavailable, a competitor strategy is skipped; it does not silently fall back to an unrelated market estimate.
-- A recommendation cannot be created below the existing fee/cost-derived minimum or the rule's floor. If the safe price exceeds the ceiling, the rule is skipped.
-- Pending or approved recommendations prevent duplicate active proposals for the same product/channel.
-- No stock, order, listing, or marketplace price is changed by this package.
+- Profiles are **MANUAL** configuration. This package does not include official Amazon or Flipkart category schemas and does not claim that configured definitions match current marketplace requirements.
+- Obtain category schemas from authorized marketplace documentation or seller tools, record the schema version/reference, and maintain them when marketplaces change their requirements.
+- `is_variant_attribute` checks that active product variants carry the configured attribute key. It does not create parent/child marketplace listings or prove that a marketplace accepts the variation theme.
+- Source-field mapping is limited to an explicit allowlist. No arbitrary PHP paths or expressions are evaluated.
+- Saving a mapping sets it to `PENDING`. Approval is separate. A validation audit flags mappings that are not approved.
+- This package does not change listing content, create marketplace listings, or publish/sync attribute updates. Marketplace write APIs remain out of scope and disabled.
 
 ## Installation
 
-1. Back up the project and database.
-2. Extract the ZIP into the Laravel project root (archive paths begin with `app/`, `database/`, `resources/`, and `tests/`).
-3. Add the routes below inside the existing authenticated route group in `routes/web.php`. If your project already has any of these named routes, keep the existing definition and do not duplicate it.
+1. Back up the application and database.
+2. Extract the ZIP into the Laravel project root. Archive paths begin with `app/`, `database/`, `resources/`, and `tests/`.
+3. Add these routes inside the existing authenticated route group in `routes/web.php`:
 
 ```php
-use App\Http\Controllers\DynamicPricingRuleController;
-use App\Http\Controllers\PricingRecommendationController;
+use App\Http\Controllers\MarketplaceAttributeMappingController;
 
-// Dynamic pricing rules
-Route::get('/pricing/dynamic-rules', [DynamicPricingRuleController::class, 'index'])
-    ->middleware('can:products.view')->name('pricing-dynamic.index');
-Route::middleware('can:products.edit')->group(function () {
-    Route::post('/pricing/dynamic-rules', [DynamicPricingRuleController::class, 'store'])->name('pricing-dynamic.store');
-    Route::put('/pricing/dynamic-rules/{dynamicPricingRule}', [DynamicPricingRuleController::class, 'update'])->name('pricing-dynamic.update');
-    Route::delete('/pricing/dynamic-rules/{dynamicPricingRule}', [DynamicPricingRuleController::class, 'destroy'])->name('pricing-dynamic.destroy');
-    Route::post('/pricing/dynamic-rules/run', [DynamicPricingRuleController::class, 'run'])->name('pricing-dynamic.run');
+Route::middleware('can:listings.view')->group(function () {
+    Route::get('/listings/attributes', [MarketplaceAttributeMappingController::class, 'index'])
+        ->name('listings.attributes.index');
+    Route::get('/listings/{listing}/attributes', [MarketplaceAttributeMappingController::class, 'workspace'])
+        ->name('listings.attributes.workspace');
 });
 
-// Existing recommendation approval workflow (add only if these routes are not already present)
-Route::get('/pricing-recommendations', [PricingRecommendationController::class, 'index'])
-    ->middleware('can:products.view')->name('pricing-recommendations.index');
-Route::middleware('can:products.edit')->group(function () {
-    Route::post('/pricing/{product}/{marketplace}/recommendations', [PricingRecommendationController::class, 'store'])->name('pricing-recommendations.store');
-    Route::post('/pricing-recommendations/{pricingRecommendation}/apply', [PricingRecommendationController::class, 'apply'])->name('pricing-recommendations.apply');
+Route::middleware('can:listings.manage')->group(function () {
+    Route::post('/listings/attributes/profiles', [MarketplaceAttributeMappingController::class, 'storeProfile'])
+        ->name('listings.attributes.profiles.store');
+    Route::post('/listings/{listing}/attributes', [MarketplaceAttributeMappingController::class, 'save'])
+        ->name('listings.attributes.save');
+    Route::post('/listings/{listing}/attributes/validate', [MarketplaceAttributeMappingController::class, 'validateListing'])
+        ->name('listings.attributes.validate');
+    Route::post('/listing-attribute-mappings/{mapping}/review', [MarketplaceAttributeMappingController::class, 'review'])
+        ->name('listings.attributes.review');
 });
-Route::post('/pricing-recommendations/{pricingRecommendation}/approve', [PricingRecommendationController::class, 'approve'])
-    ->middleware('can:products.view')->name('pricing-recommendations.approve');
-Route::post('/pricing-recommendations/{pricingRecommendation}/reject', [PricingRecommendationController::class, 'reject'])
-    ->middleware('can:products.view')->name('pricing-recommendations.reject');
 ```
 
-> The controller itself checks reviewer permissions (`Super Admin`, `settings.manage`, or `users.manage`). The route middleware only establishes authenticated product-view access; do not remove the controller-level reviewer check.
-
-4. Add the schedule to `routes/console.php` without replacing existing entries:
-
-```php
-use Illuminate\Support\Facades\Schedule;
-
-Schedule::command('marketplaces:dynamic-pricing')->dailyAt('02:00')->withoutOverlapping();
-```
-
-5. Inspect and run the migration:
+4. Run migration preview, migrate, and tests:
 
 ```powershell
 php artisan optimize:clear
 php artisan migrate --pretend
 php artisan migrate
-```
-
-6. Run tests:
-
-```powershell
-php artisan test --filter=DynamicPricingServiceTest
+php artisan test --filter=MarketplaceAttributeMappingServiceTest
 php artisan test
 ```
 
-7. Open **Pricing → Dynamic Pricing Rules** at `/pricing/dynamic-rules`. Create a rule for each product/channel. Use **Run rules now** to generate proposals. The daily schedule runs the same rule engine automatically.
+5. Open `/listings/attributes`. Ensure user roles have the `listings.view` and `listings.manage` permissions. The migration adds `listings.attributes.view` and `listings.attributes.manage` as granular permission records if the permissions table exists; the supplied routes use the established `listings.view` / `listings.manage` gates for compatibility with the existing listing module.
 
-## Artisan commands
+## Workflow
+
+1. Create a marketplace/category profile using a category key that exactly matches `listings.category_path`.
+2. Define required and optional attributes. Add allowed values for `SELECT` and `MULTI_SELECT` fields.
+3. Open **Map attributes** for a listing and save source-field mappings or manual values.
+4. A different authorized user reviews each pending mapping.
+5. Run validation and review the persisted audit result. Update mappings and revalidate as needed.
+
+## Files added
+
+- `app/Models/MarketplaceAttributeProfile.php`
+- `app/Models/MarketplaceAttributeDefinition.php`
+- `app/Models/ListingAttributeMapping.php`
+- `app/Models/ListingAttributeMappingAudit.php`
+- `app/Services/MarketplaceAttributeMappingService.php`
+- `app/Http/Controllers/MarketplaceAttributeMappingController.php`
+- `database/migrations/2026_11_19_000008_create_marketplace_attribute_mapping_tables.php`
+- `resources/views/listings/attribute-mapping.blade.php`
+- `resources/views/listings/attribute-mapping-workspace.blade.php`
+- `tests/Feature/MarketplaceAttributeMappingServiceTest.php`
+
+## Rollback
+
+Remove the routes, then roll back this migration only if it is the latest migration:
 
 ```powershell
-php artisan marketplaces:dynamic-pricing
-php artisan marketplaces:dynamic-pricing --business=1
-php artisan marketplaces:dynamic-pricing --marketplace=1
+php artisan migrate:rollback --step=1
 ```
 
-Keep the Laravel scheduler running in deployment (`php artisan schedule:run` every minute via Windows Task Scheduler) for the daily run.
-
-## Files
-
-- `app/Models/DynamicPricingRule.php`
-- `app/Models/DynamicPricingRun.php`
-- `app/Services/DynamicPricingService.php`
-- `app/Console/Commands/RunDynamicPricing.php`
-- `app/Http/Controllers/DynamicPricingRuleController.php`
-- `database/migrations/2026_11_19_000006_create_dynamic_pricing_rule_tables.php`
-- `resources/views/pricing/dynamic-rules.blade.php`
-- `tests/Feature/DynamicPricingServiceTest.php`
-
-## Important note about approval
-
-A rule run creates a `pending` `PricingRecommendation`; it does not approve it. A reviewer must approve it, and a permitted user can then record the approved amount in internal `price_history`. The user must still update the marketplace listing manually. This separation is intentional until the marketplace write APIs, permissions, and account-specific constraints are validated.
+Otherwise use your normal controlled migration rollback procedure. Permission records are intentionally not deleted by rollback because they may already be assigned or customized.
