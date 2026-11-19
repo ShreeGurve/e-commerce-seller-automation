@@ -1,82 +1,102 @@
-# Seller Automation — Package 12: Marketplace Listing Compliance & Suppression Management
+# Seller Automation — Package 13: Marketplace Returns, Refunds & Claims Management
 
-## Included
+## What this package adds
 
-- A structured issue register linked to a listing and optional listing version.
-- Manual or imported issue source, external issue reference, issue code, category, severity, detection date and due date.
-- Suppression / at-risk flag, evidence references, and resolution notes.
-- Issue lifecycle: `OPEN`, `IN_PROGRESS`, `RESOLVED`, `DISMISSED`.
-- Immutable event history for issue reporting and every status transition.
-- Manual recheck snapshots with open-issue and suppression counts.
-- Dashboard filters and counts for open, suppression, critical/blocker and resolved issues.
+- Staging and deduplication for marketplace return records, keyed by marketplace + external return ID.
+- Manual review before an imported return is created in the existing `returns` / `return_items` ledger.
+- Exact order-line matching by external line ID, with marketplace SKU as fallback.
+- Validation preventing total returned quantity from exceeding the ordered quantity across prior returns.
+- Return inspection snapshots with received quantity, condition, disposition and reviewer.
+- Claim-eligibility flagging for missing, damaged, used, scrapped or non-restocked units.
+- Staged marketplace refund records and manual reconciliation into the existing `RefundService` / `refunds` ledger.
+- Audit events for return import and inspection.
+- Dashboard at `/marketplaces/returns`.
 
-## Important scope and marketplace safety
+## Reuse of existing project modules
 
-- This package does **not** connect to Amazon or Flipkart to poll account health, listing suppression, policy notices, or case status. Issues are entered manually or imported by a separately authorized workflow.
-- The **Recheck** service only snapshots the local issue register. It does not claim that a marketplace listing is currently compliant or live.
-- No listing status is changed automatically. In particular, recording a suppression issue does not change `listings.status`.
-- Evidence is stored as safe reference metadata (`label`, `reference`, optional `note`), not as uploaded files. Store actual documents in your existing controlled document storage and pass a reference/path only if that storage is access-controlled.
-- No marketplace API write or appeal submission is included.
+This package intentionally extends the existing `ProductReturn`, `ReturnItem`, `Refund`, `RefundService`, and `ClaimService` workflows. It does not create a second returns/refunds/claims ledger. The existing `ClaimService::suggestFromReturn()` can use the inspected return and `claim_eligible` flag to prepare a claim draft. Claim submission, approval, documents and deadlines remain controlled by the existing claims module.
+
+## Safety and scope
+
+- This is an import/review/reconciliation foundation. It does **not** poll Amazon or Flipkart for return/refund data. The staging methods accept records supplied by an authorized CSV/API import process.
+- Importing a return requires an existing matching order and matching order lines.
+- Refund reconciliation calls the existing `RefundService`, so the existing shipped-order and maximum-refundable-amount validations remain in force.
+- Only INR refund imports are accepted because the current project refund ledger is INR-based.
+- Inspection disposition is recorded for operations and claim evidence. `restock_qty` is informational only in this package: **no inventory quantity is changed**. A separately approved stock workflow must handle any physical restock.
+- No marketplace API write, refund initiation, return authorization, claim submission or seller-portal action is performed.
+- Evidence files remain under the existing private return/claim storage workflow; this package stores inspection notes and structured metadata only.
 
 ## Installation
 
-1. Back up the project and database.
-2. Extract this ZIP into the Laravel project root. Archive paths begin with `app/`, `database/`, `resources/`, and `tests/`.
-3. Add the routes inside your existing authenticated route group in `routes/web.php`:
+1. Back up the application and database.
+2. Extract the ZIP into the Laravel project root. Archive paths begin with `app/`, `database/`, `resources/`, and `tests/`.
+3. Add the routes inside the existing authenticated route group in `routes/web.php`:
 
 ```php
-use App\Http\Controllers\MarketplaceListingComplianceController;
+use App\Http\Controllers\MarketplaceReturnsController;
 
-Route::middleware('can:listings.view')->group(function () {
-    Route::get('/listings/compliance', [MarketplaceListingComplianceController::class, 'index'])
-        ->name('listings.compliance.index');
+Route::middleware('can:orders.view')->group(function () {
+    Route::get('/marketplaces/returns', [MarketplaceReturnsController::class, 'index'])
+        ->name('marketplaces.returns.index');
 });
 
-Route::middleware('can:listings.manage')->group(function () {
-    Route::post('/listings/compliance/issues', [MarketplaceListingComplianceController::class, 'store'])
-        ->name('listings.compliance.store');
-    Route::patch('/listings/compliance/issues/{issue}', [MarketplaceListingComplianceController::class, 'update'])
-        ->name('listings.compliance.update');
-    Route::post('/listings/{listing}/compliance/recheck', [MarketplaceListingComplianceController::class, 'recheck'])
-        ->name('listings.compliance.recheck');
+Route::middleware('can:orders.manage')->group(function () {
+    Route::post('/marketplaces/returns/stage', [MarketplaceReturnsController::class, 'stageReturn'])
+        ->name('marketplaces.returns.stage');
+    Route::post('/marketplaces/returns/{import}/approve', [MarketplaceReturnsController::class, 'approveReturn'])
+        ->name('marketplaces.returns.approve');
+    Route::post('/marketplaces/returns/{import}/reject', [MarketplaceReturnsController::class, 'rejectReturn'])
+        ->name('marketplaces.returns.reject');
+    Route::post('/marketplaces/returns/{return}/inspect', [MarketplaceReturnsController::class, 'inspect'])
+        ->name('marketplaces.returns.inspect');
+    Route::post('/marketplaces/returns/refunds/stage', [MarketplaceReturnsController::class, 'stageRefund'])
+        ->name('marketplaces.returns.refunds.stage');
+    Route::post('/marketplaces/returns/refunds/{import}/reconcile', [MarketplaceReturnsController::class, 'reconcileRefund'])
+        ->name('marketplaces.returns.refunds.reconcile');
 });
 ```
 
-4. Preview and run migration:
+4. Clear caches and preview migrations:
 
 ```powershell
 php artisan optimize:clear
 php artisan migrate --pretend
+```
+
+5. Run migration:
+
+```powershell
 php artisan migrate
 ```
 
-5. Run tests:
+6. Run focused and full tests:
 
 ```powershell
-php artisan test --filter=MarketplaceListingComplianceServiceTest
+php artisan test --filter=MarketplaceReturnsServiceTest
 php artisan test
 ```
 
-6. Open `/listings/compliance`. Ensure the roles that should use this screen already have `listings.view` and `listings.manage` permissions.
+7. Open `/marketplaces/returns`. Users need the existing `orders.view` and `orders.manage` permissions.
 
 ## Workflow
 
-1. Record a notice or suppression issue against the matching listing.
-2. Enter the marketplace issue code, severity, whether it is a suppression, and any evidence references.
-3. Move the issue to `IN_PROGRESS` while it is being investigated.
-4. Resolve it only after entering resolution notes, or dismiss it with an audit note.
-5. Use local recheck to snapshot outstanding issue counts. Obtain actual live marketplace status from the authorized seller portal/API separately.
+1. Stage a return from a trusted marketplace export/API integration. Supply the external order/return IDs and one or more order line references.
+2. Review and import it. The service links it to the existing order and prevents over-return quantities.
+3. Inspect every line. Record received quantity, condition and proposed disposition. Claim eligibility is flagged where units are missing or not fully restockable.
+4. Use the existing claims module to prepare a draft from an eligible return; claim submission and evidence handling remain manual and permission-controlled.
+5. Stage marketplace refund records and reconcile each one manually. The existing `RefundService` validates order status, duplicate external refund IDs and refundable balance.
 
 ## Files added
 
-- `app/Models/MarketplaceListingIssue.php`
-- `app/Models/MarketplaceListingIssueEvent.php`
-- `app/Models/MarketplaceListingComplianceCheck.php`
-- `app/Services/MarketplaceListingComplianceService.php`
-- `app/Http/Controllers/MarketplaceListingComplianceController.php`
-- `database/migrations/2026_11_19_000009_create_marketplace_listing_compliance_tables.php`
-- `resources/views/listings/compliance.blade.php`
-- `tests/Feature/MarketplaceListingComplianceServiceTest.php`
+- `app/Models/MarketplaceReturnImport.php`
+- `app/Models/MarketplaceRefundImport.php`
+- `app/Models/ReturnInspection.php`
+- `app/Models/MarketplaceReturnEvent.php`
+- `app/Services/MarketplaceReturnsService.php`
+- `app/Http/Controllers/MarketplaceReturnsController.php`
+- `database/migrations/2026_11_19_000010_create_marketplace_return_management_tables.php`
+- `resources/views/marketplaces/returns/index.blade.php`
+- `tests/Feature/MarketplaceReturnsServiceTest.php`
 
 ## Rollback
 
@@ -86,4 +106,4 @@ Remove the routes first. Roll back this migration only if it is the latest migra
 php artisan migrate:rollback --step=1
 ```
 
-Otherwise use your normal controlled migration rollback process.
+Otherwise use your controlled migration rollback procedure. This migration only drops the four tables introduced by Package 13; it does not modify the existing returns, return_items, refunds or claims tables.
