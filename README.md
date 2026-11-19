@@ -1,70 +1,116 @@
-# Seller Automation — Package 2: Tenant-Aware Marketplace Credentials
+# Seller Automation — Package 3: Read-only Sync Pipeline
 
-This package builds on the latest Seller Automation baseline and the stability/migration package. It contains only the files added or changed for Package 2.
+This package adds the safe ingestion/staging layer for marketplace catalog, order and inventory reads. It is designed to be installed after Package 1 (stability/migration repair) and Package 2 (tenant-aware credentials).
 
 ## Included
 
-- `MarketplaceConnectionResolver`: resolves a connection by business, marketplace code and environment, keeping the query inside the requested business boundary.
-- `AmazonLwaTokenProvider::accessTokenForConnection()`: exchanges the encrypted credentials belonging to one Amazon connection for an LWA access token. The existing `.env`-based `accessToken()` method remains available for backwards compatibility.
-- `FlipkartAccessTokenProvider`: exchanges the encrypted credentials belonging to one Flipkart connection for an access token.
-- `ConnectionTokenCache`: caches tokens by business + connection + one-way credential fingerprint. A credential change naturally creates a new cache key; raw secrets are never placed in cache keys.
-- `MarketplaceConnectionHealthChecker`: rechecks the saved credentials and updates the connection status and last-check details.
-- Marketplace connections page: shows the current connection state and adds a **Check connection** action.
-- Feature tests for tenant isolation, token caching, and API-call safety flags.
-
-## Installation
-
-1. Back up the project and database.
-2. Extract the ZIP into the Laravel project root, preserving the folder structure.
-3. Add the route below inside the existing authenticated route group in `routes/web.php`, beside the other marketplace-connection routes:
-
-```php
-Route::post('/marketplace-connections/{connection}/recheck', [MarketplaceConnectionController::class, 'recheck'])
-    ->middleware('can:settings.manage')
-    ->name('marketplaces.connections.recheck');
-```
-
-`MarketplaceConnectionController` is already imported in the current baseline's `routes/web.php`.
-
-4. Clear cached application metadata:
-
-```powershell
-php artisan optimize:clear
-```
-
-5. Run the focused tests and then the full suite:
-
-```powershell
-php artisan test --filter=MarketplaceConnectionCredentialTest
-php artisan test
-```
-
-## Required configuration and safety
-
-The connection-aware providers deliberately respect the existing global safety switches:
-
-```dotenv
-AMAZON_SP_API_ENABLED=false
-AMAZON_SP_API_CALLS_ENABLED=false
-FLIPKART_SELLER_API_ENABLED=false
-FLIPKART_SELLER_API_CALLS_ENABLED=false
-```
-
-Keep these disabled until the corresponding platform access is approved and the next read-only API integration package has been installed and tested. The providers throw `ConnectorDisabled` while calls are disabled. Enabling these flags does not enable marketplace writes; existing write gates remain in place.
-
-Credentials are read from the encrypted `marketplace_connections.credentials` cast. Do not copy seller secrets into `.env`, logs, queue payloads, or browser responses.
+- `MarketplaceReadProvider` contract and paginated `MarketplaceReadPage` response object.
+- Provider registry keyed by marketplace code (`amazon`, `flipkart`, etc.).
+- `MarketplaceReadSyncService` with per-connection/resource locking, pagination guards, idempotent upserts, sync-run history, and sanitized order payload staging.
+- `RunMarketplaceReadSync` queue job. Queue payload contains only connection ID, resource and optional date bounds; it never contains credentials.
+- Dedicated staging tables for sync runs and normalized raw records.
+- Separate marketplace inventory snapshots. Internal `inventory` balances are never modified.
+- Feature tests covering idempotency, PII key filtering, inventory isolation and connection validation.
 
 ## Important scope boundary
 
-- Amazon token issuance proves LWA credential exchange only. It does not prove Orders, Listings, Inventory or other SP-API roles/operations are authorized.
-- Flipkart token issuance proves the self-access application can obtain a token. It does not prove each Seller API operation is enabled for the seller.
-- This package does **not** implement product/order/inventory API requests, SP-API/Flipkart synchronization, or marketplace write operations.
-- No migration is required for this package.
+This package implements the read-sync pipeline, staging schema and provider contract. It does **not** include production Amazon SP-API or Flipkart Seller API provider classes. Package 2's Amazon LWA token exchange is not an SP-API request signer; Amazon SP-API requests also require the correct regional endpoint and AWS SigV4 signing. Flipkart operation paths/scopes must match the seller's approved API access. Do not register a provider until those platform-specific requirements have been implemented and verified against the seller account.
+
+Consequently, no live marketplace API calls are made by this package as delivered. The `providers` registry is intentionally empty. This is a deliberate safety boundary, not a claim that marketplace sync is already live.
+
+## Installation
+
+1. Back up the application and database.
+2. Confirm Package 1 and Package 2 are installed. Package 1 supplies the `marketplace_connections.environment` column; Package 2 supplies tenant-aware connection credentials and health checks.
+3. Extract this ZIP into the Laravel project root, preserving directories.
+4. Run:
+
+```powershell
+php artisan optimize:clear
+php artisan migrate --pretend
+```
+
+Review the SQL preview, then run:
+
+```powershell
+php artisan migrate
+```
+
+Do not use `migrate:fresh` on a working database.
+
+## Queue usage
+
+Once a marketplace-specific read provider has been implemented and registered in `config/marketplace_sync.php`, dispatch a sync job from an authorized controller/service:
+
+```php
+use App\Jobs\RunMarketplaceReadSync;
+
+RunMarketplaceReadSync::dispatch(
+    $connection->id,
+    'orders',       // products | orders | inventory
+    '2026-11-01',   // optional from date
+    '2026-11-19'    // optional to date
+);
+```
+
+Start the configured queue worker:
+
+```powershell
+php artisan queue:work --tries=3
+```
+
+The sync run is stored in `marketplace_sync_runs`. Normalized records are stored in `marketplace_sync_records`. Inventory read results are additionally stored in `marketplace_inventory_snapshots`.
+
+## Provider contract
+
+Create a class implementing `App\Marketplaces\Sync\MarketplaceReadProvider` and return a `MarketplaceReadPage`. Each item must have:
+
+```php
+[
+    'external_id' => 'stable-marketplace-id-or-sku',
+    'payload' => [/* normalized fields; do not include customer PII */],
+]
+```
+
+Register it by marketplace code:
+
+```php
+// config/marketplace_sync.php
+'providers' => [
+    'amazon' => App\Marketplaces\Amazon\AmazonReadProvider::class,
+    'flipkart' => App\Marketplaces\Flipkart\FlipkartReadProvider::class,
+],
+```
+
+Provider implementations must be read-only and return normalized records. Never include access tokens, refresh tokens, client secrets or authorization headers in returned payloads.
+
+## Safety and data behavior
+
+- Only `products`, `orders`, and `inventory` are accepted.
+- Connection status must be `connected`, `active`, or `verified`.
+- Sync runs are locked per connection and resource to prevent overlap.
+- Pagination is capped by `MARKETPLACE_SYNC_MAX_PAGES` (default 100); repeated/missing cursors are rejected.
+- Common customer/buyer/address/contact PII keys are recursively removed before staging.
+- Repeated external IDs update the staged row instead of duplicating it.
+- Order data is staged only. It does not create operational `orders` or deduct stock.
+- Inventory data is stored as a marketplace snapshot only. It does not update the internal `inventory` table.
+- No marketplace write endpoints are implemented or invoked.
+
+## Validation
+
+Use the project's safe test database configuration (`DB_CONNECTION=sqlite`, `DB_DATABASE=:memory:`):
+
+```powershell
+php artisan test --filter=MarketplaceReadSyncServiceTest
+php artisan test
+```
+
+The build environment did not contain `vendor/`, so PHPUnit was not run during package assembly. PHP syntax checks and ZIP integrity checks were performed.
 
 ## Rollback
 
-Restore the previous versions of the changed files from your backup, remove the newly added files, and remove the route line added in step 3. No database rollback is needed.
+1. Stop queue workers.
+2. Run `php artisan migrate:rollback --step=1` only if this package's migration is the latest migration and no later migrations have been applied. Otherwise create a reviewed rollback migration or restore the database backup.
+3. Remove the files listed in this package and clear caches with `php artisan optimize:clear`.
 
-## Validation note
-
-PHP syntax checks passed in the build environment. This archive did not include `vendor/`, so PHPUnit could not be executed here. Run the commands above in your WAMP project and share the results before proceeding to the read-only synchronization package.
+Do not delete staged sync tables manually if their data is needed for audit/history.
