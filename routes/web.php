@@ -679,6 +679,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/automation/control-center/export', [\App\Http\Controllers\AutomationControlCenterController::class, 'export'])->middleware('can:reports.view')->name('automation.control-center.export');
     Route::get('/automation/workflow-readiness', [\App\Http\Controllers\AutomationControlCenterController::class, 'readiness'])->middleware('can:reports.view')->name('automation.workflow-readiness');
 
+    Route::get('/finance/marketplace-analytics', [\App\Http\Controllers\MarketplaceFinancialAnalyticsController::class, 'index'])->middleware('can:finance.view')->name('finance.marketplace-analytics.index');
 
 });
 

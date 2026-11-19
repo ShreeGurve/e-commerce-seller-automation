@@ -1,63 +1,59 @@
-# Seller Automation — Package 14
-## Marketplace Bank Payout Reconciliation
+# Seller Automation — Package 15
+## Marketplace Financial Analytics & Profitability Intelligence
 
-This package adds a controlled workflow to compare the marketplace settlement's net amount with the actual bank credit received.
+### What this adds
+A read-only finance dashboard at `/finance/marketplace-analytics` that consolidates the existing financial records:
+- Order profitability: orders, units, revenue, COGS, marketplace fees, returns, recoveries, advertising cost and profit.
+- Actual-profit coverage versus estimated-profit rows.
+- Settlement count and net settlement value for the selected period.
+- Recorded bank credits, matched credits and payouts needing review (uses Package 14's `marketplace_bank_payouts` table).
+- Settlement fee breakdown by fee kind.
+- Refund totals, approved claim recovery and recorded operating expenses.
+- Marketplace-level revenue/profit comparison and estimated operating profit after recorded expenses.
+- Date range and marketplace filters.
 
-### What is included
-- Bank payout records with unique marketplace + bank reference protection.
-- Optional direct link to an existing marketplace settlement, automatic lookup by marketplace + external settlement ID, or save as unmatched and link later.
-- Automatic amount comparison: absolute difference up to ₹1.00 is `MATCHED`; greater difference is `MISMATCH`.
-- Marketplace ownership validation, duplicate settlement-link prevention, review notes, ignore/reopen workflow, and reviewer audit fields.
-- Finance dashboard at `/finance/payout-reconciliation` with status counts, filters, and bank-vs-settlement comparison.
-
-### Important scope and controls
-- This is a manual bank-credit recording/reconciliation workflow. It does not connect to a bank API, import bank statements, initiate marketplace payouts, or change accounting balances.
-- Current matching model is one bank credit to one settlement. Split payouts and one bank credit covering multiple settlements are deliberately rejected/not supported yet; do not force-link such cases.
-- INR only in this UI. The ₹1.00 tolerance is fixed in this package.
-- Existing settlement lines, order reconciliation, refunds, claims, and marketplace credentials are not modified.
+### Important accounting definitions
+- Profit is sourced from existing `order_profits`: `actual_profit` when present, otherwise `estimated_profit`.
+- Actual-profit coverage is the percentage of order-profit lines with a non-null `actual_profit`.
+- Settlement totals and bank credits are displayed as reconciliation context; they are not added to sales revenue or profit.
+- Operating profit shown is a management estimate: selected order-profit total less recorded expenses. It is not a statutory P&L, tax report, cash balance, or accounting ledger.
+- Refund and approved-claim figures are separate operational totals. They are not added a second time to profit, because the existing ProfitService already incorporates refund and recovery effects in its profit rows.
+- This package does not recalculate or modify profit records, settlements, refunds, claims, payouts, inventory or accounting balances.
 
 ### Files
-- `database/migrations/2026_11_19_000011_create_marketplace_bank_payout_reconciliations_table.php`
-- `app/Models/MarketplaceBankPayout.php`
-- `app/Models/Settlement.php` — replace the existing model with this version; it adds the `bankPayout()` relation.
-- `app/Services/MarketplacePayoutReconciliationService.php`
-- `app/Http/Controllers/MarketplacePayoutReconciliationController.php`
-- `resources/views/finance/payout-reconciliation/index.blade.php`
-- `tests/Feature/MarketplacePayoutReconciliationTest.php`
+- `app/Services/MarketplaceFinancialAnalyticsService.php`
+- `app/Http/Controllers/MarketplaceFinancialAnalyticsController.php`
+- `resources/views/finance/marketplace-analytics.blade.php`
+- `tests/Feature/MarketplaceFinancialAnalyticsTest.php`
 
-### Routes to add
-Add these inside the existing authenticated `Route::middleware('auth')->group(...)` in `routes/web.php`:
+No migration is required. Package 14's `marketplace_bank_payouts` table must be migrated before this dashboard is used.
+
+### Route to add
+Add inside the authenticated routes group in `routes/web.php`:
 
 ```php
-Route::get('/finance/payout-reconciliation', [\App\Http\Controllers\MarketplacePayoutReconciliationController::class, 'index'])
-    ->middleware('can:finance.view')->name('finance.payout-reconciliation.index');
-
-Route::middleware('can:finance.manage')->prefix('finance/payout-reconciliation')->name('finance.payout-reconciliation.')->group(function () {
-    Route::post('/', [\App\Http\Controllers\MarketplacePayoutReconciliationController::class, 'store'])->name('store');
-    Route::post('/{payout}/link', [\App\Http\Controllers\MarketplacePayoutReconciliationController::class, 'link'])->name('link');
-    Route::post('/{payout}/ignore', [\App\Http\Controllers\MarketplacePayoutReconciliationController::class, 'ignore'])->name('ignore');
-    Route::post('/{payout}/reopen', [\App\Http\Controllers\MarketplacePayoutReconciliationController::class, 'reopen'])->name('reopen');
-});
+Route::get('/finance/marketplace-analytics', [\App\Http\Controllers\MarketplaceFinancialAnalyticsController::class, 'index'])
+    ->middleware('can:finance.view')
+    ->name('finance.marketplace-analytics.index');
 ```
 
 ### Installation
-1. Back up the project and database.
-2. Extract this ZIP at the Laravel project root. Archive paths start with `app/`, `database/`, `resources/`, and `tests/`.
-3. Add the routes above.
-4. Replace `app/Models/Settlement.php` with the package version (the only change is the new `bankPayout()` relationship).
-5. Run `php artisan optimize:clear`.
-6. Review migration SQL with `php artisan migrate --pretend`.
-7. Run `php artisan migrate`.
-8. Run targeted tests with safe test environment:
+1. Back up the project.
+2. Extract the ZIP at the Laravel project root (archive paths start with `app/`, `resources/`, and `tests/`).
+3. Confirm Package 14 migration has run. This package has no new migration.
+4. Add the route above.
+5. Run:
    ```powershell
+   php artisan optimize:clear
    $env:DB_CONNECTION="sqlite"
    $env:DB_DATABASE=":memory:"
-   php artisan test --filter=MarketplacePayoutReconciliationTest
+   php artisan test --filter=MarketplaceFinancialAnalyticsTest
    php artisan test
    ```
-9. Open `/finance/payout-reconciliation` using a user with `finance.view`; record/link/ignore actions require `finance.manage`.
+6. Open `/finance/marketplace-analytics` with a user who has `finance.view` permission.
 
-### Operational notes
-- Bank reference must be unique per marketplace.
-- A settlement can only be linked to one payout row in this workflow.
-- A mismatch is not auto-resolved or written into the ledger. Investigate the bank statement and marketplace settlement report, then retain a clear review note.
+### Dependencies / compatibility
+- Requires existing tables: `order_profits`, `orders`, `settlements`, `settlement_items`, `refunds`, `claims`, `expenses`, `marketplaces`.
+- Requires Package 14's `marketplace_bank_payouts` table.
+- Uses existing `Marketplace`, `OrderProfit`, and finance schemas; does not replace models.
+- Dashboard is read-only. It intentionally avoids writing to financial source tables.
