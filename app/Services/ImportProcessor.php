@@ -66,7 +66,14 @@ class ImportProcessor
             if ($commit) DataImport::whereKey($import->id)->update(['status' => 'FAILED', 'error_message' => substr($e->getMessage(), 0, 500)]);
             throw $e;
         } finally {
-            if ($commit) { try { $speed->flush(); } catch (\Throwable $e) { report($e); } }
+            if ($commit) {
+                try {
+                    $speed->flush();
+                } catch (\Throwable $e) {
+                    if (app()->environment('testing')) { throw $e; }
+                    report($e);
+                }
+            }
         }
     }
 
@@ -463,6 +470,12 @@ class ImportProcessor
                     'keyword_id' => $kid, 'search_term_id' => $tid, 'product_id' => $product?->id, 'row_key' => $key, 'import_id' => $this->import->id]);
                 $this->mark($n, 'OK', $ex ? 'Updated with newer numbers.' : null, 'ads', null);
             } catch (\Throwable $e) {
+
+                if (app()->environment('testing')) {
+                    throw $e;
+                }
+
+
                 report($e);
                 $this->mark($n, 'ERROR', 'Unexpected error while saving this row (see storage/logs/laravel.log).');
             }
@@ -584,7 +597,10 @@ class ImportProcessor
             } elseif ($this->import->data_type === 'ORDERS' && SettlementItem::whereNull('order_id')->exists()) {
                 $recon->run([]);                           // payouts that arrived before their order get linked now
             }
-        } catch (\Throwable $e) { report($e); }
+        } catch (\Throwable $e) {
+            if (app()->environment('testing')) { throw $e; }
+            report($e);
+        }
     }
 
     // ------------------------------------------------------------------ results

@@ -40,6 +40,24 @@ class SummaryDashboardTest extends TestCase
     public function test_speed_tables_follow_orders_and_cancellations_automatically(): void
     {
         $o = $this->order('A1');
+
+        file_put_contents(
+            storage_path('logs/summary-debug.txt'),
+            "\n--- ORDER TEST ---\n" . json_encode([
+                'order' => DB::table('orders')->where('id', $o->id)->first(),
+                'order_items' => DB::table('order_items')->where('order_id', $o->id)->get()->toArray(),
+                'order_profits' => DB::table('order_profits')->where('order_id', $o->id)->get()->toArray(),
+                'daily_profit' => DB::table('daily_profit')->get()->toArray(),
+            ], JSON_PRETTY_PRINT) . "\n",
+            FILE_APPEND
+        );
+
+        // dump([
+        //     'order' => DB::table('orders')->where('id', $o->id)->first(),
+        //     'order_items' => DB::table('order_items')->where('order_id', $o->id)->get()->toArray(),
+        //     'order_profits' => DB::table('order_profits')->where('order_id', $o->id)->get()->toArray(),
+        //     'daily_profit' => DB::table('daily_profit')->get()->toArray(),
+        // ]);
         $s = $this->row('daily_sales'); $p = $this->row('daily_profit');
         $this->assertSame([1, 2], [(int) $s->orders, (int) $s->units]);
         $this->assertEqualsWithDelta(236.0, (float) $s->gross_sales, 0.001);
@@ -75,10 +93,34 @@ class SummaryDashboardTest extends TestCase
 
     private function adsImport(string $type, string $csv, array $map): void
     {
-        Storage::fake('local'); Storage::disk('local')->put('imports/a.csv', $csv);
-        $i = DataImport::create(['marketplace_id' => $this->mp->id, 'data_type' => $type, 'file_name' => 'a.csv', 'stored_path' => 'imports/a.csv', 'file_hash' => str_repeat('f', 64),
-            'status' => 'MAPPED', 'mapping' => $map, 'uploaded_by' => $this->u->id, 'options' => ['date_format' => 'auto']]);
-        app(ImportProcessor::class)->run($i, true);
+        Storage::fake('local');
+        Storage::disk('local')->put('imports/a.csv', $csv);
+
+        $i = DataImport::create([
+            'marketplace_id' => $this->mp->id,
+            'data_type' => $type,
+            'file_name' => 'a.csv',
+            'stored_path' => 'imports/a.csv',
+            'file_hash' => str_repeat('f', 64),
+            'status' => 'MAPPED',
+            'mapping' => $map,
+            'uploaded_by' => $this->u->id,
+            'options' => ['date_format' => 'auto'],
+        ]);
+
+        $result = app(ImportProcessor::class)->run($i, true);
+
+        file_put_contents(
+            storage_path('logs/ads-debug.txt'),
+            json_encode([
+                'result' => $result,
+                'import' => $i->fresh()->toArray(),
+                'import_rows' => DB::table('import_rows')
+                    ->where('import_id', $i->id)->get()->toArray(),
+                'advertising_daily' => DB::table('advertising_daily')->get()->toArray(),
+            ], JSON_PRETTY_PRINT) . "\n",
+            FILE_APPEND
+        );
     }
 
     public function test_ad_spend_flows_into_the_dashboard_and_unassigned_spend_is_a_leak(): void
@@ -86,6 +128,22 @@ class SummaryDashboardTest extends TestCase
         $this->order('A1'); $d = $this->day(); $h = "date,campaign,sku,imp,clicks,spend,sales,orders\n";
         $m = ['date' => 'date', 'campaign' => 'campaign', 'impressions' => 'imp', 'clicks' => 'clicks', 'spend' => 'spend', 'sales' => 'sales', 'orders' => 'orders'];
         $this->adsImport('ADS_PRODUCT', $h . "$d,C1,SKU1,1000,50,40.00,236,1\n", $m + ['sku' => 'sku']);
+
+        file_put_contents(
+            storage_path('logs/summary-debug.txt'),
+            "\n--- ADVERTISING TEST ---\n" . json_encode([
+                'advertising_daily' => DB::table('advertising_daily')->where('date', $d)->get()->toArray(),
+                'daily_advertising' => DB::table('daily_advertising')->where('date', $d)->get()->toArray(),
+                'daily_profit' => DB::table('daily_profit')->where('date', $d)->get()->toArray(),
+            ], JSON_PRETTY_PRINT) . "\n",
+            FILE_APPEND
+        );
+        // dump([
+        //     'advertising_daily' => DB::table('advertising_daily')->where('date', $d)->get()->toArray(),
+        //     'daily_advertising' => DB::table('daily_advertising')->where('date', $d)->get()->toArray(),
+        //     'daily_profit' => DB::table('daily_profit')->where('date', $d)->get()->toArray(),
+        // ]);
+
         $this->assertEqualsWithDelta(40.0, (float) $this->row('daily_advertising')->spend, 0.001);
         $this->assertEqualsWithDelta(40.0, (float) $this->row('daily_profit')->ads, 0.001);
         $k = app(DashboardService::class)->build(['from' => $d, 'to' => $d])['kpi'];

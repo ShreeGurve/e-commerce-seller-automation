@@ -41,13 +41,13 @@ class SummaryService
             ->where('o.status', '<>', 'CANCELLED')->whereBetween('o.order_date', [$start, $end])->sum('i.quantity');
         $this->save('daily_sales', $date, $mp, ['orders' => (int) $o->orders, 'units' => $units, 'gross_sales' => (float) $o->sales, 'cancelled_orders' => (int) $o->cancelled], $now);
 
-        $p = DB::table('order_profits')->where('marketplace_id', $mp)->where('order_date', $date)
+        $p = DB::table('order_profits')->where('marketplace_id', $mp)->whereDate('order_date', $date)
             ->selectRaw('COUNT(*) l, SUM(qty) units, SUM(revenue) revenue, SUM(cogs) cogs, SUM(fees) fees, SUM(return_loss) refunds, SUM(recovery) recovery, SUM(ads_cost) ads, SUM(COALESCE(actual_profit, estimated_profit)) profit, SUM(CASE WHEN actual_profit IS NOT NULL THEN 1 ELSE 0 END) actual')->first();
         $this->save('daily_profit', $date, $mp, ['lines' => (int) $p->l, 'units' => (int) $p->units, 'revenue' => (float) $p->revenue, 'cogs' => (float) $p->cogs, 'fees' => (float) $p->fees,
             'refunds' => (float) $p->refunds, 'recovery' => (float) $p->recovery, 'ads' => (float) $p->ads, 'profit' => (float) $p->profit, 'actual_lines' => (int) $p->actual], $now);
 
         $level = app(AdsService::class)->chosenLevels($date, $date, $mp)[$mp] ?? null;       // one report level per channel, no double counting
-        $a = $level ? DB::table('advertising_daily')->where('marketplace_id', $mp)->where('date', $date)->where('level', $level)
+        $a = $level ? DB::table('advertising_daily')->where('marketplace_id', $mp)->whereDate('date', $date)->where('level', $level)
             ->selectRaw('SUM(impressions) imp, SUM(clicks) clk, SUM(spend) spend, SUM(sales) sales, SUM(orders) orders, SUM(units) units')->first() : null;
         $this->save('daily_advertising', $date, $mp, ['level' => $level ?? 'CAMPAIGN', 'impressions' => (int) ($a->imp ?? 0), 'clicks' => (int) ($a->clk ?? 0), 'spend' => (float) ($a->spend ?? 0),
             'sales' => (float) ($a->sales ?? 0), 'orders' => (int) ($a->orders ?? 0), 'units' => (int) ($a->units ?? 0)], $now, ['impressions', 'clicks', 'spend', 'sales', 'orders', 'units']);
@@ -68,9 +68,9 @@ class SummaryService
         $from = substr($from, 0, 10); $to = substr($to, 0, 10); $pairs = [];
         $add = function ($rows, string $d, string $m) use (&$pairs) { foreach ($rows as $r) { $day = substr((string) $r->{$d}, 0, 10); $pairs["{$day}|{$r->{$m}}"] = [$day, (int) $r->{$m}]; } };
         $add(DB::table('orders')->whereNull('deleted_at')->where(fn ($q) => $q->whereNull('source')->orWhere('source', '!=', 'TEST'))->whereBetween('order_date', [$from . ' 00:00:00', $to . ' 23:59:59'])->selectRaw('DATE(order_date) d, marketplace_id m')->distinct()->get(), 'd', 'm');
-        $add(DB::table('order_profits')->whereBetween('order_date', [$from, $to])->select('order_date as d', 'marketplace_id as m')->distinct()->get(), 'd', 'm');
-        $add(DB::table('advertising_daily')->whereBetween('date', [$from, $to])->select('date as d', 'marketplace_id as m')->distinct()->get(), 'd', 'm');
-        foreach (['daily_sales', 'daily_profit', 'daily_advertising'] as $t) $add(DB::table($t)->whereBetween('date', [$from, $to])->select('date as d', 'marketplace_id as m')->distinct()->get(), 'd', 'm');
+        $add(DB::table('order_profits')->whereBetween('order_date', [$from . ' 00:00:00', $to . ' 23:59:59'])->selectRaw('DATE(order_date) d, marketplace_id m')->distinct()->get(), 'd', 'm');
+        $add(DB::table('advertising_daily')->whereBetween('date', [$from . ' 00:00:00', $to . ' 23:59:59'])->selectRaw('DATE(date) d, marketplace_id m')->distinct()->get(), 'd', 'm');
+        foreach (['daily_sales', 'daily_profit', 'daily_advertising'] as $t) $add(DB::table($t)->whereBetween('date', [$from . ' 00:00:00', $to . ' 23:59:59'])->selectRaw('DATE(date) d, marketplace_id m')->distinct()->get(), 'd', 'm');
         foreach ($pairs as [$d, $m]) $this->refreshDay($d, $m);
         return count($pairs);
     }

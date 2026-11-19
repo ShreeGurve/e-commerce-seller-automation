@@ -127,7 +127,7 @@ class ReportService
     private function r_returns(array $f): array
     {
         $rows = ProductReturn::with(['order:id,external_order_id', 'marketplace:id,name'])->withSum('items as qty', 'quantity')->withSum('items as recv', 'received_qty')->withSum('refunds as refunded', 'amount')
-            ->whereBetween('return_date', [$f['from'], $f['to']])->when($this->mp($f), fn ($q, $v) => $q->where('marketplace_id', $v))
+            ->whereDate('return_date', '>=', $f['from'])->whereDate('return_date', '<=', $f['to'])->when($this->mp($f), fn ($q, $v) => $q->where('marketplace_id', $v))
             ->when($f['product_id'] ?? null, fn ($q, $v) => $q->whereHas('items', fn ($i) => $i->where('product_id', $v)))->orderBy('return_date')->orderBy('id')->get()
             ->map(fn ($r) => ['return_number' => $r->return_number, 'date' => $r->return_date->toDateString(), 'order' => $r->order->external_order_id ?? '', 'channel' => $r->marketplace->name ?? '', 'reason' => ProductReturn::TYPES[$r->return_type] ?? $r->return_type,
                 'status' => ucfirst(strtolower($r->status)), 'claim' => $r->claim_eligible ? 'Yes' : 'No', 'units' => (int) $r->qty, 'received' => (int) $r->recv, 'refunded' => (float) $r->refunded])->all();

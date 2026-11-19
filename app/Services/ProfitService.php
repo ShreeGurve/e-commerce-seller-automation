@@ -18,13 +18,23 @@ class ProfitService
     /** never let the speed tables break profit calculation (e.g. before the migration has run) */
     private function touchSummary(Order $o): void
     {
-        try { $this->summary->touch($o->order_date->toDateString(), (int) $o->marketplace_id); } catch (\Throwable $e) { report($e); }
+        try {
+            $this->summary->touch($o->order_date->toDateString(), (int) $o->marketplace_id);
+        } catch (\Throwable $e) {
+            if (app()->environment('testing')) { throw $e; }
+            report($e);
+        }
     }
 
     /** Recalculate, but never let a profit problem break the order/return/refund that triggered it. */
     public function safe(Order $order): void
     {
-        try { $this->recalcOrder($order); } catch (\Throwable $e) { report($e); }
+        try {
+            $this->recalcOrder($order);
+        } catch (\Throwable $e) {
+            if (app()->environment('testing')) { throw $e; }
+            report($e);
+        }
     }
 
     private const FEE_TYPE = ['REFERRAL_FEE' => 'REFERRAL', 'CLOSING_FEE' => 'CLOSING', 'SHIPPING_FEE' => 'SHIPPING', 'COLLECTION_FEE' => 'COLLECTION', 'PAYMENT_FEE' => 'PAYMENT', 'OTHER_FEE' => 'OTHER'];
