@@ -10,8 +10,8 @@ use RuntimeException;
 /**
  * Obtains Amazon Login With Amazon access tokens.
  * The connection-aware method uses the encrypted seller connection rather than global .env secrets.
- * This class is not an SP-API request signer; API calls still require the correct regional endpoint
- * and the authorization/signing model required by the seller's SP-API application.
+ * Current SP-API requests use the LWA access token in x-amz-access-token. AWS IAM and
+ * Signature Version 4 have not been required for SP-API since October 2, 2023.
  */
 class AmazonLwaTokenProvider
 {

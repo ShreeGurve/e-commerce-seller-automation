@@ -46,7 +46,7 @@ class MarketplaceConnectionController extends Controller
         abort_unless($marketplace->code === 'amazon' || $environment === 'production', 422, 'Sandbox mode is currently available for Amazon only.');
 
         $rules = $marketplace->code === 'amazon'
-            ? ['account_label' => 'required|string|max:100', 'environment' => 'required|in:sandbox,production', 'client_id' => 'required|string|max:255', 'client_secret' => 'required|string|max:1000', 'refresh_token' => 'required|string|max:2000', 'marketplace_id' => 'required|string|max:50', 'region' => 'required|in:na,eu,fe']
+            ? ['account_label' => 'required|string|max:100', 'environment' => 'required|in:sandbox,production', 'client_id' => 'required|string|max:255', 'client_secret' => 'required|string|max:1000', 'refresh_token' => 'required|string|max:2000', 'marketplace_id' => 'required|string|max:50', 'seller_id' => 'required|string|max:100', 'region' => 'required|in:na,eu,fe']
             : ['account_label' => 'required|string|max:100', 'environment' => 'required|in:production', 'app_id' => 'required|string|max:255', 'app_secret' => 'required|string|max:1000', 'seller_id' => 'nullable|string|max:100'];
         $validator = Validator::make($request->all(), $rules);
         if ($validator->fails()) {
