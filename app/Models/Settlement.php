@@ -8,4 +8,5 @@ class Settlement extends Model
     protected $casts = ['period_start' => 'date', 'period_end' => 'date', 'total_amount' => 'decimal:2'];
     public function marketplace() { return $this->belongsTo(Marketplace::class); }
     public function items() { return $this->hasMany(SettlementItem::class); }
+    public function bankPayout() { return $this->hasOne(MarketplaceBankPayout::class); }
 }
