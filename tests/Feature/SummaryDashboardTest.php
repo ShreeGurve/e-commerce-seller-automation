@@ -41,16 +41,7 @@ class SummaryDashboardTest extends TestCase
     {
         $o = $this->order('A1');
 
-        file_put_contents(
-            storage_path('logs/summary-debug.txt'),
-            "\n--- ORDER TEST ---\n" . json_encode([
-                'order' => DB::table('orders')->where('id', $o->id)->first(),
-                'order_items' => DB::table('order_items')->where('order_id', $o->id)->get()->toArray(),
-                'order_profits' => DB::table('order_profits')->where('order_id', $o->id)->get()->toArray(),
-                'daily_profit' => DB::table('daily_profit')->get()->toArray(),
-            ], JSON_PRETTY_PRINT) . "\n",
-            FILE_APPEND
-        );
+;
 
         // dump([
         //     'order' => DB::table('orders')->where('id', $o->id)->first(),
@@ -110,17 +101,7 @@ class SummaryDashboardTest extends TestCase
 
         $result = app(ImportProcessor::class)->run($i, true);
 
-        file_put_contents(
-            storage_path('logs/ads-debug.txt'),
-            json_encode([
-                'result' => $result,
-                'import' => $i->fresh()->toArray(),
-                'import_rows' => DB::table('import_rows')
-                    ->where('import_id', $i->id)->get()->toArray(),
-                'advertising_daily' => DB::table('advertising_daily')->get()->toArray(),
-            ], JSON_PRETTY_PRINT) . "\n",
-            FILE_APPEND
-        );
+;
     }
 
     public function test_ad_spend_flows_into_the_dashboard_and_unassigned_spend_is_a_leak(): void
@@ -129,15 +110,7 @@ class SummaryDashboardTest extends TestCase
         $m = ['date' => 'date', 'campaign' => 'campaign', 'impressions' => 'imp', 'clicks' => 'clicks', 'spend' => 'spend', 'sales' => 'sales', 'orders' => 'orders'];
         $this->adsImport('ADS_PRODUCT', $h . "$d,C1,SKU1,1000,50,40.00,236,1\n", $m + ['sku' => 'sku']);
 
-        file_put_contents(
-            storage_path('logs/summary-debug.txt'),
-            "\n--- ADVERTISING TEST ---\n" . json_encode([
-                'advertising_daily' => DB::table('advertising_daily')->where('date', $d)->get()->toArray(),
-                'daily_advertising' => DB::table('daily_advertising')->where('date', $d)->get()->toArray(),
-                'daily_profit' => DB::table('daily_profit')->where('date', $d)->get()->toArray(),
-            ], JSON_PRETTY_PRINT) . "\n",
-            FILE_APPEND
-        );
+;
         // dump([
         //     'advertising_daily' => DB::table('advertising_daily')->where('date', $d)->get()->toArray(),
         //     'daily_advertising' => DB::table('daily_advertising')->where('date', $d)->get()->toArray(),

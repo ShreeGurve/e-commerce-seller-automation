@@ -65,36 +65,10 @@ class ReportTest extends TestCase
     {
         $this->seedEverything();
 
-        file_put_contents(
-            storage_path('logs/returns-debug.txt'),
-            json_encode([
-                'database_returns' => DB::table('returns')->get()->toArray(),
-                'model_returns' => \App\Models\ProductReturn::withTrashed()->get()->toArray(),
-                'report_date_from' => $this->f()['from'],
-                'report_date_to' => $this->f()['to'],
-                'query_count' => \App\Models\ProductReturn::whereBetween(
-                    'return_date',
-                    [$this->f()['from'], $this->f()['to']]
-                )->count(),
-            ], JSON_PRETTY_PRINT)
-        );
-
         $svc = app(ReportService::class);
         $this->assertCount(13, $svc->catalog());
         foreach (array_keys($svc->catalog()) as $key) {
             $d = $svc->run($key, $this->f());
-
-            file_put_contents(
-                storage_path('logs/report-debug.txt'),
-                json_encode([
-                    'report' => $key,
-                    'row_count' => count($d['rows']),
-                    'rows' => $d['rows'],
-                    'date_from' => $this->f()['from'],
-                    'date_to' => $this->f()['to'],
-                ], JSON_PRETTY_PRINT) . "\n",
-                FILE_APPEND
-            );
 
             $this->assertNotEmpty($d['columns'], $key);
             $this->assertNotEmpty($d['rows'], "{$key} should have data in this scenario");
@@ -126,25 +100,6 @@ class ReportTest extends TestCase
     public function test_gst_support_report_arithmetic(): void
     {
         $this->seedEverything();
-        file_put_contents(
-            storage_path('logs/returns-debug.txt'),
-            json_encode([
-                'database_returns' => DB::table('returns')->get()->toArray(),
-
-                'model_returns' => \App\Models\ProductReturn::withTrashed()
-                    ->get()
-                    ->toArray(),
-
-                'report_date_from' => $this->f()['from'],
-                'report_date_to' => $this->f()['to'],
-
-                'query_count' => \App\Models\ProductReturn::whereBetween(
-                    'return_date',
-                    [$this->f()['from'], $this->f()['to']]
-                )->count(),
-            ], JSON_PRETTY_PRINT)
-        );
-
         $row = collect(app(ReportService::class)->run('gst', $this->f())['rows'])->firstWhere('rate', '18%');
         $this->assertEqualsWithDelta(200.0, $row['taxable_sales'], 0.01);          // 236 incl. GST
         $this->assertEqualsWithDelta(36.0, $row['output_gst'], 0.01);
