@@ -1,34 +1,72 @@
-# Seller Automation — Package 6: Shipment Tracking & Delivery Lifecycle
+# Seller Automation — Package 9: Dynamic Pricing Rules & Recommendation Engine
 
 ## Prerequisites
 
-Install the existing Seller Automation baseline and Packages 1–5 first. This package extends the existing `order_fulfillments` and `order_fulfillment_events` tables and reuses the existing `OrderService` status-transition safeguards.
+Install the validated Seller Automation baseline and Packages 1–8. This package builds on the existing `PricingService`, fee rules, product cost history, competitor-price records, `PricingRecommendation` approval workflow, and internal price history.
 
-## Included
+## What this package adds
 
-- Manual carrier tracking checkpoints for self-fulfilled orders: picked up, in transit, out for delivery, delivery attempted, delivered, exception, and return to sender.
-- Tracking status, last tracking timestamp, and delivery-exception snapshot on the fulfillment record.
-- Append-only shipment activity events with optional carrier note, location, event time, and acting user.
-- Delivery confirmation moves a shipped order to `DELIVERED` through the existing `OrderService`, preserving order status history and profit refresh behavior.
-- Shipment activity timeline and tracking-event form in the order fulfillment panel.
-- Validation blocks updates for marketplace-fulfilled orders and orders that have not reached `SHIPPED`.
-- No carrier API, marketplace API, label purchase, pickup booking, or shipping write request is made. Updates are manually entered only.
+- One dynamic pricing rule per product + marketplace.
+- Strategies: target-margin pricing, match lowest recorded competitor, undercut lowest recorded competitor, or price above the lowest recorded competitor.
+- Optional seller-defined floor and ceiling prices.
+- Minimum margin protection, with the existing cost/fee-based minimum price always enforced.
+- A run history showing rules checked, recommendations created, and skipped rules.
+- A manual **Run rules now** action and an Artisan command for scheduling.
+- Generated recommendations enter the existing `pending` approval queue. Existing approval and internal price-history functions remain the only path to record a new price.
+
+## Safety and data-source limits
+
+- No automatic Amazon or Flipkart price publication is implemented or enabled.
+- This package does not scrape competitor pages or claim access to live competitor prices. Competitor strategies use only competitor prices already entered/imported into the existing `competitor_prices` table from sources the seller is authorized to use.
+- If a competitor price is unavailable, a competitor strategy is skipped; it does not silently fall back to an unrelated market estimate.
+- A recommendation cannot be created below the existing fee/cost-derived minimum or the rule's floor. If the safe price exceeds the ceiling, the rule is skipped.
+- Pending or approved recommendations prevent duplicate active proposals for the same product/channel.
+- No stock, order, listing, or marketplace price is changed by this package.
 
 ## Installation
 
-1. Back up the application and database.
-2. Extract this ZIP into the Laravel project root, preserving the `app`, `database`, `resources`, and `tests` paths.
-3. Add this route inside the existing authenticated route group:
+1. Back up the project and database.
+2. Extract the ZIP into the Laravel project root (archive paths begin with `app/`, `database/`, `resources/`, and `tests/`).
+3. Add the routes below inside the existing authenticated route group in `routes/web.php`. If your project already has any of these named routes, keep the existing definition and do not duplicate it.
 
 ```php
-use App\Http\Controllers\ShipmentTrackingController;
+use App\Http\Controllers\DynamicPricingRuleController;
+use App\Http\Controllers\PricingRecommendationController;
 
-Route::post('/orders/{order}/fulfilment/tracking-events', [ShipmentTrackingController::class, 'store'])
-    ->middleware('can:orders.edit')
-    ->name('fulfilment.tracking-events.store');
+// Dynamic pricing rules
+Route::get('/pricing/dynamic-rules', [DynamicPricingRuleController::class, 'index'])
+    ->middleware('can:products.view')->name('pricing-dynamic.index');
+Route::middleware('can:products.edit')->group(function () {
+    Route::post('/pricing/dynamic-rules', [DynamicPricingRuleController::class, 'store'])->name('pricing-dynamic.store');
+    Route::put('/pricing/dynamic-rules/{dynamicPricingRule}', [DynamicPricingRuleController::class, 'update'])->name('pricing-dynamic.update');
+    Route::delete('/pricing/dynamic-rules/{dynamicPricingRule}', [DynamicPricingRuleController::class, 'destroy'])->name('pricing-dynamic.destroy');
+    Route::post('/pricing/dynamic-rules/run', [DynamicPricingRuleController::class, 'run'])->name('pricing-dynamic.run');
+});
+
+// Existing recommendation approval workflow (add only if these routes are not already present)
+Route::get('/pricing-recommendations', [PricingRecommendationController::class, 'index'])
+    ->middleware('can:products.view')->name('pricing-recommendations.index');
+Route::middleware('can:products.edit')->group(function () {
+    Route::post('/pricing/{product}/{marketplace}/recommendations', [PricingRecommendationController::class, 'store'])->name('pricing-recommendations.store');
+    Route::post('/pricing-recommendations/{pricingRecommendation}/apply', [PricingRecommendationController::class, 'apply'])->name('pricing-recommendations.apply');
+});
+Route::post('/pricing-recommendations/{pricingRecommendation}/approve', [PricingRecommendationController::class, 'approve'])
+    ->middleware('can:products.view')->name('pricing-recommendations.approve');
+Route::post('/pricing-recommendations/{pricingRecommendation}/reject', [PricingRecommendationController::class, 'reject'])
+    ->middleware('can:products.view')->name('pricing-recommendations.reject');
 ```
 
-4. Inspect and apply the migration:
+> The controller itself checks reviewer permissions (`Super Admin`, `settings.manage`, or `users.manage`). The route middleware only establishes authenticated product-view access; do not remove the controller-level reviewer check.
+
+4. Add the schedule to `routes/console.php` without replacing existing entries:
+
+```php
+use Illuminate\Support\Facades\Schedule;
+
+Schedule::command('marketplaces:dynamic-pricing')->dailyAt('02:00')->withoutOverlapping();
+```
+
+5. Inspect and run the migration:
 
 ```powershell
 php artisan optimize:clear
@@ -36,36 +74,36 @@ php artisan migrate --pretend
 php artisan migrate
 ```
 
-5. Run focused and full tests:
+6. Run tests:
 
 ```powershell
-php artisan test --filter=ShipmentTrackingServiceTest
+php artisan test --filter=DynamicPricingServiceTest
 php artisan test
 ```
 
-## Workflow
+7. Open **Pricing → Dynamic Pricing Rules** at `/pricing/dynamic-rules`. Create a rule for each product/channel. Use **Run rules now** to generate proposals. The daily schedule runs the same rule engine automatically.
 
-1. Open a self-fulfilled order and complete its packing details.
-2. Pack and dispatch it through the existing fulfillment workflow.
-3. Once its status is `SHIPPED`, open the order details page and use **Shipment tracking update** to record carrier checkpoints.
-4. Record `DELIVERED` only after delivery evidence is confirmed. This uses the existing order status service to move the order to `DELIVERED`.
-5. Review all checkpoints in the **Shipment activity** timeline.
+## Artisan commands
 
-## Safety and behavior
+```powershell
+php artisan marketplaces:dynamic-pricing
+php artisan marketplaces:dynamic-pricing --business=1
+php artisan marketplaces:dynamic-pricing --marketplace=1
+```
 
-- This package is a manual tracking-event workflow, not a live carrier integration.
-- Only `SELF` fulfillment orders can receive manual carrier tracking events. Marketplace-fulfilled orders remain managed by their marketplace process.
-- Tracking updates require the order to be `SHIPPED`.
-- A delivery exception or attempted delivery is recorded as a tracking event and does not change the order's main status.
-- `DELIVERED` updates the main order status using the existing transition service. It does not modify inventory quantities.
-- Events are retained as an activity history; the fulfillment row stores the latest submitted tracking snapshot.
-- Do not record customer names, phone numbers, email addresses, or full delivery addresses in the optional description/location fields.
+Keep the Laravel scheduler running in deployment (`php artisan schedule:run` every minute via Windows Task Scheduler) for the daily run.
 
 ## Files
 
-- `app/Services/ShipmentTrackingService.php`
-- `app/Http/Controllers/ShipmentTrackingController.php`
-- `app/Models/OrderFulfillment.php`
-- `database/migrations/2026_11_19_000003_add_shipment_tracking_lifecycle.php`
-- `resources/views/orders/_fulfilment.blade.php`
-- `tests/Feature/ShipmentTrackingServiceTest.php`
+- `app/Models/DynamicPricingRule.php`
+- `app/Models/DynamicPricingRun.php`
+- `app/Services/DynamicPricingService.php`
+- `app/Console/Commands/RunDynamicPricing.php`
+- `app/Http/Controllers/DynamicPricingRuleController.php`
+- `database/migrations/2026_11_19_000006_create_dynamic_pricing_rule_tables.php`
+- `resources/views/pricing/dynamic-rules.blade.php`
+- `tests/Feature/DynamicPricingServiceTest.php`
+
+## Important note about approval
+
+A rule run creates a `pending` `PricingRecommendation`; it does not approve it. A reviewer must approve it, and a permitted user can then record the approved amount in internal `price_history`. The user must still update the marketplace listing manually. This separation is intentional until the marketplace write APIs, permissions, and account-specific constraints are validated.
