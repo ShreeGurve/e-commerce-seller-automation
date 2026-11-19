@@ -1,67 +1,74 @@
-# Package 17 — Marketplace Automation & Intelligent Recommendations
+# Package 18 — Marketplace Automation Rules & Approval Center
 
-Read-only recommendation engine that identifies operational signals from existing Seller Automation data. It does not execute marketplace or internal actions.
+Creates reviewable tasks from Package 17 recommendations. It is an approval/task workflow, not an execution engine. No marketplace API calls, inventory writes, pricing changes, purchase orders, refunds, or listing edits are performed.
 
 ## Included
 
-- Low-stock and estimated stock-out risk using available stock (available less reserved) and recent order-profit unit velocity.
-- Sales decline comparing the selected period with the immediately preceding period.
-- High return-rate signals by product.
-- Low recorded profit-margin signals using actual profit when available, otherwise estimated profit.
-- Priority summary and configurable analysis thresholds.
-- Feature tests for empty state, read-only low-stock signal, and validation.
+- Configurable enabled/disabled rules for RESTOCK, STOCK_RISK, SALES_DECLINE, HIGH_RETURN_RATE and LOW_PROFIT_MARGIN.
+- Default rules inserted by the migration.
+- Manual recommendation scan for 7/14/30/60/90-day windows.
+- Idempotent task creation using a unique rule + signal + product + period fingerprint.
+- Priority override and reviewer guidance.
+- Task assignment-ready schema (`assigned_to`) for a later team assignment UI.
+- Approval lifecycle: PENDING → APPROVED or REJECTED; APPROVED → COMPLETED.
+- Reviewer, timestamp and note audit fields.
+- Feature tests for defaults, rule creation/toggle, supported signal types and status transitions.
 
 ## Files
 
-- `app/Services/MarketplaceRecommendationService.php`
-- `app/Http/Controllers/MarketplaceRecommendationController.php`
-- `resources/views/analytics/marketplace-recommendations.blade.php`
-- `tests/Feature/MarketplaceRecommendationServiceTest.php`
+- `database/migrations/2026_11_19_000011_create_marketplace_automation_rules_tables.php`
+- `app/Services/MarketplaceAutomationRuleService.php`
+- `app/Http/Controllers/MarketplaceAutomationRuleController.php`
+- `resources/views/automation/marketplace-rules.blade.php`
+- `tests/Feature/MarketplaceAutomationRuleServiceTest.php`
 
 ## Install
 
-1. Back up the application and database.
-2. Extract the archive at the Laravel project root.
-3. Add this route inside the authenticated routes group:
+1. Back up application and database.
+2. Extract ZIP at Laravel project root.
+3. Ensure Package 17 is installed (uses `MarketplaceRecommendationService`).
+4. Add routes inside the authenticated route group:
 
 ```php
-use App\Http\Controllers\MarketplaceRecommendationController;
+use App\Http\Controllers\MarketplaceAutomationRuleController;
 
-Route::get('/analytics/marketplace-recommendations', [MarketplaceRecommendationController::class, 'index'])
-    ->middleware('can:finance.view')
-    ->name('analytics.marketplace-recommendations.index');
+Route::middleware('can:finance.view')->prefix('automation/marketplace-rules')->name('automation.marketplace-rules.')->group(function () {
+    Route::get('/', [MarketplaceAutomationRuleController::class, 'index'])->name('index');
+    Route::post('/rules', [MarketplaceAutomationRuleController::class, 'store'])->name('store');
+    Route::patch('/rules/{rule}/toggle', [MarketplaceAutomationRuleController::class, 'toggle'])->name('toggle');
+    Route::post('/generate', [MarketplaceAutomationRuleController::class, 'generate'])->name('generate');
+    Route::post('/tasks/{task}/review', [MarketplaceAutomationRuleController::class, 'review'])->name('review');
+});
 ```
 
-4. Ensure the migrations for `order_profits`, `orders`, `products`, `inventory`, `returns`, and `return_items` have already run. No migration is added by this package.
-5. Clear route/view caches using your normal MySQL development configuration:
+5. Run against the normal development MySQL configuration:
 
 ```bash
 php artisan optimize:clear
+php artisan migrate --pretend
+php artisan migrate
 ```
 
-6. Run tests using the project's test configuration. For SQLite memory, make sure the test environment uses `CACHE_STORE=array` (or `file`) rather than a database cache store:
+6. Test with SQLite memory and array cache:
 
 ```powershell
 $env:DB_CONNECTION="sqlite"
 $env:DB_DATABASE=":memory:"
 $env:CACHE_STORE="array"
-php artisan test --filter=MarketplaceRecommendationServiceTest
+php artisan test --filter=MarketplaceAutomationRuleServiceTest
 php artisan test
 ```
 
-7. Open `/analytics/marketplace-recommendations`.
+7. Open `/automation/marketplace-rules`.
 
-## Logic and safeguards
+## Important behaviour and limitations
 
-- `RESTOCK`: available quantity less reserved quantity is at or below the product's minimum stock.
-- `STOCK_RISK`: calculated days of cover from period sales velocity is at or below the configured threshold.
-- `SALES_DECLINE`: current period units are at least 40% lower than the immediately preceding period, requiring at least 3 prior-period units.
-- `HIGH_RETURN_RATE`: returned units divided by units sold reaches the configured threshold.
-- `LOW_PROFIT_MARGIN`: recorded line profit margin is below 5%; actual profit is preferred when present, otherwise estimated profit is used.
-- Sales/return signals are based on the selected calendar window and available data; they are not marketplace forecasts.
-- No writes are made to inventory, pricing recommendations, orders, listings, or finance tables.
-- No automated repricing, replenishment purchase order, listing edit, or marketplace API call is performed.
+- Cooldown suppression prevents a new task for the same rule, signal and product while a task exists inside the configured cooldown window. The unique period fingerprint also prevents duplicate tasks for the same analysis window.
+- `assigned_to` is schema-ready but assignment controls are not included in this package.
+- APPROVED means the team approved the task/recommendation, not that an action was executed. COMPLETED is a manual status update only.
+- This package does not call marketplace APIs and does not modify stock, prices, orders, returns, settlements or accounting data.
+- The route uses `finance.view`; change it only if your permission model uses a different existing permission.
 
 ## Verification
 
-PHP syntax and archive integrity should be checked after extraction. PHPUnit must be run in the target Laravel project; this package's tests are not represented as passed until the user reports the result.
+PHP syntax and ZIP integrity checks are performed on the package archive. PHPUnit must be run inside the target Laravel project; do not treat tests as passed until the local test output confirms it.
