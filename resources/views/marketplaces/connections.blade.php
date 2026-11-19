@@ -11,7 +11,7 @@
             <h5 class="mb-1">Connected platforms</h5>
             <div class="small text-muted">Each business can connect its seller account independently.</div>
         </div>
-        <span class="badge text-bg-primary">{{ $connections->count() }} connected</span>
+        <span class="badge text-bg-primary">{{ $connections->where('status', 'connected')->count() }} connected</span>
     </div>
 
     @forelse($connections as $connection)
@@ -21,12 +21,16 @@
                     <div class="d-flex align-items-center gap-2 mb-1">
                         <strong>{{ $connection->marketplace->name }}</strong>
                         <span class="badge text-bg-{{ $connection->environment === 'sandbox' ? 'info' : 'success' }}">{{ ucfirst($connection->environment ?? 'production') }}</span>
-                        <span class="badge text-bg-success">Verified</span>
+                        <span class="badge text-bg-{{ $connection->status === 'connected' ? 'success' : 'warning' }}">{{ $connection->status === 'connected' ? 'Connected' : 'Needs attention' }}</span>
                     </div>
-                    <div class="small text-muted">{{ $connection->account_label }} · Verified {{ optional($connection->verified_at)->format('d M Y, h:i A') }}</div>
+                    <div class="small text-muted">{{ $connection->account_label }} · Last checked {{ optional($connection->last_verified_at ?? $connection->verified_at)->format('d M Y, h:i A') ?? 'Never' }}</div>
                     <div class="small text-muted mt-1">{{ $connection->last_verified_message }}</div>
                 </div>
                 <div class="d-flex gap-2">
+                    <form method="POST" action="{{ route('marketplaces.connections.recheck', $connection) }}">
+                        @csrf
+                        <button class="btn btn-outline-success btn-sm">Check connection</button>
+                    </form>
                     <a class="btn btn-outline-primary btn-sm" href="{{ route('marketplaces.connections.create', ['marketplace' => $connection->marketplace, 'environment' => $connection->environment ?? 'production']) }}">Reconnect / Update</a>
                     <form method="POST" action="{{ route('marketplaces.connections.destroy', $connection) }}" onsubmit="return confirm('Remove this marketplace connection?')">
                         @csrf @method('DELETE')

@@ -1,63 +1,70 @@
-# Seller Automation — Stability Package 1
+# Seller Automation — Package 2: Tenant-Aware Marketplace Credentials
 
-This is a targeted patch for the latest `seller-automation-Passes-Test.zip` baseline. It contains only changed/new files.
+This package builds on the latest Seller Automation baseline and the stability/migration package. It contains only the files added or changed for Package 2.
 
 ## Included
 
-1. **Marketplace connection environment migration repair**
-   - Adds the missing `environment` column with `production` as the default for existing connections.
-   - Retains a supporting index for `business_id` before replacing the original unique key.
-   - Uses the exact same composite unique-index name in `up()` and `down()`.
-   - Rollback restores the original `(business_id, marketplace_id)` unique key and removes the added index/column.
-2. **Temporary test-debug cleanup**
-   - Removes diagnostic `file_put_contents()` calls from `ReportTest.php` and `SummaryDashboardTest.php`.
-   - Preserves the original test assertions and test setup.
-3. **Migration schema regression test**
-   - Verifies the `environment` column, composite unique index, and supporting `business_id` index.
+- `MarketplaceConnectionResolver`: resolves a connection by business, marketplace code and environment, keeping the query inside the requested business boundary.
+- `AmazonLwaTokenProvider::accessTokenForConnection()`: exchanges the encrypted credentials belonging to one Amazon connection for an LWA access token. The existing `.env`-based `accessToken()` method remains available for backwards compatibility.
+- `FlipkartAccessTokenProvider`: exchanges the encrypted credentials belonging to one Flipkart connection for an access token.
+- `ConnectionTokenCache`: caches tokens by business + connection + one-way credential fingerprint. A credential change naturally creates a new cache key; raw secrets are never placed in cache keys.
+- `MarketplaceConnectionHealthChecker`: rechecks the saved credentials and updates the connection status and last-check details.
+- Marketplace connections page: shows the current connection state and adds a **Check connection** action.
+- Feature tests for tenant isolation, token caching, and API-call safety flags.
 
 ## Installation
 
 1. Back up the project and database.
-2. Extract this ZIP into the Laravel project root, preserving folder structure and allowing the included files to replace the existing files.
-3. Check migration state:
+2. Extract the ZIP into the Laravel project root, preserving the folder structure.
+3. Add the route below inside the existing authenticated route group in `routes/web.php`, beside the other marketplace-connection routes:
 
-   ```powershell
-   php artisan migrate:status
-   ```
+```php
+Route::post('/marketplace-connections/{connection}/recheck', [MarketplaceConnectionController::class, 'recheck'])
+    ->middleware('can:settings.manage')
+    ->name('marketplaces.connections.recheck');
+```
 
-4. If `2026_11_03_000003_add_environment_to_marketplace_connections` is **Pending**, run:
+`MarketplaceConnectionController` is already imported in the current baseline's `routes/web.php`.
 
-   ```powershell
-   php artisan migrate
-   ```
+4. Clear cached application metadata:
 
-   If it is already marked **Ran**, first inspect whether `marketplace_connections.environment` and the composite unique index already exist. Do not run `migrate:fresh` on your working database. If the migration is marked Ran but the schema is missing either item, stop and prepare a separate forward-only repair migration for that exact database state.
+```powershell
+php artisan optimize:clear
+```
 
-5. Clear Laravel caches:
+5. Run the focused tests and then the full suite:
 
-   ```powershell
-   php artisan optimize:clear
-   ```
+```powershell
+php artisan test --filter=MarketplaceConnectionCredentialTest
+php artisan test
+```
 
-6. Optionally remove the temporary diagnostic logs left by the earlier debugging session (this does not touch `laravel.log`):
+## Required configuration and safety
 
-   ```powershell
-   Remove-Item storage\logs\ads-debug.txt, storage\logs\report-debug.txt, storage\logs\returns-debug.txt, storage\logs\summary-debug.txt -ErrorAction SilentlyContinue
-   ```
+The connection-aware providers deliberately respect the existing global safety switches:
 
-7. Run the full test suite using the project's configured in-memory SQLite test database:
+```dotenv
+AMAZON_SP_API_ENABLED=false
+AMAZON_SP_API_CALLS_ENABLED=false
+FLIPKART_SELLER_API_ENABLED=false
+FLIPKART_SELLER_API_CALLS_ENABLED=false
+```
 
-   ```powershell
-   php artisan test
-   ```
+Keep these disabled until the corresponding platform access is approved and the next read-only API integration package has been installed and tested. The providers throw `ConnectorDisabled` while calls are disabled. Enabling these flags does not enable marketplace writes; existing write gates remain in place.
 
-## Validation notes
+Credentials are read from the encrypted `marketplace_connections.credentials` cast. Do not copy seller secrets into `.env`, logs, queue payloads, or browser responses.
 
-- PHP syntax checks passed for all four included PHP files in the build environment.
-- PHPUnit was not run here because this uploaded project archive does not include `vendor/` and Composer is not installed in the build environment.
-- The user's previous local baseline was reported as **71 tests passed / 467 assertions**. Run the suite after installing this patch; the new schema regression test will add one test.
-- Do not use `migrate:fresh` against the live MySQL database.
+## Important scope boundary
 
-## Scope and safety
+- Amazon token issuance proves LWA credential exchange only. It does not prove Orders, Listings, Inventory or other SP-API roles/operations are authorized.
+- Flipkart token issuance proves the self-access application can obtain a token. It does not prove each Seller API operation is enabled for the seller.
+- This package does **not** implement product/order/inventory API requests, SP-API/Flipkart synchronization, or marketplace write operations.
+- No migration is required for this package.
 
-This package does not call Amazon or Flipkart APIs, change marketplace credentials, publish listings, push prices, or update inventory. Marketplace API synchronization remains a separate implementation phase and must be validated against the seller account's enabled API permissions and official platform documentation.
+## Rollback
+
+Restore the previous versions of the changed files from your backup, remove the newly added files, and remove the route line added in step 3. No database rollback is needed.
+
+## Validation note
+
+PHP syntax checks passed in the build environment. This archive did not include `vendor/`, so PHPUnit could not be executed here. Run the commands above in your WAMP project and share the results before proceeding to the read-only synchronization package.

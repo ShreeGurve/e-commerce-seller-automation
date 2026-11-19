@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Marketplace;
 use App\Models\MarketplaceConnection;
 use App\Services\MarketplaceConnectionVerifier;
+use App\Marketplaces\Api\MarketplaceConnectionHealthChecker;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -77,6 +78,18 @@ class MarketplaceConnectionController extends Controller
         });
 
         return redirect()->route('marketplaces.connections')->with('success', $marketplace->name.' '.ucfirst($environment).' credentials verified and saved securely.');
+    }
+
+    public function recheck(Request $request, MarketplaceConnection $connection, MarketplaceConnectionHealthChecker $healthChecker)
+    {
+        abort_unless($connection->business_id === $request->user()->business_id, 404);
+
+        $result = $healthChecker->check($connection);
+
+        return redirect()->route('marketplaces.connections')->with(
+            $result['ok'] ? 'success' : 'error',
+            $result['message']
+        );
     }
 
     public function destroy(Request $request, MarketplaceConnection $connection)
