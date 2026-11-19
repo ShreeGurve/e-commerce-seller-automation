@@ -34,5 +34,27 @@
   @if(in_array($order->status,['PACKED','SHIPPED'],true) && auth()->user()->can('orders.edit'))
    <form method="POST" action="{{ route('fulfilment.pickup',$order) }}" class="row g-2 mt-3">@csrf<div class="col-md-5"><label class="form-label">Actual pickup time</label><input type="datetime-local" class="form-control" name="picked_up_at" required value="{{ $f?->picked_up_at?->format('Y-m-d\TH:i') }}"></div><div class="col-md-5"><label class="form-label">Pickup reference</label><input class="form-control" name="pickup_reference" value="{{ $f?->pickup_reference }}"></div><div class="col-md-2 d-flex align-items-end"><button class="btn btn-outline-success w-100">Record pickup</button></div></form>
   @endif
+  @if($order->status === 'SHIPPED' && $order->fulfillment_type === 'SELF' && auth()->user()->can('orders.edit'))
+   <hr><h6 class="mb-2">Shipment tracking update</h6>
+   <div class="small text-muted mb-2">Record carrier checkpoints manually. These updates do not call the carrier or marketplace APIs.</div>
+   <form method="POST" action="{{ route('fulfilment.tracking-events.store',$order) }}" class="row g-2">@csrf
+    <div class="col-md-3"><label class="form-label">Tracking status</label><select class="form-select" name="tracking_status" required><option value="">Choose status</option>@foreach(\App\Services\ShipmentTrackingService::STATUSES as $key=>$label)<option value="{{ $key }}">{{ $label }}</option>@endforeach</select></div>
+    <div class="col-md-3"><label class="form-label">Event time</label><input class="form-control" type="datetime-local" name="occurred_at"></div>
+    <div class="col-md-3"><label class="form-label">Location</label><input class="form-control" name="location" maxlength="160" placeholder="City / hub (optional)"></div>
+    <div class="col-md-3"><label class="form-label">Description</label><input class="form-control" name="description" maxlength="255" placeholder="Optional carrier note"></div>
+    <div class="col-12"><button class="btn btn-outline-primary">Add tracking event</button></div>
+   </form>
+  @endif
+  @if($order->fulfillmentEvents->isNotEmpty())
+   <hr><h6 class="mb-2">Shipment activity</h6>
+   <div class="list-group list-group-flush">
+    @foreach($order->fulfillmentEvents as $event)
+     <div class="list-group-item px-0"><div class="d-flex justify-content-between gap-2"><strong>{{ str_replace('_',' ', $event->event_type) }}</strong><span class="small text-muted">{{ $event->created_at?->format('d M Y H:i') }}</span></div>
+      @if($event->description)<div class="small">{{ $event->description }}</div>@endif
+      @if(data_get($event->meta,'location'))<div class="small text-muted">{{ data_get($event->meta,'location') }}</div>@endif
+     </div>
+    @endforeach
+   </div>
+  @endif
  </div>
 </div>
