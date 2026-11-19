@@ -1,74 +1,74 @@
-# Package 18 — Marketplace Automation Rules & Approval Center
+# Package 19 — Marketplace Automation Execution Engine (Controlled / Dry-Run)
 
-Creates reviewable tasks from Package 17 recommendations. It is an approval/task workflow, not an execution engine. No marketplace API calls, inventory writes, pricing changes, purchase orders, refunds, or listing edits are performed.
+## Purpose
+Adds a controlled execution boundary for Package 18 approved automation tasks. This release implements **dry-run previews and execution audit history only**. It does not implement Amazon or Flipkart write APIs.
 
-## Included
+## Included files
+- `database/migrations/2026_11_19_000012_create_marketplace_automation_execution_tables.php`
+- `app/Services/MarketplaceAutomationExecutionService.php`
+- `app/Http/Controllers/MarketplaceAutomationExecutionController.php`
+- `resources/views/automation/marketplace-executions.blade.php`
+- `tests/Feature/MarketplaceAutomationExecutionServiceTest.php`
 
-- Configurable enabled/disabled rules for RESTOCK, STOCK_RISK, SALES_DECLINE, HIGH_RETURN_RATE and LOW_PROFIT_MARGIN.
-- Default rules inserted by the migration.
-- Manual recommendation scan for 7/14/30/60/90-day windows.
-- Idempotent task creation using a unique rule + signal + product + period fingerprint.
-- Priority override and reviewer guidance.
-- Task assignment-ready schema (`assigned_to`) for a later team assignment UI.
-- Approval lifecycle: PENDING → APPROVED or REJECTED; APPROVED → COMPLETED.
-- Reviewer, timestamp and note audit fields.
-- Feature tests for defaults, rule creation/toggle, supported signal types and status transitions.
+## Prerequisites
+Packages 17 and 18 must already be installed and migrated. Package 18 provides `marketplace_automation_tasks` and its approval workflow.
 
-## Files
-
-- `database/migrations/2026_11_19_000011_create_marketplace_automation_rules_tables.php`
-- `app/Services/MarketplaceAutomationRuleService.php`
-- `app/Http/Controllers/MarketplaceAutomationRuleController.php`
-- `resources/views/automation/marketplace-rules.blade.php`
-- `tests/Feature/MarketplaceAutomationRuleServiceTest.php`
-
-## Install
-
-1. Back up application and database.
-2. Extract ZIP at Laravel project root.
-3. Ensure Package 17 is installed (uses `MarketplaceRecommendationService`).
-4. Add routes inside the authenticated route group:
+## Routes
+Add inside the existing authenticated route group in `routes/web.php`:
 
 ```php
-use App\Http\Controllers\MarketplaceAutomationRuleController;
+use App\Http\Controllers\MarketplaceAutomationExecutionController;
 
-Route::middleware('can:finance.view')->prefix('automation/marketplace-rules')->name('automation.marketplace-rules.')->group(function () {
-    Route::get('/', [MarketplaceAutomationRuleController::class, 'index'])->name('index');
-    Route::post('/rules', [MarketplaceAutomationRuleController::class, 'store'])->name('store');
-    Route::patch('/rules/{rule}/toggle', [MarketplaceAutomationRuleController::class, 'toggle'])->name('toggle');
-    Route::post('/generate', [MarketplaceAutomationRuleController::class, 'generate'])->name('generate');
-    Route::post('/tasks/{task}/review', [MarketplaceAutomationRuleController::class, 'review'])->name('review');
+Route::middleware('can:finance.view')->prefix('automation/marketplace-executions')->name('automation.marketplace-executions.')->group(function () {
+    Route::get('/', [MarketplaceAutomationExecutionController::class, 'index'])->name('index');
+    Route::post('/tasks/{task}/dry-run', [MarketplaceAutomationExecutionController::class, 'dryRun'])
+        ->middleware('can:orders.manage')->name('dry-run');
+    Route::post('/tasks/{task}/live', [MarketplaceAutomationExecutionController::class, 'live'])
+        ->middleware('can:orders.manage')->name('live');
 });
 ```
 
-5. Run against the normal development MySQL configuration:
+The `live` endpoint intentionally records a `BLOCKED` execution attempt. The confirmation field is required to make the attempted action deliberate, but it does not override the fail-closed service guard. The UI does not expose a live action button.
 
-```bash
+If your permission catalog uses different names, replace `finance.view` and `orders.manage` with the equivalent read/manage permissions already used by your application. Do not remove authorization middleware.
+
+## Installation
+1. Back up the project and database.
+2. Extract this ZIP at the Laravel project root, preserving paths.
+3. Add the routes above.
+4. Clear cached configuration/routes:
+
+```powershell
 php artisan optimize:clear
+```
+
+5. Preview and run the migration:
+
+```powershell
 php artisan migrate --pretend
 php artisan migrate
 ```
 
-6. Test with SQLite memory and array cache:
+6. Run focused and full tests (use the test environment settings below):
 
 ```powershell
 $env:DB_CONNECTION="sqlite"
 $env:DB_DATABASE=":memory:"
 $env:CACHE_STORE="array"
-php artisan test --filter=MarketplaceAutomationRuleServiceTest
+php artisan test --filter=MarketplaceAutomationExecutionServiceTest
 php artisan test
 ```
 
-7. Open `/automation/marketplace-rules`.
+7. Visit `/automation/marketplace-executions`.
 
-## Important behaviour and limitations
+## Safety model
+- Only tasks with status `APPROVED` can receive a successful dry-run preview.
+- Every attempt is written to `marketplace_automation_executions` with mode, status, idempotency key, payload, validation result, user, timestamps and duration.
+- Repeating the same idempotency key returns the original execution record and does not create another attempt.
+- Live mode is **always blocked**, even if a policy row is edited to enable it. There is no marketplace write adapter in this package.
+- Default policies enable dry runs and disable live mode for the five recommendation types.
+- Dry runs do not change task status, stock, prices, listings, orders, returns, refunds, payouts or accounting balances.
+- No API calls are made. No credentials or marketplace permissions are required.
 
-- Cooldown suppression prevents a new task for the same rule, signal and product while a task exists inside the configured cooldown window. The unique period fingerprint also prevents duplicate tasks for the same analysis window.
-- `assigned_to` is schema-ready but assignment controls are not included in this package.
-- APPROVED means the team approved the task/recommendation, not that an action was executed. COMPLETED is a manual status update only.
-- This package does not call marketplace APIs and does not modify stock, prices, orders, returns, settlements or accounting data.
-- The route uses `finance.view`; change it only if your permission model uses a different existing permission.
-
-## Verification
-
-PHP syntax and ZIP integrity checks are performed on the package archive. PHPUnit must be run inside the target Laravel project; do not treat tests as passed until the local test output confirms it.
+## Not included / future prerequisites
+Real live execution requires separately reviewed Amazon SP-API / Flipkart API write adapters, verified scopes and account permissions, per-connection operation allowlists, explicit live enablement, rate limits, payload validation, retry policy, rollback/compensation design and production audit controls. This package deliberately does not claim those integrations exist.
