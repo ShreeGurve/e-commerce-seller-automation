@@ -1,1 +1,0 @@
-Route::post('/marketplace-connections/{connection}/recheck', [MarketplaceConnectionController::class, 'recheck'])->middleware('can:settings.manage')->name('marketplaces.connections.recheck');

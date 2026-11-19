@@ -1,5 +1,5 @@
 <?php
-use App\Http\Controllers\{ReportController, PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController, AutomationController, AutomationTaskController, ExecutiveDecisionDashboardController, FulfilmentController, KpiTrendController, ListingReadinessController, MarketplaceAutomationExecutionController, MarketplaceBusinessIntelligenceController, MarketplaceRecommendationController, OrderOperationsInsightsController, ProductPerformanceController};
+use App\Http\Controllers\{ReportController, PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController, AutomationController, AutomationTaskController, ExecutiveDecisionDashboardController, FulfilmentController, KpiTrendController, ListingReadinessController, MarketplaceAutomationExecutionController, MarketplaceAutomationRuleController, MarketplaceBusinessIntelligenceController, MarketplaceRecommendationController, OrderOperationsInsightsController, ProductPerformanceController};
 use App\Http\Controllers\MarketplaceConnectionController;
 use App\Http\Controllers\ReorderController;
 use App\Http\Controllers\SupplierAnalyticsController;
@@ -374,6 +374,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/marketplace-connections/{marketplace}/add', [MarketplaceConnectionController::class, 'create'])->middleware('can:settings.manage')->name('marketplaces.connections.create');
     Route::post('/marketplace-connections/{marketplace}/verify', [MarketplaceConnectionController::class, 'verify'])->middleware(['can:settings.manage', 'throttle:6,1'])->name('marketplaces.connections.verify');
     Route::delete('/marketplace-connections/{connection}', [MarketplaceConnectionController::class, 'destroy'])->middleware('can:settings.manage')->name('marketplaces.connections.destroy');
+    Route::post('/marketplace-connections/{connection}/recheck', [MarketplaceConnectionController::class, 'recheck'])->middleware('can:settings.manage')->name('marketplaces.connections.recheck');
 
     // Marketplace hubs (Amazon / Flipkart / ...)
     Route::get('/marketplaces/{code}', [MarketplaceController::class, 'show'])->middleware('can:orders.view')->name('marketplaces.show');
@@ -684,6 +685,16 @@ Route::middleware('auth')->group(function () {
     Route::get('/analytics/marketplace-business-intelligence', [MarketplaceBusinessIntelligenceController::class, 'index'])->middleware('can:finance.view')->name('analytics.marketplace-business-intelligence.index');
 
     Route::get('/analytics/marketplace-recommendations', [MarketplaceRecommendationController::class, 'index'])->middleware('can:finance.view')->name('analytics.marketplace-recommendations.index');
+
+    // Package 18: Marketplace Automation Rules & Approval Center.
+    Route::middleware('can:finance.view')->prefix('automation/marketplace-rules')->name('automation.marketplace-rules.')->group(function () {
+        Route::get('/', [MarketplaceAutomationRuleController::class, 'index'])->name('index');
+        Route::post('/rules', [MarketplaceAutomationRuleController::class, 'store'])->middleware('can:orders.edit')->name('store');
+        Route::patch('/rules/{rule}/toggle', [MarketplaceAutomationRuleController::class, 'toggle'])->middleware('can:orders.edit')->name('toggle');
+        Route::post('/generate', [MarketplaceAutomationRuleController::class, 'generate'])->middleware('can:orders.edit')->name('generate');
+        Route::post('/tasks/{task}/review', [MarketplaceAutomationRuleController::class, 'review'])->middleware('can:orders.edit')->name('review');
+    });
+
 });
 
 Route::middleware('can:reports.view')->prefix('automation/workforce')->name('automation.workforce.')->group(function () {
@@ -710,7 +721,7 @@ Route::middleware('can:purchases.edit')->prefix('automation/insights')->name('au
     Route::delete('/dependencies/{dependency}', [\App\Http\Controllers\AutomationInsightsController::class, 'destroyDependency'])->name('dependencies.destroy');
 });
 
-Route::middleware('can:finance.view')
+Route::middleware(['auth', 'can:finance.view'])
     ->prefix('automation/marketplace-executions')
     ->name('automation.marketplace-executions.')
     ->group(function () {
@@ -718,11 +729,11 @@ Route::middleware('can:finance.view')
             ->name('index');
 
         Route::post('/tasks/{task}/dry-run', [MarketplaceAutomationExecutionController::class, 'dryRun'])
-            ->middleware('can:orders.manage')
+            ->middleware('can:orders.edit')
             ->name('dry-run');
 
         Route::post('/tasks/{task}/live', [MarketplaceAutomationExecutionController::class, 'live'])
-            ->middleware('can:orders.manage')
+            ->middleware('can:orders.edit')
             ->name('live');
     });
 
