@@ -1,5 +1,5 @@
 <?php
-use App\Http\Controllers\{ReportController, PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController, AutomationController, AutomationTaskController, ExecutiveDecisionDashboardController, FulfilmentController, KpiTrendController, ListingReadinessController, OrderOperationsInsightsController, ProductPerformanceController};
+use App\Http\Controllers\{ReportController, PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController, AutomationController, AutomationTaskController, ExecutiveDecisionDashboardController, FulfilmentController, KpiTrendController, ListingReadinessController, MarketplaceBusinessIntelligenceController, OrderOperationsInsightsController, ProductPerformanceController};
 use App\Http\Controllers\MarketplaceConnectionController;
 use App\Http\Controllers\ReorderController;
 use App\Http\Controllers\SupplierAnalyticsController;
@@ -680,6 +680,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/automation/workflow-readiness', [\App\Http\Controllers\AutomationControlCenterController::class, 'readiness'])->middleware('can:reports.view')->name('automation.workflow-readiness');
 
     Route::get('/finance/marketplace-analytics', [\App\Http\Controllers\MarketplaceFinancialAnalyticsController::class, 'index'])->middleware('can:finance.view')->name('finance.marketplace-analytics.index');
+
+    Route::get('/analytics/marketplace-business-intelligence', [MarketplaceBusinessIntelligenceController::class, 'index'])->middleware('can:finance.view')->name('analytics.marketplace-business-intelligence.index');
 
 });
 
