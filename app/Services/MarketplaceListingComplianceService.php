@@ -22,7 +22,7 @@ class MarketplaceListingComplianceService
         $source = strtoupper($data['source'] ?? 'MANUAL');
         if (!in_array($source, ['MANUAL', 'IMPORT'], true)) throw ValidationException::withMessages(['source' => 'Unsupported issue source.']);
         if (!preg_match('/^[A-Z0-9._:-]{2,100}$/', strtoupper($data['issue_code'] ?? ''))) throw ValidationException::withMessages(['issue_code' => 'Use 2–100 letters, numbers, dots, underscores, colons or hyphens.']);
-        return DB::transaction(function () use ($listing, $data, $userId, $type, $severity) {
+        return DB::transaction(function () use ($listing, $data, $userId, $type, $severity, $source) {
             $listing = Listing::query()->lockForUpdate()->findOrFail($listing->id);
             $versionId = $data['listing_version_id'] ?? $listing->current_version_id;
             if ($versionId && !\App\Models\ListingVersion::query()->where('id', $versionId)->where('listing_id', $listing->id)->exists()) {
