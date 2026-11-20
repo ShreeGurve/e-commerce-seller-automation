@@ -1,5 +1,5 @@
 <?php
-use App\Http\Controllers\{ReportController, PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController, AutomationController, AutomationTaskController, ExecutiveDecisionDashboardController, FulfilmentController, KpiTrendController, ListingReadinessController, MarketplaceAutomationExecutionController, MarketplaceAutomationRuleController, MarketplaceBusinessIntelligenceController, MarketplaceRecommendationController, OrderOperationsInsightsController, ProductPerformanceController};
+use App\Http\Controllers\{ReportController, PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController, AutomationController, AutomationTaskController, ExecutiveDecisionDashboardController, FulfilmentController, KpiTrendController, ListingReadinessController, MarketplaceAutomationExecutionController, MarketplaceAutomationRuleController, MarketplaceBusinessIntelligenceController, MarketplaceRecommendationController, MarketplaceWriteExecutionController, OrderOperationsInsightsController, ProductPerformanceController};
 use App\Http\Controllers\MarketplaceConnectionController;
 use App\Http\Controllers\ReorderController;
 use App\Http\Controllers\SupplierAnalyticsController;
@@ -410,6 +410,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/finance/profit/recalculate', [ProfitController::class, 'recalculate'])->middleware(['can:finance.manage', 'throttle:6,1'])->name('profit.recalculate');
 
     Route::get('/finance/fees', [FeeRuleController::class, 'index'])->middleware('can:finance.view')->name('fees.index');
+
     Route::middleware('can:finance.manage')->group(function () {
         Route::get('/finance/fees/create', [FeeRuleController::class, 'create'])->name('fees.create');
         Route::post('/finance/fees', [FeeRuleController::class, 'store'])->name('fees.store');
@@ -466,6 +467,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/{level}', [AdsController::class, 'targets'])->where('level', 'keywords|terms')->name('targets');
     });
 
+
+
     // Claims (SAFE-T, reimbursement, disputes)
     Route::get('/claims', [ClaimController::class, 'index'])->middleware('can:claims.view')->name('claims.index');
     Route::get('/claims/create', [ClaimController::class, 'create'])->middleware('can:claims.create')->name('claims.create');
@@ -484,6 +487,24 @@ Route::middleware('auth')->group(function () {
         Route::get('/listings', [ListingController::class, 'index'])->name('listings.index');
         Route::get('/listings/score-rules', [ListingScoreRuleController::class, 'index'])->name('listings.rules');
     });
+
+    Route::middleware(['auth', 'can:listings.manage'])
+        ->prefix('marketplace-writes')
+        ->name('marketplaces.writes.')
+        ->group(function () {
+            Route::get('/', [MarketplaceWriteExecutionController::class, 'index'])
+                ->name('index');
+
+            Route::patch('/connections/{connection}/policies/{operation}', [MarketplaceWriteExecutionController::class, 'togglePolicy'])
+                ->name('policy');
+
+            Route::post('/prepare', [MarketplaceWriteExecutionController::class, 'prepare'])
+                ->name('prepare');
+
+            Route::post('/attempts/{attempt}/approve-execute', [MarketplaceWriteExecutionController::class, 'approveExecute'])
+                ->name('approve-execute');
+        });
+
     Route::middleware('can:listings.manage')->group(function () {
         Route::put('/listings/score-rules', [ListingScoreRuleController::class, 'update'])->name('listings.rules.update');
         Route::get('/listings/create', [ListingController::class, 'create'])->name('listings.create');
