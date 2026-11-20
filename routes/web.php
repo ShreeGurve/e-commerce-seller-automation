@@ -1,5 +1,5 @@
 <?php
-use App\Http\Controllers\{ReportController, PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController, AutomationController, AutomationTaskController, ExecutiveDecisionDashboardController, FulfilmentController, KpiTrendController, ListingReadinessController, MarketplaceAutomationExecutionController, MarketplaceAutomationRuleController, MarketplaceBusinessIntelligenceController, MarketplaceRecommendationController, MarketplaceWriteExecutionController, OrderOperationsInsightsController, ProductPerformanceController};
+use App\Http\Controllers\{ReportController, PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController, AutomationController, AutomationTaskController, ExecutiveDecisionDashboardController, FulfilmentController, KpiTrendController, ListingReadinessController, MarketplaceAutomationExecutionController, MarketplaceAutomationRuleController, MarketplaceBusinessIntelligenceController, MarketplaceRecommendationController, MarketplaceWriteAuditController, MarketplaceWriteExecutionController, MarketplaceWriteIncidentController, MarketplaceWriteSlaController, MarketplaceWriteVerificationController, OrderOperationsInsightsController, ProductPerformanceController};
 use App\Http\Controllers\MarketplaceConnectionController;
 use App\Http\Controllers\ReorderController;
 use App\Http\Controllers\SupplierAnalyticsController;
@@ -503,6 +503,64 @@ Route::middleware('auth')->group(function () {
 
             Route::post('/attempts/{attempt}/approve-execute', [MarketplaceWriteExecutionController::class, 'approveExecute'])
                 ->name('approve-execute');
+        });
+
+    Route::middleware(['auth', 'can:listings.manage'])
+        ->prefix('marketplace-writes/verification')
+        ->name('marketplaces.writes.verification.')
+        ->group(function () {
+            Route::get('/', [MarketplaceWriteVerificationController::class, 'index'])
+                ->name('index');
+
+            Route::get('/{attempt}/history', [MarketplaceWriteVerificationController::class, 'history'])
+                ->name('history');
+
+            Route::post('/{attempt}', [MarketplaceWriteVerificationController::class, 'store'])
+                ->name('store');
+        });
+
+    Route::middleware(['auth', 'can:listings.manage'])
+        ->prefix('marketplace-writes/audit')
+        ->name('marketplaces.writes.audit.')
+        ->group(function () {
+
+            Route::get('/', [MarketplaceWriteAuditController::class, 'index'])
+                ->name('index');
+
+            Route::get('/export', [MarketplaceWriteAuditController::class, 'export'])
+                ->name('export');
+        });
+
+    Route::middleware(['auth', 'can:listings.manage'])
+        ->prefix('marketplace-writes/incidents')
+        ->name('marketplaces.writes.incidents.')
+        ->group(function () {
+
+            Route::get('/', [MarketplaceWriteIncidentController::class, 'index'])
+                ->name('index');
+
+            Route::post('/', [MarketplaceWriteIncidentController::class, 'store'])
+                ->name('store');
+
+            Route::patch('/{incident}', [MarketplaceWriteIncidentController::class, 'update'])
+                ->name('update');
+
+            Route::get('/{incident}/history', [MarketplaceWriteIncidentController::class, 'history'])
+                ->name('history');
+        });
+
+    Route::middleware(['auth', 'can:listings.manage'])
+        ->prefix('marketplace-writes/sla')
+        ->name('marketplaces.writes.sla.')
+        ->group(function () {
+            Route::get('/', [MarketplaceWriteSlaController::class, 'index'])
+                ->name('index');
+
+            Route::post('/policy', [MarketplaceWriteSlaController::class, 'savePolicy'])
+                ->name('policy');
+
+            Route::post('/incidents/{incident}/respond', [MarketplaceWriteSlaController::class, 'recordResponse'])
+                ->name('respond');
         });
 
     Route::middleware('can:listings.manage')->group(function () {
