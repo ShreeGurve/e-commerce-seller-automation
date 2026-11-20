@@ -1,5 +1,5 @@
 <?php
-use App\Http\Controllers\{ReportController, PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController, AutomationController, AutomationTaskController, ExecutiveDecisionDashboardController, FulfilmentController, KpiTrendController, ListingReadinessController, MarketplaceAutomationExecutionController, MarketplaceAutomationRuleController, MarketplaceBusinessIntelligenceController, MarketplaceRecommendationController, MarketplaceWriteAuditController, MarketplaceWriteEscalationController, MarketplaceWriteExecutionController, MarketplaceWriteIncidentController, MarketplaceWriteRecoveryController, MarketplaceWriteSlaController, MarketplaceWriteVerificationController, OrderOperationsInsightsController, ProductPerformanceController};
+use App\Http\Controllers\{ReportController, PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController, AutomationController, AutomationTaskController, ExecutiveDecisionDashboardController, FulfilmentController, KpiTrendController, ListingReadinessController, MarketplaceAutomationExecutionController, MarketplaceAutomationRuleController, MarketplaceBusinessIntelligenceController, MarketplaceRecommendationController, MarketplaceWriteAuditController, MarketplaceWriteEscalationController, MarketplaceWriteEvidenceController, MarketplaceWriteExecutionController, MarketplaceWriteIncidentController, MarketplaceWriteRecoveryController, MarketplaceWriteSlaController, MarketplaceWriteVerificationController, OrderOperationsInsightsController, ProductPerformanceController};
 use App\Http\Controllers\MarketplaceConnectionController;
 use App\Http\Controllers\ReorderController;
 use App\Http\Controllers\SupplierAnalyticsController;
@@ -410,6 +410,27 @@ Route::middleware('auth')->group(function () {
             Route::patch('/{case}/close', [MarketplaceWriteRecoveryController::class, 'close'])
                 ->whereNumber('case')
                 ->name('close');
+        });
+
+    Route::middleware(['auth', 'can:listings.manage'])
+        ->prefix('marketplace-writes/evidence')
+        ->name('marketplaces.writes.evidence.')
+        ->group(function () {
+            Route::get(
+                '/',
+                [MarketplaceWriteEvidenceController::class, 'index']
+            )->name('index');
+
+            Route::post(
+                '/',
+                [MarketplaceWriteEvidenceController::class, 'store']
+            )->name('store');
+
+            Route::get(
+                '/{evidence}',
+                [MarketplaceWriteEvidenceController::class, 'show']
+            )->whereNumber('evidence')
+            ->name('show');
         });
 
     // Import engine (CSV / Excel). Same permission as editing orders.
