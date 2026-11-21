@@ -61,6 +61,7 @@ use App\Http\Controllers\MarketplaceWriteEvidenceController;
 use App\Http\Controllers\MarketplaceWriteExecutionController;
 use App\Http\Controllers\MarketplaceWriteGovernanceController;
 use App\Http\Controllers\MarketplaceWriteIncidentController;
+use App\Http\Controllers\MarketplaceWriteMonitoringController;
 use App\Http\Controllers\MarketplaceWriteRecoveryController;
 use App\Http\Controllers\MarketplaceWriteRetentionController;
 use App\Http\Controllers\MarketplaceWriteSlaController;
@@ -1073,4 +1074,22 @@ Route::middleware(['auth', 'can:listings.manage'])->prefix('marketplace-writes/g
 
     Route::post('/emergency-stop/release', [MarketplaceWriteEmergencyController::class, 'release'])
         ->name('emergency.release');
+});
+
+
+Route::middleware(['auth', 'can:listings.manage'])->prefix('marketplace-writes/monitoring')->name('marketplaces.writes.monitoring.')
+->group(function () {
+    Route::get('/', [MarketplaceWriteMonitoringController::class, 'index'])
+        ->name('index');
+
+    Route::post('/scan', [MarketplaceWriteMonitoringController::class, 'scan'])
+        ->name('scan');
+
+    Route::post('/incidents/{incident}/acknowledge', [MarketplaceWriteMonitoringController::class, 'acknowledge'])
+        ->whereNumber('incident')
+        ->name('acknowledge');
+
+    Route::post('/incidents/{incident}/resolve', [MarketplaceWriteMonitoringController::class, 'resolve'])
+        ->whereNumber('incident')
+        ->name('resolve');
 });

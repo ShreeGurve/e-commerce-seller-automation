@@ -19,3 +19,5 @@ Schedule::command('automation:tasks-generate-recurring')->dailyAt('00:10')->with
 Schedule::command('automation:tasks-remind --hours=24')->hourly()->withoutOverlapping();
 
 Schedule::command('marketplace-writes:escalate')->everyFiveMinutes()->withoutOverlapping();
+
+Schedule::command('marketplace-writes:monitor')->everyFiveMinutes()->withoutOverlapping();
