@@ -58,6 +58,7 @@ use App\Http\Controllers\MarketplaceWriteAuditController;
 use App\Http\Controllers\MarketplaceWriteEscalationController;
 use App\Http\Controllers\MarketplaceWriteEvidenceController;
 use App\Http\Controllers\MarketplaceWriteExecutionController;
+use App\Http\Controllers\MarketplaceWriteGovernanceController;
 use App\Http\Controllers\MarketplaceWriteIncidentController;
 use App\Http\Controllers\MarketplaceWriteRecoveryController;
 use App\Http\Controllers\MarketplaceWriteRetentionController;
@@ -1035,4 +1036,22 @@ Route::middleware(['auth', 'can:listings.manage'])->prefix('marketplace-writes/r
         [MarketplaceWriteRetentionController::class, 'approveDeletion']
     )->whereNumber('evidence')
         ->name('approve');
+});
+
+Route::middleware(['auth', 'can:listings.manage'])->prefix('marketplace-writes/governance')->name('marketplaces.writes.governance.')->group(function () {
+    Route::get(
+        '/',
+        [MarketplaceWriteGovernanceController::class, 'index']
+    )->name('index');
+
+    Route::post(
+        '/requests',
+        [MarketplaceWriteGovernanceController::class, 'store']
+    )->name('store');
+
+    Route::post(
+        '/requests/{governanceRequest}/review',
+        [MarketplaceWriteGovernanceController::class, 'review']
+    )->whereNumber('governanceRequest')
+        ->name('review');
 });
