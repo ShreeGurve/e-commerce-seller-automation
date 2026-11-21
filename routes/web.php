@@ -59,6 +59,7 @@ use App\Http\Controllers\MarketplaceWriteEmergencyController;
 use App\Http\Controllers\MarketplaceWriteEscalationController;
 use App\Http\Controllers\MarketplaceWriteEvidenceController;
 use App\Http\Controllers\MarketplaceWriteExecutionController;
+use App\Http\Controllers\MarketplaceWriteGovernanceAlertController;
 use App\Http\Controllers\MarketplaceWriteGovernanceController;
 use App\Http\Controllers\MarketplaceWriteIncidentController;
 use App\Http\Controllers\MarketplaceWriteMonitoringController;
@@ -1105,4 +1106,32 @@ Route::middleware(['auth', 'can:listings.manage'])->prefix('marketplace-writes/r
     Route::post('/{authorization}/review', [MarketplaceWriteRetryAuthorizationController::class, 'review'])
         ->whereNumber('authorization')
         ->name('review');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Marketplace Write Governance Alerts — Package 38
+|--------------------------------------------------------------------------
+*/
+
+Route::middleware(['auth', 'can:listings.manage'])->prefix('marketplace-writes/alerts')->name('marketplaces.writes.alerts.')->group(function () {
+
+    // Notification center
+    Route::get(
+        '/',
+        [MarketplaceWriteGovernanceAlertController::class, 'index']
+    )->name('index');
+
+    // Mark individual notification as read
+    Route::post(
+        '/{notification}/read',
+        [MarketplaceWriteGovernanceAlertController::class, 'markRead']
+    )->name('read');
+
+    // Mark all marketplace-write notifications as read
+    Route::post(
+        '/read-all',
+        [MarketplaceWriteGovernanceAlertController::class, 'markAllRead']
+    )->name('read-all');
+
 });
