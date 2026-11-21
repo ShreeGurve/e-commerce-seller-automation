@@ -54,6 +54,7 @@ use App\Http\Controllers\MarketplaceConnectionController;
 use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\MarketplaceFinancialAnalyticsController;
 use App\Http\Controllers\MarketplaceRecommendationController;
+use App\Http\Controllers\MarketplaceWriteAlertEscalationController;
 use App\Http\Controllers\MarketplaceWriteAlertPreferenceController;
 use App\Http\Controllers\MarketplaceWriteAuditController;
 use App\Http\Controllers\MarketplaceWriteEmergencyController;
@@ -1142,4 +1143,12 @@ Route::middleware(['auth', 'can:listings.manage'])->prefix('marketplace-writes/a
 
     Route::put('/', [MarketplaceWriteAlertPreferenceController::class, 'update'])
         ->name('update');
+});
+
+Route::middleware(['auth', 'can:listings.manage'])->prefix('marketplace-writes/alerts/escalations')->name('marketplaces.writes.alerts.escalations.')->group(function () {
+    Route::get('/', [MarketplaceWriteAlertEscalationController::class, 'index'])
+        ->name('index');
+
+    Route::post('/', [MarketplaceWriteAlertEscalationController::class, 'store'])
+        ->name('store');
 });

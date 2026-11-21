@@ -20,3 +20,4 @@ Schedule::command('automation:tasks-remind --hours=24')->hourly()->withoutOverla
 Schedule::command('marketplace-writes:escalate')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('marketplace-writes:monitor')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('marketplace-writes:alerts-scan')->everyTenMinutes()->withoutOverlapping();
+Schedule::command('marketplace-writes:alerts-escalate')->everyFiveMinutes()->withoutOverlapping();
