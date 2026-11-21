@@ -22,6 +22,15 @@ class MarketplaceWriteRecoveryService
             'incidents' => DB::table('marketplace_write_incidents')->where('business_id', $businessId)
                 ->whereIn('status', ['OPEN', 'INVESTIGATING'])->orderByDesc('created_at')->get(['id', 'title', 'severity']),
             'users' => DB::table('users')->where('business_id', $businessId)->orderBy('name')->get(['id', 'name']),
+            'retryAuthorizations' => DB::table('marketplace_write_retry_authorizations as r')
+                ->join('marketplace_write_attempts as a', 'a.id', '=', 'r.attempt_id')
+                ->where('r.business_id', $businessId)
+                ->where('r.status', 'APPROVED')
+                ->where('r.verification_outcome', 'NOT_APPLIED_CONFIRMED')
+                ->where('a.status', 'FAILED')
+                ->orderByDesc('r.reviewed_at')
+                ->get(['r.id', 'r.incident_id', 'r.attempt_id', 'r.reviewed_at', 'r.evidence_reference'])
+                ->keyBy('incident_id'),
         ];
     }
 
@@ -54,7 +63,7 @@ class MarketplaceWriteRecoveryService
             'Review request payload, validation errors and marketplace response',
             'Check marketplace connection, permissions and rate limits',
             'Correct the root cause and validate the proposed change',
-            'Retry through the approved marketplace write workflow',
+            'Confirm approved retry authorization and prepare a fresh write preview (no automatic submission)',
             'Verify the result in the marketplace and attach evidence',
         ];
         foreach ($steps as $index => $title) {
@@ -78,18 +87,44 @@ class MarketplaceWriteRecoveryService
         if (! in_array($status, ['PENDING', 'DONE', 'BLOCKED'], true)) {
             throw ValidationException::withMessages(['status' => 'Invalid recovery step status.']);
         }
-        $updated = DB::table('marketplace_write_recovery_steps')->where('id', $stepId)->where('recovery_case_id', $caseId)->update([
-            'status' => $status, 'step_notes' => $data['step_notes'] ?? null,
-            'completed_by' => $status === 'DONE' ? $user->id : null,
-            'completed_at' => $status === 'DONE' ? now() : null, 'updated_at' => now(),
-        ]);
-        if (! $updated) {
-            abort(404);
-        }
-        $remaining = DB::table('marketplace_write_recovery_steps')->where('recovery_case_id', $caseId)->where('status', '!=', 'DONE')->count();
-        DB::table('marketplace_write_recovery_cases')->where('id', $caseId)->update([
-            'status' => $remaining === 0 ? 'READY_TO_VERIFY' : 'IN_PROGRESS', 'updated_at' => now(),
-        ]);
+
+        DB::transaction(function () use ($user, $businessId, $caseId, $stepId, $status, $data, $case) {
+            $step = DB::table('marketplace_write_recovery_steps')
+                ->where('id', $stepId)->where('recovery_case_id', $caseId)->lockForUpdate()->first();
+            if (! $step) {
+                abort(404);
+            }
+
+            // Step 5 is the controlled retry checkpoint. It cannot be manually marked DONE.
+            if ((int) $step->sort_order === 5 && $status === 'DONE') {
+                $authorized = DB::table('marketplace_write_retry_authorizations as r')
+                    ->join('marketplace_write_attempts as a', 'a.id', '=', 'r.attempt_id')
+                    ->join('marketplace_write_incidents as i', 'i.id', '=', 'r.incident_id')
+                    ->where('r.business_id', $businessId)
+                    ->where('r.incident_id', $case->incident_id)
+                    ->where('r.status', 'APPROVED')
+                    ->where('r.verification_outcome', 'NOT_APPLIED_CONFIRMED')
+                    ->where('a.status', 'FAILED')
+                    ->whereIn('i.status', ['OPEN', 'IN_PROGRESS', 'INVESTIGATING'])
+                    ->exists();
+
+                if (! $authorized) {
+                    throw ValidationException::withMessages([
+                        'status' => 'This checkpoint requires an independently APPROVED retry authorization for this incident, with the original attempt still FAILED. Request/review it in Marketplace Write Retry Authorizations first.',
+                    ]);
+                }
+            }
+
+            DB::table('marketplace_write_recovery_steps')->where('id', $stepId)->update([
+                'status' => $status, 'step_notes' => $data['step_notes'] ?? null,
+                'completed_by' => $status === 'DONE' ? $user->id : null,
+                'completed_at' => $status === 'DONE' ? now() : null, 'updated_at' => now(),
+            ]);
+            $remaining = DB::table('marketplace_write_recovery_steps')->where('recovery_case_id', $caseId)->where('status', '!=', 'DONE')->count();
+            DB::table('marketplace_write_recovery_cases')->where('id', $caseId)->update([
+                'status' => $remaining === 0 ? 'READY_TO_VERIFY' : 'IN_PROGRESS', 'updated_at' => now(),
+            ]);
+        });
     }
 
     public function close(object $user, int $caseId, array $data): void
