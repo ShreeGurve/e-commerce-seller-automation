@@ -7,11 +7,39 @@
             <h1 class="h3 mb-1">Marketplace Write Governance</h1>
             <p class="text-muted mb-0">Propose operational write controls and require independent approval before policy changes take effect.</p>
         </div>
-        <span class="badge bg-warning text-dark">Governance register — not a live write switch</span>
+        <span class="badge bg-success">Approved governance policy enforced at submission</span>
     </div>
 
     @if (session('success')) <div class="alert alert-success">{{ session('success') }}</div> @endif
     @if ($errors->any()) <div class="alert alert-danger"><ul class="mb-0">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div> @endif
+
+    @php($emergencyActive = (bool) ($emergencyControl->is_active ?? false))
+    <div class="card mb-4 border-{{ $emergencyActive ? 'danger' : 'success' }}">
+        <div class="card-header"><strong>Emergency marketplace write stop</strong></div>
+        <div class="card-body">
+            <p class="mb-2"><span class="badge {{ $emergencyActive ? 'bg-danger' : 'bg-success' }}">{{ $emergencyActive ? 'ACTIVE — submissions blocked' : 'INACTIVE' }}</span></p>
+            @if ($emergencyActive)
+                <p class="small">Activated by user #{{ $emergencyControl->activated_by }} at {{ $emergencyControl->activated_at }}. Reason: {{ $emergencyControl->reason }}</p>
+                @if (auth()->user()->isSuperAdmin() && (int) $emergencyControl->activated_by !== (int) auth()->id())
+                    <form method="POST" action="{{ route('marketplaces.writes.governance.emergency.release') }}" class="d-flex flex-wrap gap-2">
+                        @csrf
+                        <input class="form-control" style="max-width:420px" name="reason" minlength="10" maxlength="1000" placeholder="Independent release reason (min 10 characters)" required>
+                        <button class="btn btn-outline-danger" type="submit">Release emergency stop</button>
+                    </form>
+                @else
+                    <p class="small text-muted mb-0">A different Super Admin must release this stop.</p>
+                @endif
+            @elseif (auth()->user()->isSuperAdmin())
+                <form method="POST" action="{{ route('marketplaces.writes.governance.emergency.activate') }}" class="d-flex flex-wrap gap-2">
+                    @csrf
+                    <input class="form-control" style="max-width:420px" name="reason" minlength="10" maxlength="1000" placeholder="Emergency reason (min 10 characters)" required>
+                    <button class="btn btn-danger" type="submit">Activate emergency stop</button>
+                </form>
+            @else
+                <p class="small text-muted mb-0">Only a Super Admin can activate or release the emergency stop.</p>
+            @endif
+        </div>
+    </div>
 
     <div class="card mb-4">
         <div class="card-header"><strong>Current approved policy</strong></div>
@@ -22,7 +50,7 @@
                     <div class="col-md-3"><div class="border rounded p-3 h-100"><div class="small text-muted">{{ str($key)->replace('_', ' ')->title() }}</div><strong>{{ ($policy->{$key} ?? $default) ? 'Enabled' : 'Disabled' }}</strong></div></div>
                 @endforeach
             </div>
-            <p class="small text-muted mt-3 mb-0">Approved settings are stored here for governance tracking. This package does not connect them to marketplace API execution or override the existing write gate.</p>
+            <p class="small text-muted mt-3 mb-0">These approved settings are checked again immediately before marketplace submission. Inventory submissions also require the inventory control to be enabled. Evidence references are checked against active evidence-vault records.</p>
         </div>
     </div>
 

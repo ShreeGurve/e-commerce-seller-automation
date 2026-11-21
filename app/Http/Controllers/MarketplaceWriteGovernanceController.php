@@ -11,7 +11,11 @@ class MarketplaceWriteGovernanceController extends Controller
 
     public function index(Request $request)
     {
-        return view('marketplaces.write-governance', $this->service->dashboard($request->user()));
+        $data = $this->service->dashboard($request->user());
+        $data['emergencyControl'] = \Illuminate\Support\Facades\DB::table('marketplace_write_emergency_controls')
+            ->where('business_id', $request->user()->business_id)->first();
+
+        return view('marketplaces.write-governance', $data);
     }
 
     public function store(Request $request)

@@ -55,6 +55,7 @@ use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\MarketplaceFinancialAnalyticsController;
 use App\Http\Controllers\MarketplaceRecommendationController;
 use App\Http\Controllers\MarketplaceWriteAuditController;
+use App\Http\Controllers\MarketplaceWriteEmergencyController;
 use App\Http\Controllers\MarketplaceWriteEscalationController;
 use App\Http\Controllers\MarketplaceWriteEvidenceController;
 use App\Http\Controllers\MarketplaceWriteExecutionController;
@@ -1054,4 +1055,22 @@ Route::middleware(['auth', 'can:listings.manage'])->prefix('marketplace-writes/g
         [MarketplaceWriteGovernanceController::class, 'review']
     )->whereNumber('governanceRequest')
         ->name('review');
+});
+
+Route::middleware(['auth', 'can:listings.manage'])->prefix('marketplace-writes/governance')->name('marketplaces.writes.governance.')->group(function () {
+    Route::get('/', [MarketplaceWriteGovernanceController::class, 'index'])
+        ->name('index');
+
+    Route::post('/requests', [MarketplaceWriteGovernanceController::class, 'store'])
+        ->name('store');
+
+    Route::post('/requests/{governanceRequest}/review', [MarketplaceWriteGovernanceController::class, 'review'])
+        ->whereNumber('governanceRequest')
+        ->name('review');
+
+    Route::post('/emergency-stop', [MarketplaceWriteEmergencyController::class, 'activate'])
+        ->name('emergency.activate');
+
+    Route::post('/emergency-stop/release', [MarketplaceWriteEmergencyController::class, 'release'])
+        ->name('emergency.release');
 });

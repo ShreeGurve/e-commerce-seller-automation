@@ -6,6 +6,7 @@ use App\Marketplaces\Writes\AmazonListingsWriteAdapter;
 use App\Marketplaces\Writes\FlipkartListingsWriteAdapter;
 use App\Models\MarketplaceConnection;
 use App\Models\User;
+use App\Services\MarketplaceWriteGovernanceEnforcement;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -211,6 +212,7 @@ class MarketplaceWriteExecutionService
                 throw ValidationException::withMessages(['product' => 'The product is no longer owned by your business.']);
             }
             $this->assertLiveGates($connection);
+            app(MarketplaceWriteGovernanceEnforcement::class)->assertCanExecute($row, $approver);
 
             DB::table('marketplace_write_attempts')->where('id', $row->id)->update([
                 'status' => 'SUBMITTING', 'approved_by' => $approver->id, 'approved_at' => now(),
