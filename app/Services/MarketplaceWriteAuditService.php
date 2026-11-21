@@ -15,15 +15,23 @@ class MarketplaceWriteAuditService
     {
         $query = $this->baseQuery($businessId, $filters);
         $attempts = (clone $query)->orderByDesc('a.created_at')->limit(250)->get();
-
         $countsQuery = DB::table('marketplace_write_attempts as a')->where('a.business_id', $businessId);
         $this->applyFilters($countsQuery, $filters);
+        $verificationQuery = DB::table('marketplace_write_attempts as a')
+            ->leftJoin('marketplace_write_verifications as v', 'v.attempt_id', '=', 'a.id')
+            ->where('a.business_id', $businessId);
+        $this->applyFilters($verificationQuery, $filters);
+
         $counts = [
             'total' => (clone $countsQuery)->count(),
             'accepted' => (clone $countsQuery)->where('a.status', 'ACCEPTED')->count(),
             'failed' => (clone $countsQuery)->where('a.status', 'FAILED')->count(),
             'review_required' => (clone $countsQuery)->where('a.status', 'REVIEW_REQUIRED')->count(),
             'prepared' => (clone $countsQuery)->whereIn('a.status', ['PREPARED', 'SUBMITTING'])->count(),
+            'live_confirmed' => (clone $verificationQuery)->where('v.status', 'LIVE_CONFIRMED')->count(),
+            'verification_pending' => (clone $verificationQuery)->whereNull('v.id')->whereIn('a.status', ['ACCEPTED', 'REVIEW_REQUIRED'])->count(),
+            'independent_approvals' => (clone $countsQuery)->whereNotNull('a.approved_by')->whereColumn('a.prepared_by', '<>', 'a.approved_by')->count(),
+            'approval_exceptions' => (clone $countsQuery)->whereNotNull('a.approved_by')->whereColumn('a.prepared_by', '=', 'a.approved_by')->count(),
         ];
 
         return compact('attempts', 'counts', 'filters');

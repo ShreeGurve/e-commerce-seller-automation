@@ -13,6 +13,16 @@
         @endforeach
     </div>
 
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3"><strong>Compliance indicators</strong><span class="text-muted small ms-2">Based on the selected filters</span></div>
+        <div class="card-body"><div class="row g-3">
+            <div class="col-6 col-lg-3"><div class="small text-muted">Live confirmed</div><div class="fs-4 fw-semibold text-success">{{ number_format($counts['live_confirmed']) }}</div></div>
+            <div class="col-6 col-lg-3"><div class="small text-muted">Awaiting verification</div><div class="fs-4 fw-semibold">{{ number_format($counts['verification_pending']) }}</div></div>
+            <div class="col-6 col-lg-3"><div class="small text-muted">Independent approvals</div><div class="fs-4 fw-semibold">{{ number_format($counts['independent_approvals']) }}</div></div>
+            <div class="col-6 col-lg-3"><div class="small text-muted">Same-user approval exceptions</div><div class="fs-4 fw-semibold {{ $counts['approval_exceptions'] > 0 ? 'text-danger' : '' }}">{{ number_format($counts['approval_exceptions']) }}</div></div>
+        </div><p class="small text-muted mt-3 mb-0">These indicators are read-only reporting signals, not proof of regulatory compliance. Investigate any same-user approval exception against the underlying audit trail.</p></div>
+    </div>
+
     <div class="card border-0 shadow-sm mb-4"><div class="card-body">
         <form method="GET" class="row g-3 align-items-end">
             <div class="col-md-2"><label class="form-label">Marketplace</label><select name="marketplace" class="form-select"><option value="">All</option><option value="amazon" @selected($filters['marketplace']==='amazon')>Amazon</option><option value="flipkart" @selected($filters['marketplace']==='flipkart')>Flipkart</option></select></div>
@@ -39,6 +49,6 @@
         @empty<tr><td colspan="8" class="text-center text-muted py-5">No marketplace write attempts match these filters.</td></tr>@endforelse
         </tbody></table></div>
     </div>
-    <p class="small text-muted mt-3 mb-0">Audit view is read-only. Export is limited to the latest 5,000 matching attempts and scoped to your business.</p>
+    <p class="small text-muted mt-3 mb-0">Audit and compliance indicators are read-only. Export is limited to the latest 5,000 matching attempts, includes approval-integrity classification, and is scoped to your business.</p>
 </div>
 @endsection

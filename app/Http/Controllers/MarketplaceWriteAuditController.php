@@ -22,16 +22,17 @@ class MarketplaceWriteAuditController extends Controller
 
         return response()->streamDownload(function () use ($rows) {
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['Attempt ID', 'Marketplace', 'Operation', 'SKU', 'Submission Status', 'Verification Status', 'Issue Code', 'Prepared By', 'Approved By', 'Verified By', 'Created At', 'Submitted At', 'Verified At', 'Submission Reference', 'Error']);
+            fputcsv($out, ['Attempt ID', 'Marketplace', 'Operation', 'SKU', 'Submission Status', 'Verification Status', 'Approval Integrity', 'Issue Code', 'Prepared By', 'Approved By', 'Verified By', 'Created At', 'Submitted At', 'Verified At', 'Submission Reference', 'Error']);
             foreach ($rows as $row) {
+                $approvalIntegrity = $row->approved_by === null ? 'NOT_APPROVED' : ((string) $row->prepared_by === (string) $row->approved_by ? 'SAME_USER_EXCEPTION' : 'INDEPENDENT_APPROVAL');
                 $values = [$row->id, $row->marketplace_code, $row->operation, $row->marketplace_sku, $row->status,
-                    $row->verification_status, $row->issue_code, $row->prepared_by_name, $row->approved_by_name,
+                    $row->verification_status, $approvalIntegrity, $row->issue_code, $row->prepared_by_name, $row->approved_by_name,
                     $row->verified_by_name, $row->created_at, $row->submitted_at, $row->verified_at,
                     $row->external_submission_id, $row->error_message];
                 fputcsv($out, array_map([$this, 'safeCsvValue'], $values));
             }
             fclose($out);
-        }, 'marketplace-write-audit-'.now()->format('Ymd-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+        }, 'marketplace-write-compliance-'.now()->format('Ymd-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     private function safeCsvValue($value): string
