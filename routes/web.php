@@ -64,6 +64,7 @@ use App\Http\Controllers\MarketplaceWriteIncidentController;
 use App\Http\Controllers\MarketplaceWriteMonitoringController;
 use App\Http\Controllers\MarketplaceWriteRecoveryController;
 use App\Http\Controllers\MarketplaceWriteRetentionController;
+use App\Http\Controllers\MarketplaceWriteRetryAuthorizationController;
 use App\Http\Controllers\MarketplaceWriteSlaController;
 use App\Http\Controllers\MarketplaceWriteVerificationController;
 use App\Http\Controllers\ModuleController;
@@ -1092,4 +1093,16 @@ Route::middleware(['auth', 'can:listings.manage'])->prefix('marketplace-writes/m
     Route::post('/incidents/{incident}/resolve', [MarketplaceWriteMonitoringController::class, 'resolve'])
         ->whereNumber('incident')
         ->name('resolve');
+});
+
+Route::middleware(['auth', 'can:listings.manage'])->prefix('marketplace-writes/retry-authorizations')->name('marketplaces.writes.retry-authorizations.')->group(function () {
+    Route::get('/', [MarketplaceWriteRetryAuthorizationController::class, 'index'])
+        ->name('index');
+
+    Route::post('/', [MarketplaceWriteRetryAuthorizationController::class, 'store'])
+        ->name('store');
+
+    Route::post('/{authorization}/review', [MarketplaceWriteRetryAuthorizationController::class, 'review'])
+        ->whereNumber('authorization')
+        ->name('review');
 });
