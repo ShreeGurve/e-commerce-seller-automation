@@ -38,6 +38,10 @@ class MarketplaceWriteEvidenceService
             ]);
         }
 
+        $policy = DB::table('marketplace_write_retention_policies')
+            ->where('business_id', $businessId)->first();
+        $retentionDays = (int) ($policy->retention_days ?? 365);
+
         return (int) DB::table('marketplace_write_evidence')->insertGetId([
             'business_id' => $businessId,
             'subject_type' => $data['subject_type'] ?? 'GENERAL',
@@ -47,6 +51,8 @@ class MarketplaceWriteEvidenceService
             'description' => $data['description'] ?? null,
             'evidence_url' => $url,
             'reference_code' => $data['reference_code'] ?? null,
+            'retention_status' => 'ACTIVE',
+            'retention_expires_at' => now()->addDays($retentionDays),
             'recorded_by' => $user->id,
             'created_at' => now(),
             'updated_at' => now(),

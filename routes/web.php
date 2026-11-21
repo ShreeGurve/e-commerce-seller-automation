@@ -60,6 +60,7 @@ use App\Http\Controllers\MarketplaceWriteEvidenceController;
 use App\Http\Controllers\MarketplaceWriteExecutionController;
 use App\Http\Controllers\MarketplaceWriteIncidentController;
 use App\Http\Controllers\MarketplaceWriteRecoveryController;
+use App\Http\Controllers\MarketplaceWriteRetentionController;
 use App\Http\Controllers\MarketplaceWriteSlaController;
 use App\Http\Controllers\MarketplaceWriteVerificationController;
 use App\Http\Controllers\ModuleController;
@@ -985,4 +986,53 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'can:listings.view'])->prefix('listing-readiness')->name('listing-readiness.')->group(function () {
     Route::get('/', [ListingReadinessController::class, 'index'])->name('index');
     Route::get('/export', [ListingReadinessController::class, 'export'])->name('export');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Marketplace Write Evidence Retention & Compliance — Package 28
+|--------------------------------------------------------------------------
+*/
+
+Route::middleware(['auth', 'can:listings.manage'])->prefix('marketplace-writes/retention')->name('marketplaces.writes.retention.')->group(function () {
+
+    // Retention dashboard
+    Route::get(
+        '/',
+        [MarketplaceWriteRetentionController::class, 'index']
+    )->name('index');
+
+    // Save business retention policy
+    Route::post(
+        '/policy',
+        [MarketplaceWriteRetentionController::class, 'savePolicy']
+    )->name('policy');
+
+    // Place legal hold on evidence
+    Route::post(
+        '/evidence/{evidence}/hold',
+        [MarketplaceWriteRetentionController::class, 'placeHold']
+    )->whereNumber('evidence')
+        ->name('hold');
+
+    // Release legal hold
+    Route::post(
+        '/holds/{hold}/release',
+        [MarketplaceWriteRetentionController::class, 'releaseHold']
+    )->whereNumber('hold')
+        ->name('release');
+
+    // Request evidence deletion
+    Route::post(
+        '/evidence/{evidence}/request-deletion',
+        [MarketplaceWriteRetentionController::class, 'requestDeletion']
+    )->whereNumber('evidence')
+        ->name('request-deletion');
+
+    // Approve deletion request
+    Route::post(
+        '/evidence/{evidence}/approve-deletion',
+        [MarketplaceWriteRetentionController::class, 'approveDeletion']
+    )->whereNumber('evidence')
+        ->name('approve');
 });
