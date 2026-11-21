@@ -22,6 +22,13 @@ class MarketplaceSyncRun extends Model
         ];
     }
 
-    public function connection() { return $this->belongsTo(MarketplaceConnection::class, 'marketplace_connection_id'); }
-    public function records() { return $this->hasMany(MarketplaceSyncRecord::class, 'sync_run_id'); }
+    public function connection()
+    {
+        return $this->belongsTo(MarketplaceConnection::class, 'marketplace_connection_id');
+    }
+
+    public function records()
+    {
+        return $this->hasMany(MarketplaceSyncRecord::class, 'sync_run_id');
+    }
 }

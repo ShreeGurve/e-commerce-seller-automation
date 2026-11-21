@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\ApprovalRequest;
 use App\Models\Product;
-use App\Models\Purchase;
 use App\Models\PurchaseItem;
 use App\Models\Supplier;
 use App\Services\PurchaseService;
@@ -27,7 +26,7 @@ class ReorderApprovalController extends Controller
             'items.*.unit_cost' => ['required', 'numeric', 'min:0', 'max:9999999999'],
         ]);
 
-        $selected = collect($data['items'])->filter(fn ($line) => !empty($line['include']))->values();
+        $selected = collect($data['items'])->filter(fn ($line) => ! empty($line['include']))->values();
         if ($selected->isEmpty()) {
             throw ValidationException::withMessages(['items' => 'Select at least one product for approval.']);
         }
@@ -46,8 +45,10 @@ class ReorderApprovalController extends Controller
             $product = $products->get((int) $line['product_id']);
             $inventory = $product?->inventory;
             $threshold = (int) ($inventory?->reorder_level ?? 0);
-            if ($threshold <= 0) $threshold = (int) ($inventory?->minimum_stock ?? 0);
-            if (!$product || $threshold <= 0 || (int) ($inventory?->available_qty ?? 0) > $threshold) {
+            if ($threshold <= 0) {
+                $threshold = (int) ($inventory?->minimum_stock ?? 0);
+            }
+            if (! $product || $threshold <= 0 || (int) ($inventory?->available_qty ?? 0) > $threshold) {
                 throw ValidationException::withMessages(['items' => 'A selected product is no longer eligible for reorder. Refresh suggestions and submit again.']);
             }
             $quantity = (int) $line['quantity'];
@@ -69,12 +70,12 @@ class ReorderApprovalController extends Controller
         $supplier = Supplier::findOrFail($data['supplier_id']);
         $approval = ApprovalRequest::create([
             'business_id' => $request->user()->business_id ?? null,
-            'title' => 'Reorder purchase plan — ' . $supplier->name,
+            'title' => 'Reorder purchase plan — '.$supplier->name,
             'type' => 'purchase',
             'request_type' => 'purchase',
-            'reference' => 'REORDER-' . now()->format('YmdHis'),
+            'reference' => 'REORDER-'.now()->format('YmdHis'),
             'amount' => number_format($estimatedTotal, 2, '.', ''),
-            'description' => trim(($data['notes'] ?? 'Reorder plan submitted for approval.') . "\nSupplier: {$supplier->name}\nRequested PO date: {$data['purchase_date']}\nEstimated amount excludes final tax, shipping and other charges."),
+            'description' => trim(($data['notes'] ?? 'Reorder plan submitted for approval.')."\nSupplier: {$supplier->name}\nRequested PO date: {$data['purchase_date']}\nEstimated amount excludes final tax, shipping and other charges."),
             'current_value' => ['supplier_id' => $supplier->id, 'status' => 'suggestion'],
             'proposed_value' => [
                 'supplier_id' => $supplier->id,
@@ -90,28 +91,29 @@ class ReorderApprovalController extends Controller
             'requested_by' => $request->user()->id,
         ]);
 
-        return redirect()->route('reorders.approvals')->with('success', 'Purchase plan submitted for approval. No purchase order has been created. Request #' . $approval->id . '.');
+        return redirect()->route('reorders.approvals')->with('success', 'Purchase plan submitted for approval. No purchase order has been created. Request #'.$approval->id.'.');
     }
 
     public function index(Request $request)
     {
         $query = ApprovalRequest::query()->with(['requester', 'reviewer'])
             ->where('request_type', 'purchase')->where('source', 'AUTOMATION');
-        if (!$request->user()->isSuperAdmin()) {
+        if (! $request->user()->isSuperAdmin()) {
             $query->where('business_id', $request->user()->business_id);
         }
         $requests = $query->latest()->paginate(15)->withQueryString();
+
         return view('reorders.approvals', compact('requests'));
     }
 
     public function createDraft(Request $request, ApprovalRequest $approvalRequest, PurchaseService $service)
     {
         abort_unless($approvalRequest->request_type === 'purchase' && $approvalRequest->source === 'AUTOMATION', 404);
-        if (!$request->user()->isSuperAdmin()) {
+        if (! $request->user()->isSuperAdmin()) {
             abort_unless($approvalRequest->business_id !== null && (int) $approvalRequest->business_id === (int) $request->user()->business_id, 404);
         }
         abort_unless($approvalRequest->status === 'approved', 422, 'Only approved purchase plans can create a draft PO.');
-        abort_unless(!$approvalRequest->executed_at, 422, 'A draft PO has already been created for this approval.');
+        abort_unless(! $approvalRequest->executed_at, 422, 'A draft PO has already been created for this approval.');
 
         $payload = $approvalRequest->proposed_value ?? [];
         $supplierId = (int) ($payload['supplier_id'] ?? 0);
@@ -127,14 +129,15 @@ class ReorderApprovalController extends Controller
 
         $purchase = DB::transaction(function () use ($approvalRequest, $payload, $supplierId, $items, $service, $request) {
             $locked = ApprovalRequest::whereKey($approvalRequest->id)->lockForUpdate()->firstOrFail();
-            abort_unless($locked->status === 'approved' && !$locked->executed_at, 422, 'This approval has already been used or is no longer approved.');
+            abort_unless($locked->status === 'approved' && ! $locked->executed_at, 422, 'This approval has already been used or is no longer approved.');
             $created = $service->save(null, [
                 'supplier_id' => $supplierId,
                 'purchase_date' => $payload['purchase_date'] ?? today()->toDateString(),
                 'status' => 'DRAFT',
-                'notes' => 'Created from approved reorder request #' . $locked->id . '. ' . ($payload['notes'] ?? ''),
+                'notes' => 'Created from approved reorder request #'.$locked->id.'. '.($payload['notes'] ?? ''),
             ], $items, $request->user());
             $locked->update(['executed_at' => now()]);
+
             return $created;
         });
 

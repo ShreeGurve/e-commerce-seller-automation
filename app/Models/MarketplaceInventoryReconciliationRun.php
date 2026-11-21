@@ -17,6 +17,13 @@ class MarketplaceInventoryReconciliationRun extends Model
         return ['snapshot_cutoff_at' => 'datetime', 'completed_at' => 'datetime'];
     }
 
-    public function connection() { return $this->belongsTo(MarketplaceConnection::class, 'marketplace_connection_id'); }
-    public function items() { return $this->hasMany(MarketplaceInventoryReconciliationItem::class, 'reconciliation_run_id'); }
+    public function connection()
+    {
+        return $this->belongsTo(MarketplaceConnection::class, 'marketplace_connection_id');
+    }
+
+    public function items()
+    {
+        return $this->hasMany(MarketplaceInventoryReconciliationItem::class, 'reconciliation_run_id');
+    }
 }

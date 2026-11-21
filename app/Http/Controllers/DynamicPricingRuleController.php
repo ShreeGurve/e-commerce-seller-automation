@@ -13,10 +13,13 @@ class DynamicPricingRuleController extends Controller
     public function index(Request $request)
     {
         $query = DynamicPricingRule::with(['product:id,sku,name', 'marketplace:id,name'])->latest();
-        if (!$request->user()->isSuperAdmin()) $query->where('business_id', $request->user()->business_id);
+        if (! $request->user()->isSuperAdmin()) {
+            $query->where('business_id', $request->user()->business_id);
+        }
         $rules = $query->paginate(25)->withQueryString();
         $products = Product::query()->where('status', 'active')->orderBy('sku')->limit(500)->get(['id', 'sku', 'name']);
         $marketplaces = Marketplace::active()->get(['id', 'name']);
+
         return view('pricing.dynamic-rules', compact('rules', 'products', 'marketplaces'));
     }
 
@@ -30,6 +33,7 @@ class DynamicPricingRuleController extends Controller
             ['product_id' => $product->id, 'marketplace_id' => $data['marketplace_id']],
             $data + ['enabled' => (bool) ($data['enabled'] ?? false), 'business_id' => $businessId, 'created_by' => $request->user()->id]
         );
+
         return back()->with('success', 'Dynamic pricing rule saved. It will create internal recommendations only.');
     }
 
@@ -38,6 +42,7 @@ class DynamicPricingRuleController extends Controller
         $this->assertRuleBusiness($request, $dynamicPricingRule);
         $data = $this->validated($request, true);
         $dynamicPricingRule->update($data);
+
         return back()->with('success', 'Dynamic pricing rule updated.');
     }
 
@@ -45,6 +50,7 @@ class DynamicPricingRuleController extends Controller
     {
         $this->assertRuleBusiness($request, $dynamicPricingRule);
         $dynamicPricingRule->update(['enabled' => false]);
+
         return back()->with('success', 'Rule disabled. Historical recommendations are unchanged.');
     }
 
@@ -52,6 +58,7 @@ class DynamicPricingRuleController extends Controller
     {
         $businessId = $request->user()->isSuperAdmin() ? null : $request->user()->business_id;
         $run = $service->run($businessId);
+
         return back()->with($run->status === 'COMPLETED' ? 'success' : 'error', $run->summary);
     }
 
@@ -71,11 +78,15 @@ class DynamicPricingRuleController extends Controller
 
     private function assertProductBusiness(Request $request, Product $product): void
     {
-        if (!$request->user()->isSuperAdmin()) abort_unless($product->brand && (int) $product->brand->business_id === (int) $request->user()->business_id, 404);
+        if (! $request->user()->isSuperAdmin()) {
+            abort_unless($product->brand && (int) $product->brand->business_id === (int) $request->user()->business_id, 404);
+        }
     }
 
     private function assertRuleBusiness(Request $request, DynamicPricingRule $rule): void
     {
-        if (!$request->user()->isSuperAdmin()) abort_unless($rule->business_id !== null && (int) $rule->business_id === (int) $request->user()->business_id, 404);
+        if (! $request->user()->isSuperAdmin()) {
+            abort_unless($rule->business_id !== null && (int) $rule->business_id === (int) $request->user()->business_id, 404);
+        }
     }
 }

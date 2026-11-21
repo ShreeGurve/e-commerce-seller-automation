@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Marketplaces\Api\AmazonLwaTokenProvider;
+use App\Marketplaces\Api\ConnectorDisabled;
 use App\Marketplaces\Api\FlipkartAccessTokenProvider;
 use App\Marketplaces\Api\MarketplaceConnectionHealthChecker;
 use App\Models\Business;
@@ -10,10 +11,10 @@ use App\Models\Marketplace;
 use App\Models\MarketplaceConnection;
 use App\Services\MarketplaceConnectionResolver;
 use App\Services\MarketplaceConnectionVerifier;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Tests\TestCase;
 
 class MarketplaceConnectionCredentialTest extends TestCase
@@ -58,6 +59,7 @@ class MarketplaceConnectionCredentialTest extends TestCase
         $requestNumber = 0;
         Http::fake(function ($request) use (&$requestNumber) {
             $requestNumber++;
+
             return Http::response([
                 'access_token' => $requestNumber === 1 ? 'token-a' : 'token-b',
                 'expires_in' => 3600,
@@ -96,10 +98,9 @@ class MarketplaceConnectionCredentialTest extends TestCase
         $amazon = $this->connection('amazon', ['client_id' => 'c', 'client_secret' => 's', 'refresh_token' => 'r']);
         config(['marketplaces.amazon.api_calls_enabled' => false]);
 
-        $this->expectException(\App\Marketplaces\Api\ConnectorDisabled::class);
+        $this->expectException(ConnectorDisabled::class);
         app(AmazonLwaTokenProvider::class)->accessTokenForConnection($amazon);
     }
-
 
     public function test_amazon_token_cache_is_invalidated_when_saved_credentials_rotate(): void
     {
@@ -107,6 +108,7 @@ class MarketplaceConnectionCredentialTest extends TestCase
         $requestNumber = 0;
         Http::fake(function () use (&$requestNumber) {
             $requestNumber++;
+
             return Http::response(['access_token' => 'token-'.$requestNumber, 'expires_in' => 3600], 200);
         });
 

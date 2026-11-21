@@ -8,44 +8,45 @@ use App\Models\AutomationTaskReminder;
 use App\Models\BusinessActivityLog;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class AutomationTaskController extends Controller
 {
     public function index(Request $request)
     {
         $base = $this->scope(AutomationTask::query(), $request);
-        $tasks = (clone $base)->with(['assignee','creator','recurringTemplate'])
+        $tasks = (clone $base)->with(['assignee', 'creator', 'recurringTemplate'])
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')->toString()))
             ->when($request->filled('priority'), fn ($q) => $q->where('priority', $request->string('priority')->toString()))
             ->orderByRaw("CASE status WHEN 'OPEN' THEN 0 WHEN 'COMPLETED' THEN 1 ELSE 2 END")
             ->orderByRaw('CASE WHEN due_at IS NULL THEN 1 ELSE 0 END')->orderBy('due_at')->paginate(20)->withQueryString();
         $templates = $this->scope(AutomationRecurringTask::query(), $request)->orderBy('next_due_at')->get();
-        $users = User::query()->when(!$request->user()->isSuperAdmin(), fn ($q) => $q->where('business_id', $request->user()->business_id))->orderBy('name')->get(['id','name']);
-        $reminders = AutomationTaskReminder::with(['task','user'])->whereHas('task', fn ($q) => $this->scope($q, $request))->latest('reminded_at')->limit(12)->get();
+        $users = User::query()->when(! $request->user()->isSuperAdmin(), fn ($q) => $q->where('business_id', $request->user()->business_id))->orderBy('name')->get(['id', 'name']);
+        $reminders = AutomationTaskReminder::with(['task', 'user'])->whereHas('task', fn ($q) => $this->scope($q, $request))->latest('reminded_at')->limit(12)->get();
         $statsQuery = $this->scope(AutomationTask::query(), $request);
         $periodStart = now()->subDays(30);
         $createdInPeriod = (clone $statsQuery)->where('created_at', '>=', $periodStart)->count();
-        $completedInPeriod = (clone $statsQuery)->where('status','COMPLETED')->where('completed_at','>=',$periodStart)->count();
+        $completedInPeriod = (clone $statsQuery)->where('status', 'COMPLETED')->where('completed_at', '>=', $periodStart)->count();
         $stats = [
-            'open'=>(clone $statsQuery)->where('status','OPEN')->count(),
-            'overdue'=>(clone $statsQuery)->where('status','OPEN')->whereNotNull('due_at')->where('due_at','<',now())->count(),
-            'completed_30d'=>$completedInPeriod,
-            'completion_rate'=>$createdInPeriod ? round(($completedInPeriod / $createdInPeriod) * 100, 1) : null,
+            'open' => (clone $statsQuery)->where('status', 'OPEN')->count(),
+            'overdue' => (clone $statsQuery)->where('status', 'OPEN')->whereNotNull('due_at')->where('due_at', '<', now())->count(),
+            'completed_30d' => $completedInPeriod,
+            'completion_rate' => $createdInPeriod ? round(($completedInPeriod / $createdInPeriod) * 100, 1) : null,
         ];
-        return view('automation.tasks.index', compact('tasks','templates','users','reminders','stats'));
+
+        return view('automation.tasks.index', compact('tasks', 'templates', 'users', 'reminders', 'stats'));
     }
 
     public function store(Request $request)
     {
         $data = $request->validate([
-            'title'=>['required','string','max:180'], 'description'=>['nullable','string','max:5000'],
-            'assigned_to'=>['nullable','integer','exists:users,id'], 'priority'=>['required','in:low,normal,high,urgent'],
-            'due_at'=>['nullable','date'],
+            'title' => ['required', 'string', 'max:180'], 'description' => ['nullable', 'string', 'max:5000'],
+            'assigned_to' => ['nullable', 'integer', 'exists:users,id'], 'priority' => ['required', 'in:low,normal,high,urgent'],
+            'due_at' => ['nullable', 'date'],
         ]);
         $this->assertAssignee($request, $data['assigned_to'] ?? null);
-        $task = AutomationTask::create($data + ['business_id'=>$request->user()->business_id, 'created_by'=>$request->user()->id, 'status'=>'OPEN']);
-        $this->log($request, 'automation.task.created', $task, ['title'=>$task->title]);
+        $task = AutomationTask::create($data + ['business_id' => $request->user()->business_id, 'created_by' => $request->user()->id, 'status' => 'OPEN']);
+        $this->log($request, 'automation.task.created', $task, ['title' => $task->title]);
+
         return back()->with('success', 'Task created.');
     }
 
@@ -53,58 +54,72 @@ class AutomationTaskController extends Controller
     {
         $this->authorizeTask($request, $task);
         abort_unless($task->status === 'OPEN', 422, 'Only open tasks can be completed.');
-        $task->update(['status'=>'COMPLETED','completed_at'=>now()]);
-        $this->log($request, 'automation.task.completed', $task, ['title'=>$task->title]);
+        $task->update(['status' => 'COMPLETED', 'completed_at' => now()]);
+        $this->log($request, 'automation.task.completed', $task, ['title' => $task->title]);
+
         return back()->with('success', 'Task marked completed.');
     }
 
     public function storeRecurring(Request $request)
     {
         $data = $request->validate([
-            'title'=>['required','string','max:180'], 'description'=>['nullable','string','max:5000'],
-            'assigned_to'=>['nullable','integer','exists:users,id'], 'priority'=>['required','in:low,normal,high,urgent'],
-            'frequency'=>['required','in:daily,weekly,monthly'], 'interval_value'=>['required','integer','between:1,12'],
-            'next_due_at'=>['required','date','after_or_equal:today'],
+            'title' => ['required', 'string', 'max:180'], 'description' => ['nullable', 'string', 'max:5000'],
+            'assigned_to' => ['nullable', 'integer', 'exists:users,id'], 'priority' => ['required', 'in:low,normal,high,urgent'],
+            'frequency' => ['required', 'in:daily,weekly,monthly'], 'interval_value' => ['required', 'integer', 'between:1,12'],
+            'next_due_at' => ['required', 'date', 'after_or_equal:today'],
         ]);
         $this->assertAssignee($request, $data['assigned_to'] ?? null);
-        $template = AutomationRecurringTask::create($data + ['business_id'=>$request->user()->business_id, 'created_by'=>$request->user()->id, 'is_active'=>true]);
-        $this->log($request, 'automation.recurring_task.created', $template, ['title'=>$template->title,'frequency'=>$template->frequency]);
+        $template = AutomationRecurringTask::create($data + ['business_id' => $request->user()->business_id, 'created_by' => $request->user()->id, 'is_active' => true]);
+        $this->log($request, 'automation.recurring_task.created', $template, ['title' => $template->title, 'frequency' => $template->frequency]);
+
         return back()->with('success', 'Recurring task schedule created. The next occurrence will be generated by the scheduler command.');
     }
 
     public function toggleRecurring(Request $request, AutomationRecurringTask $template)
     {
         $this->authorizeRecurring($request, $template);
-        $template->update(['is_active'=>!$template->is_active]);
-        $this->log($request, 'automation.recurring_task.toggled', $template, ['is_active'=>$template->is_active]);
+        $template->update(['is_active' => ! $template->is_active]);
+        $this->log($request, 'automation.recurring_task.toggled', $template, ['is_active' => $template->is_active]);
+
         return back()->with('success', 'Recurring schedule updated.');
     }
 
     private function scope($query, Request $request)
     {
-        if (!$request->user()->isSuperAdmin()) $query->where('business_id', $request->user()->business_id);
+        if (! $request->user()->isSuperAdmin()) {
+            $query->where('business_id', $request->user()->business_id);
+        }
+
         return $query;
     }
 
     private function authorizeTask(Request $request, AutomationTask $task): void
     {
-        if (!$request->user()->isSuperAdmin()) abort_unless($task->business_id == $request->user()->business_id, 404);
+        if (! $request->user()->isSuperAdmin()) {
+            abort_unless($task->business_id == $request->user()->business_id, 404);
+        }
     }
 
     private function authorizeRecurring(Request $request, AutomationRecurringTask $template): void
     {
-        if (!$request->user()->isSuperAdmin()) abort_unless($template->business_id == $request->user()->business_id, 404);
+        if (! $request->user()->isSuperAdmin()) {
+            abort_unless($template->business_id == $request->user()->business_id, 404);
+        }
     }
 
     private function assertAssignee(Request $request, ?int $id): void
     {
-        if (!$id || $request->user()->isSuperAdmin()) return;
-        abort_unless(User::where('id',$id)->where('business_id',$request->user()->business_id)->exists(), 422, 'Assignee must belong to your business.');
+        if (! $id || $request->user()->isSuperAdmin()) {
+            return;
+        }
+        abort_unless(User::where('id', $id)->where('business_id', $request->user()->business_id)->exists(), 422, 'Assignee must belong to your business.');
     }
 
     private function log(Request $request, string $action, $subject, array $details): void
     {
-        if (!class_exists(BusinessActivityLog::class)) return;
-        BusinessActivityLog::create(['business_id'=>$request->user()->business_id, 'actor_id'=>$request->user()->id, 'action'=>$action, 'subject_type'=>get_class($subject), 'subject_id'=>$subject->id, 'details'=>$details, 'ip_address'=>$request->ip()]);
+        if (! class_exists(BusinessActivityLog::class)) {
+            return;
+        }
+        BusinessActivityLog::create(['business_id' => $request->user()->business_id, 'actor_id' => $request->user()->id, 'action' => $action, 'subject_type' => get_class($subject), 'subject_id' => $subject->id, 'details' => $details, 'ip_address' => $request->ip()]);
     }
 }

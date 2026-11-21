@@ -18,12 +18,16 @@ class MarketplaceWriteIncidentServiceTest extends TestCase
     use RefreshDatabase;
 
     private Business $business;
+
     private User $user;
+
     private MarketplaceConnection $connection;
 
     protected function setUp(): void
     {
-        if ((getenv('DB_DATABASE') ?: ($_ENV['DB_DATABASE'] ?? '')) !== ':memory:') $this->markTestSkipped('Use isolated SQLite in-memory tests.');
+        if ((getenv('DB_DATABASE') ?: ($_ENV['DB_DATABASE'] ?? '')) !== ':memory:') {
+            $this->markTestSkipped('Use isolated SQLite in-memory tests.');
+        }
         parent::setUp();
         $this->business = Business::create(['name' => 'Incident Test Business']);
         $this->user = User::forceCreate(['name' => 'Incident User', 'email' => 'incident-'.uniqid().'@test.local', 'password' => 'x', 'business_id' => $this->business->id]);
@@ -76,6 +80,7 @@ class MarketplaceWriteIncidentServiceTest extends TestCase
             'recommendation_snapshot' => json_encode([]), 'dedupe_key' => hash('sha256', uniqid('', true)), 'status' => 'APPROVED',
             'created_at' => now(), 'updated_at' => now(),
         ]);
+
         return DB::table('marketplace_write_attempts')->insertGetId([
             'business_id' => $businessId, 'marketplace_connection_id' => $this->connection->id, 'task_id' => $taskId,
             'marketplace_code' => 'amazon', 'operation' => 'PRICE_UPDATE', 'status' => 'FAILED', 'marketplace_sku' => 'SKU-'.uniqid(),

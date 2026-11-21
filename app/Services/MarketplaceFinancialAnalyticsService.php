@@ -24,7 +24,9 @@ class MarketplaceFinancialAnalyticsService
         $profitBase = DB::table('order_profits as op')
             ->join('orders as o', 'o.id', '=', 'op.order_id')
             ->whereBetween('op.order_date', [$from, $to])
-            ->where(function ($q) { $q->whereNull('o.source')->orWhere('o.source', '!=', 'TEST'); })
+            ->where(function ($q) {
+                $q->whereNull('o.source')->orWhere('o.source', '!=', 'TEST');
+            })
             ->where('o.status', '!=', 'CANCELLED')
             ->when($marketplaceId, fn ($q) => $q->where('op.marketplace_id', $marketplaceId));
 
@@ -33,7 +35,9 @@ class MarketplaceFinancialAnalyticsService
         $settlements = DB::table('settlements')
             ->where(function ($q) use ($from, $to) {
                 $q->whereBetween('period_start', [$from, $to])->orWhereBetween('period_end', [$from, $to])
-                    ->orWhere(function ($q) use ($from, $to) { $q->where('period_start', '<=', $from)->where('period_end', '>=', $to); });
+                    ->orWhere(function ($q) use ($from, $to) {
+                        $q->where('period_start', '<=', $from)->where('period_end', '>=', $to);
+                    });
             })
             ->when($marketplaceId, fn ($q) => $q->where('marketplace_id', $marketplaceId));
         $settlementSummary = (clone $settlements)->selectRaw('COUNT(*) as count, SUM(total_amount) as net_settlement')->first();
@@ -47,7 +51,7 @@ class MarketplaceFinancialAnalyticsService
             ->join('settlements as s', 's.id', '=', 'si.settlement_id')
             ->whereBetween('si.posted_date', [$from, $to])
             ->when($marketplaceId, fn ($q) => $q->where('s.marketplace_id', $marketplaceId));
-        $feeBreakdown = (clone $settlementLines)->whereIn('si.kind', ['REFERRAL_FEE','CLOSING_FEE','SHIPPING_FEE','COLLECTION_FEE','PAYMENT_FEE','OTHER_FEE','FEE_TAX'])
+        $feeBreakdown = (clone $settlementLines)->whereIn('si.kind', ['REFERRAL_FEE', 'CLOSING_FEE', 'SHIPPING_FEE', 'COLLECTION_FEE', 'PAYMENT_FEE', 'OTHER_FEE', 'FEE_TAX'])
             ->selectRaw('si.kind, SUM(ABS(si.amount)) as amount, COUNT(*) as lines')->groupBy('si.kind')->orderBy('si.kind')->get();
 
         $refunds = DB::table('refunds')->whereNull('deleted_at')->whereBetween('refund_date', [$from, $to])
@@ -58,7 +62,9 @@ class MarketplaceFinancialAnalyticsService
             ->when($marketplaceId, fn ($q) => $q->where('marketplace_id', $marketplaceId))->sum('approved_amount');
 
         $expenseQuery = DB::table('expenses')->whereNull('deleted_at')->whereBetween('expense_date', [$from, $to])
-            ->when($marketplaceId, fn ($q) => $q->where(function ($q) use ($marketplaceId) { $q->whereNull('marketplace_id')->orWhere('marketplace_id', $marketplaceId); }));
+            ->when($marketplaceId, fn ($q) => $q->where(function ($q) use ($marketplaceId) {
+                $q->whereNull('marketplace_id')->orWhere('marketplace_id', $marketplaceId);
+            }));
         $expenses = (float) $expenseQuery->sum('amount');
 
         $byMarketplace = (clone $profitBase)->selectRaw('op.marketplace_id, COUNT(DISTINCT op.order_id) as orders, SUM(op.revenue) as revenue, SUM(COALESCE(op.actual_profit, op.estimated_profit)) as net_profit')

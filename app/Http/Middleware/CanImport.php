@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Middleware;
 
 use Closure;
@@ -11,6 +12,7 @@ class CanImport
     {
         $u = $request->user();
         abort_unless($u && ($u->can('orders.edit') || $u->can('finance.manage') || $u->can('advertising.manage') || $u->can('listings.manage') || $u->can('products.edit')), 403);
+
         return $next($request);
     }
 }

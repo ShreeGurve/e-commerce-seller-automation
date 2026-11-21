@@ -1,8 +1,13 @@
 <?php
+
 namespace App\Http\Controllers;
 
-use App\Models\{Order, ProductReturn, ReturnItem, ReturnMedia};
-use App\Services\{ActivityLogger, ReturnService};
+use App\Models\Order;
+use App\Models\ProductReturn;
+use App\Models\ReturnItem;
+use App\Models\ReturnMedia;
+use App\Services\ActivityLogger;
+use App\Services\ReturnService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -18,6 +23,7 @@ class ReturnController extends Controller
             ->when($request->status, fn ($q, $v) => $q->where('status', $v))
             ->when($request->return_type, fn ($q, $v) => $q->where('return_type', $v))
             ->latest('return_date')->latest('id')->paginate(25)->withQueryString();
+
         return view('returns.index', compact('returns'));
     }
 
@@ -25,6 +31,7 @@ class ReturnController extends Controller
     {
         $order->load('items.product', 'marketplace');
         $returned = ReturnItem::whereIn('order_item_id', $order->items->pluck('id'))->selectRaw('order_item_id, SUM(quantity) q')->groupBy('order_item_id')->pluck('q', 'order_item_id');
+
         return view('returns.create', compact('order', 'returned'));
     }
 
@@ -36,12 +43,14 @@ class ReturnController extends Controller
             'qty' => 'required|array', 'qty.*' => 'nullable|integer|min:0|max:100000',
         ]);
         $return = $this->service->create($order, $d, $d['qty'], $request->user());
+
         return redirect()->route('returns.show', $return)->with('success', "Return {$return->return_number} created. Inspect it when the parcel arrives.");
     }
 
     public function show(ProductReturn $productReturn)
     {
         $productReturn->load(['order.marketplace', 'items.product', 'media', 'refunds', 'claims']);
+
         return view('returns.show', ['r' => $productReturn]);
     }
 
@@ -53,12 +62,14 @@ class ReturnController extends Controller
             'notes' => 'nullable|string|max:2000',
         ]);
         $this->service->inspect($productReturn, $d['lines'], $request->boolean('claim_eligible'), $d['notes'] ?? null, $request->user());
+
         return back()->with('success', 'Inspection saved. Stock updated.');
     }
 
     public function close(ProductReturn $productReturn)
     {
         $this->service->close($productReturn);
+
         return back()->with('success', 'Return closed.');
     }
 
@@ -72,12 +83,14 @@ class ReturnController extends Controller
             ]);
         }
         ActivityLogger::log('return.evidence_added', $productReturn, null, ['files' => count($request->file('files'))]);
+
         return back()->with('success', 'Evidence uploaded.');
     }
 
     public function media(ProductReturn $productReturn, ReturnMedia $media)
     {
         abort_unless($media->return_id === $productReturn->id && Storage::disk('local')->exists($media->path), 404);
+
         return Storage::disk('local')->response($media->path, $media->original_name);
     }
 
@@ -87,6 +100,7 @@ class ReturnController extends Controller
         Storage::disk('local')->delete($media->path);
         $media->delete();
         ActivityLogger::log('return.evidence_removed', $productReturn, ['file' => $media->original_name]);
+
         return back()->with('success', 'File removed.');
     }
 }

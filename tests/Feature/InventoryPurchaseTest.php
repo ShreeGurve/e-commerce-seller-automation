@@ -1,8 +1,15 @@
 <?php
+
 namespace Tests\Feature;
 
-use App\Models\{Inventory, InventoryTransaction, Product, Supplier, User};
-use App\Services\{InventoryService, PurchaseService};
+use App\Models\Inventory;
+use App\Models\InventoryTransaction;
+use App\Models\Product;
+use App\Models\Purchase;
+use App\Models\Supplier;
+use App\Models\User;
+use App\Services\InventoryService;
+use App\Services\PurchaseService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
@@ -20,11 +27,20 @@ class InventoryPurchaseTest extends TestCase
         parent::setUp();
     }
 
-    private function product(string $sku = 'SKU1'): Product { return Product::create(['sku' => $sku, 'name' => "Product $sku"]); }
-    private function user(): User { return User::forceCreate(['name' => 'T', 'email' => 't@test.local', 'password' => 'x']); }
-    private function purchase(array $items): \App\Models\Purchase
+    private function product(string $sku = 'SKU1'): Product
+    {
+        return Product::create(['sku' => $sku, 'name' => "Product $sku"]);
+    }
+
+    private function user(): User
+    {
+        return User::forceCreate(['name' => 'T', 'email' => 't@test.local', 'password' => 'x']);
+    }
+
+    private function purchase(array $items): Purchase
     {
         $s = Supplier::create(['name' => 'Sup']);
+
         return app(PurchaseService::class)->save(null, ['supplier_id' => $s->id, 'purchase_date' => '2026-10-08', 'status' => 'ORDERED'], $items, $this->user());
     }
 
@@ -48,13 +64,15 @@ class InventoryPurchaseTest extends TestCase
         try {
             app(InventoryService::class)->record($p, 'ORDER', 5);
             $this->fail('Expected ValidationException');
-        } catch (ValidationException) {}
+        } catch (ValidationException) {
+        }
         $this->assertSame(0, InventoryTransaction::count());
     }
 
     public function test_damage_and_disposal_move_buckets(): void
     {
-        $p = $this->product(); $svc = app(InventoryService::class);
+        $p = $this->product();
+        $svc = app(InventoryService::class);
         $svc->record($p, 'STOCK_IN', 10);
         $svc->record($p, 'DAMAGE', 3);
         $svc->record($p, 'DISPOSAL', 2);

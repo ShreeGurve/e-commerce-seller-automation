@@ -17,8 +17,23 @@ class MarketplaceInventoryReconciliationItem extends Model
         return ['correction_eligible' => 'boolean', 'snapshot_at' => 'datetime'];
     }
 
-    public function run() { return $this->belongsTo(MarketplaceInventoryReconciliationRun::class, 'reconciliation_run_id'); }
-    public function snapshot() { return $this->belongsTo(MarketplaceInventorySnapshot::class, 'inventory_snapshot_id'); }
-    public function product() { return $this->belongsTo(Product::class); }
-    public function correctionRequest() { return $this->belongsTo(InventoryCorrectionRequest::class, 'inventory_correction_request_id'); }
+    public function run()
+    {
+        return $this->belongsTo(MarketplaceInventoryReconciliationRun::class, 'reconciliation_run_id');
+    }
+
+    public function snapshot()
+    {
+        return $this->belongsTo(MarketplaceInventorySnapshot::class, 'inventory_snapshot_id');
+    }
+
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
+    }
+
+    public function correctionRequest()
+    {
+        return $this->belongsTo(InventoryCorrectionRequest::class, 'inventory_correction_request_id');
+    }
 }

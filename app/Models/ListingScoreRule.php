@@ -1,5 +1,7 @@
 <?php
+
 namespace App\Models;
+
 use Illuminate\Database\Eloquent\Model;
 
 class ListingScoreRule extends Model
@@ -15,9 +17,16 @@ class ListingScoreRule extends Model
         'features' => ['Special features', 5, ['target' => 3]],
         'backend' => ['Backend search terms', 5, ['min_bytes' => 150, 'max_bytes' => 250]],
     ];
+
     public const PARAM_LABELS = ['min_len' => 'Minimum characters', 'max_len' => 'Maximum characters', 'front_chars' => 'Key words must appear in first N characters', 'count' => 'Number of bullets',
         'target' => 'Target count', 'min_bytes' => 'Minimum bytes', 'max_bytes' => 'Maximum bytes'];
+
     protected $fillable = ['marketplace_id', 'criterion', 'max_points', 'params', 'is_active'];
+
     protected $casts = ['params' => 'array', 'max_points' => 'decimal:2', 'is_active' => 'boolean'];
-    public function marketplace() { return $this->belongsTo(Marketplace::class); }
+
+    public function marketplace()
+    {
+        return $this->belongsTo(Marketplace::class);
+    }
 }

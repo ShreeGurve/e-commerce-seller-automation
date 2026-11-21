@@ -1,7 +1,12 @@
 <?php
+
 namespace App\Services;
 
-use App\Models\{Marketplace, Order, OrderStatusHistory, Product, User};
+use App\Models\Marketplace;
+use App\Models\Order;
+use App\Models\OrderStatusHistory;
+use App\Models\Product;
+use App\Models\User;
 use App\Support\Money;
 use Carbon\Carbon;
 use Illuminate\Database\QueryException;
@@ -23,12 +28,16 @@ class OrderService
         $ext = trim($data['external_order_id']);
         $dup = ValidationException::withMessages(['external_order_id' => "Order {$ext} already exists for {$marketplace->name}."]);
 
-        if (Order::withTrashed()->where('marketplace_id', $marketplace->id)->where('external_order_id', $ext)->exists()) throw $dup;
+        if (Order::withTrashed()->where('marketplace_id', $marketplace->id)->where('external_order_id', $ext)->exists()) {
+            throw $dup;
+        }
 
         try {
             return DB::transaction(fn () => $this->doCreate($marketplace, $ext, $data, $items, $user));
         } catch (QueryException $e) {
-            if ((string) $e->getCode() === '23000') throw $dup; // unique-key backstop (race)
+            if ((string) $e->getCode() === '23000') {
+                throw $dup;
+            } // unique-key backstop (race)
             throw $e;
         }
     }
@@ -37,7 +46,9 @@ class OrderService
     {
         $date = Carbon::parse($data['order_date']);
         $products = Product::whereIn('id', collect($items)->pluck('product_id'))->get()->keyBy('id');
-        $sub = 0; $tax = 0; $lines = [];
+        $sub = 0;
+        $tax = 0;
+        $lines = [];
 
         foreach ($items as $it) {
             $p = $products[$it['product_id']];
@@ -46,12 +57,15 @@ class OrderService
             $gross = isset($it['line_total']) ? Money::p($it['line_total']) : $qty * Money::p($it['unit_price']);
             $unitP = isset($it['line_total']) ? (int) round($gross / $qty) : Money::p($it['unit_price']);
             $disc = Money::p($it['discount'] ?? 0);
-            if ($disc > $gross) throw ValidationException::withMessages(['items' => "Discount is more than the line value for {$p->sku}."]);
+            if ($disc > $gross) {
+                throw ValidationException::withMessages(['items' => "Discount is more than the line value for {$p->sku}."]);
+            }
             $line = $gross - $disc;
             $rate = (float) $p->gst_rate;
             $lineTax = (int) round($line * $rate / (100 + $rate));
             $other = Money::p($this->costs->costAt($p, 'LABEL', $date)) + Money::p($this->costs->costAt($p, 'TRANSPORT', $date)) + Money::p($this->costs->costAt($p, 'OTHER', $date));
-            $sub += $line; $tax += $lineTax;
+            $sub += $line;
+            $tax += $lineTax;
             $lines[] = ['product' => $p, 'row' => [
                 'product_id' => $p->id, 'external_line_id' => $it['external_line_id'] ?? null, 'marketplace_sku' => $it['marketplace_sku'] ?? null,
                 'quantity' => $qty, 'unit_price' => Money::m($unitP), 'discount' => Money::m($disc),
@@ -67,7 +81,7 @@ class OrderService
         $deduct = ! $isTest && ($data['deduct_stock'] ?? true) && $status !== 'CANCELLED';
 
         $order = Order::create([
-            'marketplace_id' => $mp->id, 'external_order_id' => $ext, 'order_number' => 'TMP' . bin2hex(random_bytes(8)),
+            'marketplace_id' => $mp->id, 'external_order_id' => $ext, 'order_number' => 'TMP'.bin2hex(random_bytes(8)),
             'order_date' => $date, 'status' => $status, 'cancelled_at' => $status === 'CANCELLED' ? now() : null, 'marketplace_status' => $data['marketplace_status'] ?? null,
             'fulfillment_type' => $data['fulfillment_type'] ?? 'SELF', 'customer_ref' => $data['customer_ref'] ?? null, 'ship_state' => $data['ship_state'] ?? null,
             'subtotal' => Money::m($sub), 'shipping_charged' => Money::m($ship), 'tax_amount' => Money::m($tax), 'total_amount' => Money::m($sub + $ship),
@@ -84,9 +98,12 @@ class OrderService
                 $item->update(['qty_deducted' => $item->quantity]);
             }
         }
-        OrderStatusHistory::create(['order_id' => $order->id, 'from_status' => null, 'to_status' => $order->status, 'note' => ($data['source'] ?? 'MANUAL') === 'CSV' ? 'Imported from CSV' . ($deduct ? '' : ' (stock not deducted)') : (($data['source'] ?? 'MANUAL') === 'TEST' ? 'TEST order created (stock unchanged)' : 'Order created'), 'user_id' => $user->id]);
-        if (($data['source'] ?? 'MANUAL') !== 'TEST') app(ProfitService::class)->safe($order);   // test orders never enter financial reporting
+        OrderStatusHistory::create(['order_id' => $order->id, 'from_status' => null, 'to_status' => $order->status, 'note' => ($data['source'] ?? 'MANUAL') === 'CSV' ? 'Imported from CSV'.($deduct ? '' : ' (stock not deducted)') : (($data['source'] ?? 'MANUAL') === 'TEST' ? 'TEST order created (stock unchanged)' : 'Order created'), 'user_id' => $user->id]);
+        if (($data['source'] ?? 'MANUAL') !== 'TEST') {
+            app(ProfitService::class)->safe($order);
+        }   // test orders never enter financial reporting
         ActivityLogger::log('order.created', $order, null, ['order' => $order->order_number, 'external' => $ext, 'total' => (string) $order->total_amount]);
+
         return $order;
     }
 
@@ -98,8 +115,12 @@ class OrderService
                 throw ValidationException::withMessages(['status' => "Cannot move order from {$o->status} to {$to}."]);
             }
             $upd = ['status' => $to];
-            if ($to === 'SHIPPED') $upd['shipped_at'] = $o->shipped_at ?? now();
-            if ($to === 'DELIVERED') $upd['delivered_at'] = $o->delivered_at ?? now();
+            if ($to === 'SHIPPED') {
+                $upd['shipped_at'] = $o->shipped_at ?? now();
+            }
+            if ($to === 'DELIVERED') {
+                $upd['delivered_at'] = $o->delivered_at ?? now();
+            }
             if ($to === 'CANCELLED') {
                 $upd['cancelled_at'] = now();
                 foreach ($o->items()->with('product')->get() as $item) {      // give the stock back
@@ -114,6 +135,7 @@ class OrderService
             OrderStatusHistory::create(['order_id' => $o->id, 'from_status' => $from, 'to_status' => $to, 'note' => $note, 'user_id' => $user?->id ?? auth()->id()]);
             app(ProfitService::class)->safe($o);
             ActivityLogger::log('order.status_changed', $o, ['status' => $from], ['status' => $to]);
+
             return $o;
         });
     }

@@ -3,12 +3,11 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Storage;
 
 class SellerProductionEnvironmentAudit extends Command
 {
     protected $signature = 'seller-automation:environment-audit {--strict : Return a failing exit code for warnings as well as failures}';
+
     protected $description = 'Read-only production environment and deployment configuration audit';
 
     public function handle(): int
@@ -31,7 +30,7 @@ class SellerProductionEnvironmentAudit extends Command
         $check('Application key', filled(config('app.key')), 'APP_KEY is configured');
         $isProduction = app()->environment('production');
         $check('Application environment', $isProduction, 'APP_ENV='.app()->environment(), true);
-        $check('Debug mode', !config('app.debug'), 'APP_DEBUG is disabled', true);
+        $check('Debug mode', ! config('app.debug'), 'APP_DEBUG is disabled', true);
         $url = (string) config('app.url');
         $check('Application URL', str_starts_with($url, 'https://'), $url !== '' ? $url : 'APP_URL is empty', true);
         $check('Database connection', filled(config('database.default')), 'Default connection: '.config('database.default'));
@@ -52,6 +51,7 @@ class SellerProductionEnvironmentAudit extends Command
         if ($issues > 0 || ($this->option('strict') && $warnings > 0)) {
             return self::FAILURE;
         }
+
         return self::SUCCESS;
     }
 }

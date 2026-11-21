@@ -41,6 +41,7 @@ class AmazonListingsWriteAdapter
 
         $body = $response->json() ?? ['raw' => mb_substr($response->body(), 0, 4000)];
         $accepted = $response->successful() && is_array($body) && strtoupper((string) ($body['status'] ?? '')) === 'ACCEPTED';
+
         return [
             'http_status' => $response->status(),
             'accepted' => $accepted,
@@ -60,12 +61,14 @@ class AmazonListingsWriteAdapter
         $host = $environment === 'sandbox'
             ? 'https://sandbox.sellingpartnerapi-'.$suffix.'.amazon.com'
             : 'https://sellingpartnerapi-'.$suffix.'.amazon.com';
+
         return $host;
     }
 
     private function safeBody(array $body): array
     {
         unset($body['access_token'], $body['refresh_token'], $body['client_secret'], $body['authorization']);
+
         return $body;
     }
 }

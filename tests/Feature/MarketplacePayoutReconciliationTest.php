@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Marketplaces\Amazon\AmazonAdapter;
 use App\Models\Marketplace;
-use App\Models\MarketplaceBankPayout;
 use App\Models\Settlement;
 use App\Models\User;
 use App\Services\MarketplacePayoutReconciliationService;
@@ -17,6 +16,7 @@ class MarketplacePayoutReconciliationTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
+
     private Marketplace $marketplace;
 
     protected function setUp(): void
@@ -33,7 +33,7 @@ class MarketplacePayoutReconciliationTest extends TestCase
     {
         return Settlement::create([
             'marketplace_id' => $this->marketplace->id,
-            'external_settlement_id' => 'SET-' . uniqid(),
+            'external_settlement_id' => 'SET-'.uniqid(),
             'period_start' => now()->subDays(7)->toDateString(),
             'period_end' => now()->toDateString(),
             'total_amount' => $amount,
@@ -45,7 +45,7 @@ class MarketplacePayoutReconciliationTest extends TestCase
     {
         return array_merge([
             'marketplace_id' => $this->marketplace->id,
-            'bank_reference' => 'UTR-' . uniqid(),
+            'bank_reference' => 'UTR-'.uniqid(),
             'bank_amount' => 1000,
             'currency' => 'INR',
             'payout_date' => now()->toDateString(),

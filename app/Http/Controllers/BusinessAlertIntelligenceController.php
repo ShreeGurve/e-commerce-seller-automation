@@ -42,16 +42,18 @@ class BusinessAlertIntelligenceController extends Controller
             $actuals['supplier_payments'] = (float) DB::table('supplier_invoice_payments')
                 ->whereBetween('payment_date', [$start, $end])->where('status', 'CONFIRMED')->sum('amount');
         }
+
         return $actuals;
     }
 
     private function period(Request $request): array
     {
         $month = (string) $request->query('month', now()->format('Y-m'));
-        if (!preg_match('/^\d{4}-\d{2}$/', $month) || !checkdate((int) substr($month, 5, 2), 1, (int) substr($month, 0, 4))) {
+        if (! preg_match('/^\d{4}-\d{2}$/', $month) || ! checkdate((int) substr($month, 5, 2), 1, (int) substr($month, 0, 4))) {
             $month = now()->format('Y-m');
         }
         $start = $month.'-01';
+
         return [$month, $start, date('Y-m-t', strtotime($start))];
     }
 
@@ -59,7 +61,7 @@ class BusinessAlertIntelligenceController extends Controller
     public function evaluateKpis(Request $request)
     {
         $data = $request->validate(['month' => ['required', 'date_format:Y-m']]);
-        if (!Schema::hasTable('business_kpi_targets') || !Schema::hasTable('business_automation_events') || !Schema::hasTable('business_automation_rules')) {
+        if (! Schema::hasTable('business_kpi_targets') || ! Schema::hasTable('business_automation_events') || ! Schema::hasTable('business_automation_rules')) {
             return back()->withErrors(['alerts' => 'Required KPI or automation tables are missing. Run the project migrations first.']);
         }
         $threshold = 90.0;
@@ -72,12 +74,18 @@ class BusinessAlertIntelligenceController extends Controller
         $targets = BusinessKpiTarget::whereDate('target_month', $start)->get();
         $created = 0;
         foreach ($targets as $target) {
-            if (!isset(self::METRICS[$target->metric_key])) continue;
+            if (! isset(self::METRICS[$target->metric_key])) {
+                continue;
+            }
             $targetValue = (float) $target->target_value;
-            if ($targetValue <= 0) continue;
+            if ($targetValue <= 0) {
+                continue;
+            }
             $actual = (float) ($actuals[$target->metric_key] ?? 0);
             $attainment = ($actual / $targetValue) * 100;
-            if ($attainment >= $threshold) continue;
+            if ($attainment >= $threshold) {
+                continue;
+            }
             $meta = self::METRICS[$target->metric_key];
             $fingerprint = 'kpi-target:'.$target->id.':'.$month;
             $event = BusinessAutomationEvent::firstOrCreate(
@@ -91,9 +99,12 @@ class BusinessAlertIntelligenceController extends Controller
                     'status' => 'OPEN', 'created_by' => $request->user()->id,
                 ]
             );
-            if ($event->wasRecentlyCreated) $created++;
+            if ($event->wasRecentlyCreated) {
+                $created++;
+            }
         }
         $rule->update(['last_evaluated_at' => now()]);
+
         return redirect()->route('business-alerts.kpi-monitor', ['month' => $month])
             ->with('success', "KPI evaluation completed. {$created} new alert(s) created at the 90% target threshold.");
     }
@@ -114,6 +125,7 @@ class BusinessAlertIntelligenceController extends Controller
         $events = Schema::hasTable('business_automation_events')
             ? BusinessAutomationEvent::where('event_key', 'KPI_BELOW_TARGET')->where('event_fingerprint', 'like', 'kpi-target:%:'.$month)->latest()->get()
             : collect();
+
         return view('business-alerts.kpi-monitor', compact('month', 'rows', 'events'));
     }
 
@@ -121,9 +133,13 @@ class BusinessAlertIntelligenceController extends Controller
     public function recommendations(Request $request)
     {
         $status = $request->query('status', 'OPEN');
-        if (!in_array($status, ['OPEN', 'RESOLVED', 'ALL'], true)) $status = 'OPEN';
+        if (! in_array($status, ['OPEN', 'RESOLVED', 'ALL'], true)) {
+            $status = 'OPEN';
+        }
         $query = BusinessAutomationEvent::query()->with('rule')->latest();
-        if ($status !== 'ALL') $query->where('status', $status);
+        if ($status !== 'ALL') {
+            $query->where('status', $status);
+        }
         $events = $query->paginate(25)->withQueryString();
         $guidance = [
             'KPI_BELOW_TARGET' => 'Compare current month progress with the remaining working days. Assign an owner and agree a recovery action.',
@@ -131,6 +147,7 @@ class BusinessAlertIntelligenceController extends Controller
             'OVERDUE_REQUISITION' => 'Confirm the business need, required-by date and approval owner; contact suppliers only after internal approval.',
             'INVOICE_REVIEW' => 'Compare supplier invoice lines with the purchase order and receiving evidence before approving payment.',
         ];
+
         return view('business-alerts.recommendations', compact('events', 'status', 'guidance'));
     }
 
@@ -140,14 +157,21 @@ class BusinessAlertIntelligenceController extends Controller
         $status = $request->query('status', 'OPEN');
         $severity = $request->query('severity', 'ALL');
         $query = BusinessAutomationEvent::query()->with('rule')->orderByDesc('created_at');
-        if (in_array($status, ['OPEN', 'RESOLVED'], true)) $query->where('status', $status);
-        if (in_array($severity, ['HIGH', 'WARNING', 'INFO'], true)) $query->where('severity', $severity);
+        if (in_array($status, ['OPEN', 'RESOLVED'], true)) {
+            $query->where('status', $status);
+        }
+        if (in_array($severity, ['HIGH', 'WARNING', 'INFO'], true)) {
+            $query->where('severity', $severity);
+        }
         $filename = 'business-alert-digest-'.now()->format('Ymd-His').'.csv';
+
         return response()->streamDownload(function () use ($query) {
             $out = fopen('php://output', 'w');
             fputcsv($out, ['Created at', 'Status', 'Severity', 'Rule', 'Alert', 'Details', 'Source type', 'Source ID']);
             $query->chunk(300, function ($events) use ($out) {
-                foreach ($events as $event) fputcsv($out, [$event->created_at, $event->status, $event->severity, optional($event->rule)->name, $event->title, $event->message, $event->source_type, $event->source_id]);
+                foreach ($events as $event) {
+                    fputcsv($out, [$event->created_at, $event->status, $event->severity, optional($event->rule)->name, $event->title, $event->message, $event->source_type, $event->source_id]);
+                }
             });
             fclose($out);
         }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);

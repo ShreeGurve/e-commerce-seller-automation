@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services;
 
 use App\Models\Product;
@@ -29,7 +30,7 @@ class ProductCostService
             if ($open) {
                 if ($from->lt($open->effective_from)) {
                     throw ValidationException::withMessages([
-                        'effective_from' => 'Date must be on/after the current cost start date (' . $open->effective_from->format('d M Y') . ').',
+                        'effective_from' => 'Date must be on/after the current cost start date ('.$open->effective_from->format('d M Y').').',
                     ]);
                 }
                 // Same-day edit = correction of today's entry
@@ -37,6 +38,7 @@ class ProductCostService
                     $oldAmount = (string) $open->amount;
                     $open->update(['amount' => $amount, 'note' => $note ?? $open->note]);
                     ActivityLogger::log('cost.corrected', $product, ['type' => $type, 'amount' => $oldAmount], ['type' => $type, 'amount' => $amount]);
+
                     return $open;
                 }
                 $open->update(['effective_to' => $from->copy()->subDay()]);

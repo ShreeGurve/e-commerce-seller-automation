@@ -24,6 +24,7 @@ class MarketplacePayoutReconciliationController extends Controller
             'mismatch' => MarketplaceBankPayout::where('status', 'MISMATCH')->count(),
             'matched' => MarketplaceBankPayout::where('status', 'MATCHED')->count(),
         ];
+
         return view('finance.payout-reconciliation.index', [
             'payouts' => $payouts,
             'marketplaces' => Marketplace::active()->orderBy('name')->get(),
@@ -45,6 +46,7 @@ class MarketplacePayoutReconciliationController extends Controller
             'note' => 'nullable|string|max:500',
         ]);
         $service->record($data, $request->user()->id);
+
         return back()->with('success', 'Bank payout recorded. Check its matching status below.');
     }
 
@@ -52,6 +54,7 @@ class MarketplacePayoutReconciliationController extends Controller
     {
         $data = $request->validate(['settlement_id' => 'required|exists:settlements,id']);
         $service->link($payout, Settlement::findOrFail($data['settlement_id']), $request->user()->id);
+
         return back()->with('success', 'Payout linked and amount comparison completed.');
     }
 
@@ -59,12 +62,14 @@ class MarketplacePayoutReconciliationController extends Controller
     {
         $data = $request->validate(['note' => 'required|string|max:500']);
         $service->ignore($payout, $data['note'], $request->user()->id);
+
         return back()->with('success', 'Payout marked as ignored with a review note.');
     }
 
     public function reopen(Request $request, MarketplaceBankPayout $payout, MarketplacePayoutReconciliationService $service)
     {
         $service->reopen($payout, $request->user()->id);
+
         return back()->with('success', 'Payout reopened for reconciliation.');
     }
 }

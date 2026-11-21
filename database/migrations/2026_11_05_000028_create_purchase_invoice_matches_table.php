@@ -30,5 +30,8 @@ return new class extends Migration
         });
     }
 
-    public function down(): void { Schema::dropIfExists('purchase_invoice_matches'); }
+    public function down(): void
+    {
+        Schema::dropIfExists('purchase_invoice_matches');
+    }
 };

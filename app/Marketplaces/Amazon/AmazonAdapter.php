@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Marketplaces\Amazon;
 
 use App\Marketplaces\BaseAdapter;
@@ -50,6 +51,7 @@ class AmazonAdapter extends BaseAdapter
             'listing_status' => ['listing-status', 'status'],
         ],
     ];
+
     protected array $statusMap = [
         'pending' => 'IMPORTED', 'unshipped' => 'CONFIRMED', 'partiallyshipped' => 'PACKED', 'shipping' => 'SHIPPED', 'shipped' => 'SHIPPED',
         'delivered' => 'DELIVERED', 'canceled' => 'CANCELLED', 'cancelled' => 'CANCELLED', 'unfulfillable' => 'CANCELLED',

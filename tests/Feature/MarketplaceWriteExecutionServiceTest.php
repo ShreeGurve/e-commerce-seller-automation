@@ -23,7 +23,9 @@ class MarketplaceWriteExecutionServiceTest extends TestCase
     use RefreshDatabase;
 
     private Business $business;
+
     private User $user;
+
     private User $secondUser;
 
     protected function setUp(): void
@@ -179,6 +181,7 @@ class MarketplaceWriteExecutionServiceTest extends TestCase
             'status' => $taskStatus, 'reviewed_by' => $this->secondUser->id, 'reviewed_at' => now(),
             'created_at' => now(), 'updated_at' => now(),
         ]);
+
         return [$connection, $taskId];
     }
 }

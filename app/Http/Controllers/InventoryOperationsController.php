@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Inventory;
 use App\Models\InventoryTransaction;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Carbon;
 
 class InventoryOperationsController extends Controller
 {
@@ -30,6 +30,7 @@ class InventoryOperationsController extends Controller
             'units_out' => abs((int) (clone $query)->where('qty_change', '<', 0)->sum('qty_change')),
         ];
         $transactions = $query->latest('id')->paginate(30)->withQueryString();
+
         return view('inventory.operations-ledger', compact('transactions', 'summary'));
     }
 
@@ -50,22 +51,26 @@ class InventoryOperationsController extends Controller
 
         return response()->streamDownload(function () use ($query) {
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['Ledger ID','Date','SKU','Product','Type','Available Change','Damaged Change','Balance After','Unit Cost','User','Note']);
+            fputcsv($out, ['Ledger ID', 'Date', 'SKU', 'Product', 'Type', 'Available Change', 'Damaged Change', 'Balance After', 'Unit Cost', 'User', 'Note']);
             $query->chunk(500, function ($rows) use ($out) {
-                foreach ($rows as $r) fputcsv($out, [
-                    $r->id, optional($r->created_at)->toDateTimeString(), $r->product?->sku, $r->product?->name,
-                    $r->type, $r->qty_change, $r->damaged_change, $r->balance_after, $r->unit_cost,
-                    $r->user?->name, $r->note,
-                ]);
+                foreach ($rows as $r) {
+                    fputcsv($out, [
+                        $r->id, optional($r->created_at)->toDateTimeString(), $r->product?->sku, $r->product?->name,
+                        $r->type, $r->qty_change, $r->damaged_change, $r->balance_after, $r->unit_cost,
+                        $r->user?->name, $r->note,
+                    ]);
+                }
             });
             fclose($out);
-        }, 'inventory-ledger-' . now()->format('Ymd-His') . '.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+        }, 'inventory-ledger-'.now()->format('Ymd-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     public function inactivity(Request $request)
     {
         $days = (int) $request->input('days', 30);
-        if (!in_array($days, [30, 60, 90, 180], true)) $days = 30;
+        if (! in_array($days, [30, 60, 90, 180], true)) {
+            $days = 30;
+        }
 
         $rows = Inventory::query()->with('product')
             ->where('available_qty', '>', 0)
@@ -73,15 +78,16 @@ class InventoryOperationsController extends Controller
             ->selectSub(InventoryTransaction::query()->selectRaw('MAX(created_at)')
                 ->whereColumn('product_id', 'inventory.product_id'), 'last_movement_at')
             ->get()
-            ->filter(fn ($r) => !$r->last_movement_at || \Illuminate\Support\Carbon::parse($r->last_movement_at)->lt(now()->subDays($days)))
-            ->sortBy(fn ($r) => $r->last_movement_at ? \Illuminate\Support\Carbon::parse($r->last_movement_at)->timestamp : 0)
+            ->filter(fn ($r) => ! $r->last_movement_at || Carbon::parse($r->last_movement_at)->lt(now()->subDays($days)))
+            ->sortBy(fn ($r) => $r->last_movement_at ? Carbon::parse($r->last_movement_at)->timestamp : 0)
             ->values();
 
         $summary = [
             'products' => $rows->count(),
             'units' => (int) $rows->sum('available_qty'),
-            'no_history' => $rows->filter(fn ($r) => !$r->last_movement_at)->count(),
+            'no_history' => $rows->filter(fn ($r) => ! $r->last_movement_at)->count(),
         ];
+
         return view('inventory.inactivity', compact('rows', 'days', 'summary'));
     }
 
@@ -89,8 +95,8 @@ class InventoryOperationsController extends Controller
     {
         $rows = Inventory::with('product')->where(function ($q) {
             $q->whereColumn('reserved_qty', '>', 'available_qty')
-              ->orWhere('reserved_qty', '<', 0)
-              ->orWhere('available_qty', '<', 0);
+                ->orWhere('reserved_qty', '<', 0)
+                ->orWhere('available_qty', '<', 0);
         })->orderBy('reserved_qty', 'desc')->get();
 
         $summary = [
@@ -98,6 +104,7 @@ class InventoryOperationsController extends Controller
             'reserved' => (int) $rows->sum('reserved_qty'),
             'available' => (int) $rows->sum('available_qty'),
         ];
+
         return view('inventory.reservation-audit', compact('rows', 'summary'));
     }
 
@@ -105,19 +112,21 @@ class InventoryOperationsController extends Controller
     {
         $rows = Inventory::with('product')->where(function ($q) {
             $q->whereColumn('reserved_qty', '>', 'available_qty')
-              ->orWhere('reserved_qty', '<', 0)
-              ->orWhere('available_qty', '<', 0);
+                ->orWhere('reserved_qty', '<', 0)
+                ->orWhere('available_qty', '<', 0);
         })->orderBy('reserved_qty', 'desc')->get();
 
         return response()->streamDownload(function () use ($rows) {
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['SKU','Product','Available','Reserved','Difference','Exception']);
-            foreach ($rows as $r) fputcsv($out, [
-                $r->product?->sku, $r->product?->name, $r->available_qty, $r->reserved_qty,
-                (int)$r->available_qty - (int)$r->reserved_qty,
-                (int)$r->reserved_qty > (int)$r->available_qty ? 'Reserved exceeds available' : 'Negative stock bucket',
-            ]);
+            fputcsv($out, ['SKU', 'Product', 'Available', 'Reserved', 'Difference', 'Exception']);
+            foreach ($rows as $r) {
+                fputcsv($out, [
+                    $r->product?->sku, $r->product?->name, $r->available_qty, $r->reserved_qty,
+                    (int) $r->available_qty - (int) $r->reserved_qty,
+                    (int) $r->reserved_qty > (int) $r->available_qty ? 'Reserved exceeds available' : 'Negative stock bucket',
+                ]);
+            }
             fclose($out);
-        }, 'inventory-reservation-exceptions-' . now()->format('Ymd-His') . '.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+        }, 'inventory-reservation-exceptions-'.now()->format('Ymd-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 }

@@ -24,10 +24,33 @@ class PurchaseInvoiceMatch extends Model
         'variance_amount' => 'decimal:2', 'reviewed_at' => 'datetime',
     ];
 
-    public function purchase() { return $this->belongsTo(Purchase::class); }
-    public function creator() { return $this->belongsTo(User::class, 'created_by'); }
-    public function reviewer() { return $this->belongsTo(User::class, 'reviewed_by'); }
-    public function lineChecks() { return $this->hasMany(PurchaseInvoiceLineCheck::class, 'purchase_invoice_match_id'); }
-    public function payments() { return $this->hasMany(SupplierInvoicePayment::class, 'purchase_invoice_match_id'); }
-    public function creditApplications() { return $this->hasMany(SupplierCreditNoteApplication::class, 'purchase_invoice_match_id'); }
+    public function purchase()
+    {
+        return $this->belongsTo(Purchase::class);
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function reviewer()
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function lineChecks()
+    {
+        return $this->hasMany(PurchaseInvoiceLineCheck::class, 'purchase_invoice_match_id');
+    }
+
+    public function payments()
+    {
+        return $this->hasMany(SupplierInvoicePayment::class, 'purchase_invoice_match_id');
+    }
+
+    public function creditApplications()
+    {
+        return $this->hasMany(SupplierCreditNoteApplication::class, 'purchase_invoice_match_id');
+    }
 }

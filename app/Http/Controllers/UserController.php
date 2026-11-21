@@ -1,8 +1,11 @@
 <?php
+
 namespace App\Http\Controllers;
 
-use App\Models\{Role, User};
-use App\Services\{ActivityLogger, SettingsService};
+use App\Models\Role;
+use App\Models\User;
+use App\Services\ActivityLogger;
+use App\Services\SettingsService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
@@ -14,10 +17,14 @@ class UserController extends Controller
         $users = User::with('roles')
             ->when($request->q, fn ($q, $s) => $q->where(fn ($w) => $w->where('name', 'like', "%$s%")->orWhere('email', 'like', "%$s%")))
             ->orderBy('name')->paginate(20)->withQueryString();
+
         return view('users.index', compact('users'));
     }
 
-    public function create() { return view('users.create', ['user' => new User(['is_active' => true]), 'roles' => $this->assignableRoles(), 'selected' => []]); }
+    public function create()
+    {
+        return view('users.create', ['user' => new User(['is_active' => true]), 'roles' => $this->assignableRoles(), 'selected' => []]);
+    }
 
     public function store(Request $request)
     {
@@ -28,6 +35,7 @@ class UserController extends Controller
         ]);
         $user->roles()->sync($this->finalRoleIds($request, null));
         ActivityLogger::log('user.created', $user, null, ['email' => $user->email, 'roles' => $user->roles()->pluck('slug')->all()]);
+
         return redirect()->route('users.index')->with('success', 'User created.');
     }
 
@@ -52,7 +60,9 @@ class UserController extends Controller
 
         $oldRoles = $user->roles()->pluck('slug')->all();
         $fill = ['name' => $data['name'], 'email' => $data['email'], 'phone' => $data['phone'] ?? null, 'is_active' => $active];
-        if (! empty($data['password'])) $fill['password'] = $data['password'];
+        if (! empty($data['password'])) {
+            $fill['password'] = $data['password'];
+        }
         $user->fill($fill);
         $dirty = collect($user->getDirty())->except('password')->all();
         $old = array_intersect_key($user->getOriginal(), $dirty);
@@ -63,17 +73,21 @@ class UserController extends Controller
         if ($dirty || $pwChanged || $oldRoles != $newRoles) {
             ActivityLogger::log('user.updated', $user, $old + ['roles' => $oldRoles], $dirty + ['roles' => $newRoles] + ($pwChanged ? ['password' => 'changed'] : []));
         }
+
         return redirect()->route('users.index')->with('success', 'User updated.');
     }
 
     public function destroy(User $user)
     {
-        if ($user->id === auth()->id()) return back()->with('error', 'You cannot delete your own account.');
+        if ($user->id === auth()->id()) {
+            return back()->with('error', 'You cannot delete your own account.');
+        }
         if ($user->isSuperAdmin() && $user->is_active && $this->activeSuperAdmins($user->id) === 0) {
             return back()->with('error', 'At least one active Super Admin must remain.');
         }
         $user->delete();
         ActivityLogger::log('user.deleted', $user, ['email' => $user->email]);
+
         return redirect()->route('users.index')->with('success', 'User deleted. (Tip: deactivate instead to keep the email reserved.)');
     }
 
@@ -100,8 +114,11 @@ class UserController extends Controller
         if (! auth()->user()->isSuperAdmin()) {
             $superId = Role::where('slug', 'super-admin')->value('id');
             $ids = array_values(array_diff($ids, [$superId]));
-            if ($target && $target->isSuperAdmin()) $ids[] = $superId; // keep what they already have
+            if ($target && $target->isSuperAdmin()) {
+                $ids[] = $superId;
+            } // keep what they already have
         }
+
         return array_values(array_unique($ids));
     }
 

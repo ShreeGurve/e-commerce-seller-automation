@@ -4,10 +4,11 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
-        if (!Schema::hasTable('automation_rule_versions')) {
+        if (! Schema::hasTable('automation_rule_versions')) {
             Schema::create('automation_rule_versions', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('automation_rule_id')->index();

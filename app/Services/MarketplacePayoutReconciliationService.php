@@ -26,7 +26,7 @@ class MarketplacePayoutReconciliationService
             }
 
             $settlement = null;
-            if (!empty($data['settlement_id'])) {
+            if (! empty($data['settlement_id'])) {
                 $settlement = Settlement::query()->lockForUpdate()->findOrFail($data['settlement_id']);
                 if ((int) $settlement->marketplace_id !== (int) $data['marketplace_id']) {
                     throw ValidationException::withMessages(['settlement_id' => 'Selected settlement belongs to another marketplace.']);
@@ -34,7 +34,7 @@ class MarketplacePayoutReconciliationService
                 if (MarketplaceBankPayout::where('settlement_id', $settlement->id)->exists()) {
                     throw ValidationException::withMessages(['settlement_id' => 'This settlement already has a bank payout record. Split payouts are not supported in this workflow yet.']);
                 }
-            } elseif (!empty($data['external_settlement_id'])) {
+            } elseif (! empty($data['external_settlement_id'])) {
                 $settlement = Settlement::where('marketplace_id', $data['marketplace_id'])
                     ->where('external_settlement_id', trim($data['external_settlement_id']))->first();
                 if ($settlement && MarketplaceBankPayout::where('settlement_id', $settlement->id)->exists()) {
@@ -89,6 +89,7 @@ class MarketplacePayoutReconciliationService
                 'reviewed_by' => $userId,
                 'reviewed_at' => now(),
             ]);
+
             return $payout->fresh(['settlement', 'marketplace']);
         });
     }
@@ -99,6 +100,7 @@ class MarketplacePayoutReconciliationService
             throw ValidationException::withMessages(['payout' => 'A matched payout cannot be ignored. Unlink it first if it was matched incorrectly.']);
         }
         $payout->update(['status' => 'IGNORED', 'note' => $note, 'reviewed_by' => $userId, 'reviewed_at' => now()]);
+
         return $payout->fresh();
     }
 
@@ -111,6 +113,7 @@ class MarketplacePayoutReconciliationService
             'reviewed_by' => $userId,
             'reviewed_at' => now(),
         ]);
+
         return $payout->fresh();
     }
 }

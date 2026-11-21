@@ -13,9 +13,9 @@ class MarketplaceWriteEvidenceService
 
         return DB::table('marketplace_write_evidence')
             ->where('business_id', $businessId)
-            ->when(!empty($filters['type']), fn ($q) => $q->where('evidence_type', $filters['type']))
-            ->when(!empty($filters['subject_type']), fn ($q) => $q->where('subject_type', $filters['subject_type']))
-            ->when(!empty($filters['search']), function ($q) use ($filters) {
+            ->when(! empty($filters['type']), fn ($q) => $q->where('evidence_type', $filters['type']))
+            ->when(! empty($filters['subject_type']), fn ($q) => $q->where('subject_type', $filters['subject_type']))
+            ->when(! empty($filters['search']), function ($q) use ($filters) {
                 $term = trim($filters['search']);
                 $q->where(function ($sub) use ($term) {
                     $sub->where('title', 'like', "%{$term}%")
@@ -32,7 +32,7 @@ class MarketplaceWriteEvidenceService
         $businessId = $this->businessId($user);
         $url = $data['evidence_url'] ?? null;
 
-        if ($url && !str_starts_with(strtolower($url), 'https://')) {
+        if ($url && ! str_starts_with(strtolower($url), 'https://')) {
             throw ValidationException::withMessages([
                 'evidence_url' => 'Evidence links must use HTTPS.',
             ]);
@@ -65,7 +65,7 @@ class MarketplaceWriteEvidenceService
     {
         $id = $user->business_id ?? null;
 
-        if (!$id) {
+        if (! $id) {
             abort(403, 'No business is associated with this account.');
         }
 

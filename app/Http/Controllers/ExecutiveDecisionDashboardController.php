@@ -22,6 +22,7 @@ class ExecutiveDecisionDashboardController extends Controller
         ];
         $report = $dashboard->build($filters);
         $marketplaces = Marketplace::active()->orderBy('name')->get(['id', 'name']);
+
         return view('executive.decision-dashboard', compact('filters', 'report', 'marketplaces'));
     }
 }

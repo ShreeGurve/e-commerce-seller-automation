@@ -27,7 +27,7 @@ class MarketplaceReadSyncService
         ?DateTimeInterface $to = null,
     ): MarketplaceSyncRun {
         $resource = strtolower(trim($resource));
-        if (!in_array($resource, self::RESOURCES, true)) {
+        if (! in_array($resource, self::RESOURCES, true)) {
             throw new RuntimeException('Unsupported read-sync resource. Allowed: products, orders, inventory.');
         }
         if ($from && $to && $from > $to) {
@@ -35,16 +35,16 @@ class MarketplaceReadSyncService
         }
 
         $connection->loadMissing(['marketplace', 'business']);
-        if (!$connection->marketplace || !$connection->business) {
+        if (! $connection->marketplace || ! $connection->business) {
             throw new RuntimeException('Marketplace connection is missing its business or marketplace.');
         }
-        if (!in_array(strtolower((string) $connection->status), ['connected', 'active', 'verified'], true)) {
+        if (! in_array(strtolower((string) $connection->status), ['connected', 'active', 'verified'], true)) {
             throw new RuntimeException('Marketplace connection must be verified before synchronization.');
         }
 
         $lockKey = 'marketplace-read-sync:'.$connection->id.':'.$resource;
         $lock = Cache::lock($lockKey, max(60, (int) config('marketplace_sync.lock_seconds', 900)));
-        if (!$lock->get()) {
+        if (! $lock->get()) {
             throw new RuntimeException('A synchronization for this connection and resource is already running.');
         }
 
@@ -62,7 +62,7 @@ class MarketplaceReadSyncService
         try {
             $marketplaceCode = strtolower((string) $connection->marketplace->code);
             $apiConfig = config('marketplaces.'.$marketplaceCode, []);
-            if (!($apiConfig['enabled'] ?? false) || !($apiConfig['api_calls_enabled'] ?? false)) {
+            if (! ($apiConfig['enabled'] ?? false) || ! ($apiConfig['api_calls_enabled'] ?? false)) {
                 throw new RuntimeException('Marketplace read API calls are disabled by configuration.');
             }
             $provider = $this->providers->for($marketplaceCode);
@@ -76,15 +76,17 @@ class MarketplaceReadSyncService
 
                 DB::transaction(function () use ($page, $connection, $resource, $run): void {
                     foreach ($page->items as $item) {
-                        if (!is_array($item) || !isset($item['external_id'], $item['payload'])
-                            || !is_array($item['payload']) || trim((string) $item['external_id']) === '') {
+                        if (! is_array($item) || ! isset($item['external_id'], $item['payload'])
+                            || ! is_array($item['payload']) || trim((string) $item['external_id']) === '') {
                             $run->records_skipped++;
+
                             continue;
                         }
 
                         $externalId = Str::limit(trim((string) $item['external_id']), 150, '');
                         if ($externalId === '') {
                             $run->records_skipped++;
+
                             continue;
                         }
 
@@ -122,10 +124,10 @@ class MarketplaceReadSyncService
                     }
                 });
 
-                if (!$page->hasMore) {
+                if (! $page->hasMore) {
                     break;
                 }
-                if (!$page->nextCursor || isset($seenCursors[$page->nextCursor])) {
+                if (! $page->nextCursor || isset($seenCursors[$page->nextCursor])) {
                     throw new RuntimeException('Marketplace pagination returned a missing or repeated cursor.');
                 }
                 $seenCursors[$page->nextCursor] = true;
@@ -186,6 +188,7 @@ class MarketplaceReadSyncService
             }
             $clean[$key] = is_array($value) ? $this->removePersonalData($value) : $value;
         }
+
         return $clean;
     }
 }

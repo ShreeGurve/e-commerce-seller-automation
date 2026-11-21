@@ -5,13 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\PurchaseInvoiceMatch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\ValidationException;
 
 class PurchaseInvoiceDocumentController extends Controller
 {
     public function index()
     {
         $matches = PurchaseInvoiceMatch::with('purchase.supplier')->latest()->paginate(20);
+
         return view('purchases.invoice-documents', compact('matches'));
     }
 
@@ -26,7 +26,7 @@ class PurchaseInvoiceDocumentController extends Controller
         }
 
         $file = $data['invoice_document'];
-        $path = $file->store('private/supplier-invoices/' . $match->id, 'local');
+        $path = $file->store('private/supplier-invoices/'.$match->id, 'local');
 
         $match->update([
             'document_path' => $path,
@@ -44,6 +44,7 @@ class PurchaseInvoiceDocumentController extends Controller
     public function download(PurchaseInvoiceMatch $match)
     {
         abort_unless($match->document_path && Storage::disk('local')->exists($match->document_path), 404);
+
         return Storage::disk('local')->download(
             $match->document_path,
             $match->document_original_name ?: 'supplier-invoice'

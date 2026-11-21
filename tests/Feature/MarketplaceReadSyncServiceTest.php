@@ -5,11 +5,12 @@ namespace Tests\Feature;
 use App\Marketplaces\Sync\MarketplaceReadPage;
 use App\Marketplaces\Sync\MarketplaceReadProvider;
 use App\Models\Business;
+use App\Models\Inventory;
 use App\Models\Marketplace;
 use App\Models\MarketplaceConnection;
 use App\Models\MarketplaceInventorySnapshot;
 use App\Models\MarketplaceSyncRecord;
-use App\Models\MarketplaceSyncRun;
+use App\Models\Order;
 use App\Services\MarketplaceReadSyncService;
 use DateTimeInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -49,7 +50,7 @@ class MarketplaceReadSyncServiceTest extends TestCase
         $this->assertArrayNotHasKey('customer_email', $payload);
         $this->assertArrayNotHasKey('shipping_address', $payload);
         $this->assertArrayHasKey('status', $payload);
-        $this->assertSame(0, \App\Models\Order::count(), 'Read sync must not create operational orders.');
+        $this->assertSame(0, Order::count(), 'Read sync must not create operational orders.');
     }
 
     public function test_inventory_sync_creates_marketplace_snapshot_without_changing_internal_inventory(): void
@@ -68,7 +69,7 @@ class MarketplaceReadSyncServiceTest extends TestCase
         $this->assertSame('SKU-REMOTE-1', $snapshot->marketplace_sku);
         $this->assertSame(12, $snapshot->available_qty);
         $this->assertSame(2, $snapshot->reserved_qty);
-        $this->assertSame(0, \App\Models\Inventory::count());
+        $this->assertSame(0, Inventory::count());
     }
 
     public function test_unverified_connection_and_unknown_resource_are_rejected(): void

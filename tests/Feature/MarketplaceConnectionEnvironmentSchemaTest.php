@@ -16,13 +16,11 @@ class MarketplaceConnectionEnvironmentSchemaTest extends TestCase
 
         $indexes = collect(Schema::getIndexes('marketplace_connections'));
 
-        $this->assertTrue($indexes->contains(fn (array $index): bool =>
-            ($index['unique'] ?? false) === true
+        $this->assertTrue($indexes->contains(fn (array $index): bool => ($index['unique'] ?? false) === true
             && ($index['columns'] ?? []) === ['business_id', 'marketplace_id', 'environment']
         ), 'The business + marketplace + environment unique index must exist.');
 
-        $this->assertTrue($indexes->contains(fn (array $index): bool =>
-            ($index['columns'] ?? []) === ['business_id']
+        $this->assertTrue($indexes->contains(fn (array $index): bool => ($index['columns'] ?? []) === ['business_id']
         ), 'The business foreign key must retain a supporting index.');
     }
 }

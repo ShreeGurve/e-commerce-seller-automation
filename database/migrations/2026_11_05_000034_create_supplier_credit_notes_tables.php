@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('supplier_credit_notes')) {
+        if (! Schema::hasTable('supplier_credit_notes')) {
             Schema::create('supplier_credit_notes', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('supplier_id');
@@ -34,7 +34,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('supplier_credit_note_applications')) {
+        if (! Schema::hasTable('supplier_credit_note_applications')) {
             Schema::create('supplier_credit_note_applications', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('supplier_credit_note_id');

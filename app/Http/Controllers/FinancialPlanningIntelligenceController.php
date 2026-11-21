@@ -6,12 +6,10 @@ use App\Models\Expense;
 use App\Models\Inventory;
 use App\Models\Order;
 use App\Models\OrderProfit;
-use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\Settlement;
 use App\Models\SupplierInvoicePayment;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class FinancialPlanningIntelligenceController extends Controller
 {
@@ -101,11 +99,21 @@ class FinancialPlanningIntelligenceController extends Controller
         $profitMargin = $sales > 0 ? ($profit / $sales) * 100 : 0;
         $expenseRatio = $sales > 0 ? ($expenses / $sales) * 100 : 0;
         $signals = [];
-        if ($sales <= 0) $signals[] = ['warning', 'No qualifying sales recorded in the selected period.'];
-        if ($profit < 0) $signals[] = ['danger', 'Recorded order profit is negative for the selected period.'];
-        if ($payables > $sales) $signals[] = ['warning', 'Open supplier payables exceed selected-period sales; review cash commitments.'];
-        if ($settlementCount === 0) $signals[] = ['info', 'No settlement batches have an ending date in the selected period.'];
-        if (! $signals) $signals[] = ['success', 'No threshold-based warning was identified from the available records.'];
+        if ($sales <= 0) {
+            $signals[] = ['warning', 'No qualifying sales recorded in the selected period.'];
+        }
+        if ($profit < 0) {
+            $signals[] = ['danger', 'Recorded order profit is negative for the selected period.'];
+        }
+        if ($payables > $sales) {
+            $signals[] = ['warning', 'Open supplier payables exceed selected-period sales; review cash commitments.'];
+        }
+        if ($settlementCount === 0) {
+            $signals[] = ['info', 'No settlement batches have an ending date in the selected period.'];
+        }
+        if (! $signals) {
+            $signals[] = ['success', 'No threshold-based warning was identified from the available records.'];
+        }
 
         return view('finance.operations.financial-health', compact('period', 'sales', 'profit', 'expenses', 'payables', 'settlementCount', 'settlementValue', 'profitMargin', 'expenseRatio', 'signals'));
     }

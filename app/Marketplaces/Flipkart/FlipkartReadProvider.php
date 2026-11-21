@@ -29,13 +29,13 @@ class FlipkartReadProvider implements MarketplaceReadProvider
         if ($resource === 'orders') {
             throw new RuntimeException('Flipkart order ingestion is not enabled in this package. The shipment/order filter contract and permissions must be validated separately before enabling it.');
         }
-        if (!in_array($resource, ['products', 'inventory'], true)) {
+        if (! in_array($resource, ['products', 'inventory'], true)) {
             throw new RuntimeException('Unsupported Flipkart read resource: '.$resource);
         }
 
         $token = $this->tokens->accessToken($connection);
         $baseUrl = rtrim((string) config('marketplaces.flipkart.base_url', 'https://api.flipkart.net'), '/');
-        if (!str_starts_with($baseUrl, 'https://')) {
+        if (! str_starts_with($baseUrl, 'https://')) {
             throw new RuntimeException('Flipkart Seller API base URL must use HTTPS.');
         }
 
@@ -45,15 +45,21 @@ class FlipkartReadProvider implements MarketplaceReadProvider
             ->connectTimeout(8)->timeout(30)
             ->post('/sellers/listings/v3/search', $body);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             throw new RuntimeException('Flipkart listing search failed (HTTP '.$response->status().'). Check Seller API listing permissions.');
         }
         $json = $response->json();
-        if (!is_array($json)) throw new RuntimeException('Flipkart returned an invalid listing search response.');
+        if (! is_array($json)) {
+            throw new RuntimeException('Flipkart returned an invalid listing search response.');
+        }
 
         $listings = $json['listings'] ?? [];
-        if (!is_array($listings)) $listings = [];
-        if (!array_is_list($listings) && $listings !== []) $listings = [$listings];
+        if (! is_array($listings)) {
+            $listings = [];
+        }
+        if (! array_is_list($listings) && $listings !== []) {
+            $listings = [$listings];
+        }
         $skuIds = array_values(array_unique(array_filter(array_map(
             static fn (array $listing) => (string) ($listing['sku_id'] ?? ''),
             array_filter($listings, 'is_array')
@@ -65,20 +71,28 @@ class FlipkartReadProvider implements MarketplaceReadProvider
                 ->withToken($token)->acceptJson()->asJson()
                 ->connectTimeout(8)->timeout(30)
                 ->post('/sellers/listings/v3/details', ['sku_ids' => $batch]);
-            if (!$detailResponse->successful()) {
+            if (! $detailResponse->successful()) {
                 throw new RuntimeException('Flipkart listing detail read failed (HTTP '.$detailResponse->status().').');
             }
             $available = $detailResponse->json('available', []);
-            if (is_array($available)) $detailsBySku = array_merge($detailsBySku, $available);
+            if (is_array($available)) {
+                $detailsBySku = array_merge($detailsBySku, $available);
+            }
         }
 
         $items = [];
         foreach ($listings as $listing) {
-            if (!is_array($listing)) continue;
+            if (! is_array($listing)) {
+                continue;
+            }
             $sku = (string) ($listing['sku_id'] ?? '');
-            if ($sku === '') continue;
+            if ($sku === '') {
+                continue;
+            }
             $detail = $detailsBySku[$sku] ?? [];
-            if (!is_array($detail)) $detail = [];
+            if (! is_array($detail)) {
+                $detail = [];
+            }
 
             if ($resource === 'products') {
                 $items[] = [
@@ -100,8 +114,12 @@ class FlipkartReadProvider implements MarketplaceReadProvider
                 $availableQty = 0;
                 $pendingQty = 0;
                 foreach ($locations as $location) {
-                    if (!is_array($location)) continue;
-                    if (($location['status'] ?? 'ENABLED') === 'ENABLED') $availableQty += (int) ($location['inventory'] ?? 0);
+                    if (! is_array($location)) {
+                        continue;
+                    }
+                    if (($location['status'] ?? 'ENABLED') === 'ENABLED') {
+                        $availableQty += (int) ($location['inventory'] ?? 0);
+                    }
                     $pendingQty += (int) ($location['pending_inventory'] ?? 0);
                 }
                 $items[] = [
@@ -120,6 +138,7 @@ class FlipkartReadProvider implements MarketplaceReadProvider
 
         $next = $json['next_page_id'] ?? null;
         $hasMore = (bool) ($json['has_more'] ?? false);
+
         return new MarketplaceReadPage($items, is_string($next) ? $next : null, $hasMore);
     }
 }

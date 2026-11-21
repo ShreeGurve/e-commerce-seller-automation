@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services;
 
 use App\Models\Inventory;
@@ -14,7 +15,7 @@ use InvalidArgumentException;
 class InventoryService
 {
     /**
-     * @param array{unit_cost?:string|float|null, note?:string|null, reference?:Model|null, allow_negative?:bool} $o
+     * @param  array{unit_cost?:string|float|null, note?:string|null, reference?:Model|null, allow_negative?:bool}  $o
      */
     public function record(Product $product, string $type, int $quantity, array $o = []): InventoryTransaction
     {
@@ -46,6 +47,7 @@ class InventoryService
             $inv->forceFill(['available_qty' => $newAvail, 'damaged_qty' => $newDamaged])->save();
 
             $ref = $o['reference'] ?? null;
+
             return InventoryTransaction::create([
                 'product_id' => $product->id, 'type' => $type,
                 'qty_change' => $dAvail, 'damaged_change' => $dDamaged, 'balance_after' => $newAvail,

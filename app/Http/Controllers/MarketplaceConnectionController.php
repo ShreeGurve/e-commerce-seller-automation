@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Marketplaces\Api\MarketplaceConnectionHealthChecker;
 use App\Models\Marketplace;
 use App\Models\MarketplaceConnection;
 use App\Services\MarketplaceConnectionVerifier;
-use App\Marketplaces\Api\MarketplaceConnectionHealthChecker;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -57,7 +57,7 @@ class MarketplaceConnectionController extends Controller
         $credentials = collect($data)->except(['account_label', 'environment'])->all();
         $result = $verifier->verify($marketplace->code, $credentials, $environment);
 
-        if (!$result['ok']) {
+        if (! $result['ok']) {
             // Deliberately do not persist failed credentials or replace an existing connection.
             return back()->withErrors(['credentials' => $result['message']])->withInput(['account_label' => $data['account_label'], 'environment' => $environment]);
         }
@@ -96,6 +96,7 @@ class MarketplaceConnectionController extends Controller
     {
         abort_unless($connection->business_id === $request->user()->business_id, 404);
         $connection->delete();
+
         return redirect()->route('marketplaces.connections')->with('success', 'Marketplace connection removed.');
     }
 }

@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Inventory;
 use App\Models\InventoryTransaction;
-use App\Models\Product;
 use App\Services\InventoryService;
 use Illuminate\Http\Request;
 
@@ -26,8 +25,8 @@ class InventoryReconciliationController extends Controller
             ->when($filters['q'] ?? null, function ($q, $search) {
                 $q->whereHas('product', function ($product) use ($search) {
                     $product->withTrashed()->where(function ($where) use ($search) {
-                        $where->where('name', 'like', '%' . $search . '%')
-                            ->orWhere('sku', 'like', '%' . $search . '%');
+                        $where->where('name', 'like', '%'.$search.'%')
+                            ->orWhere('sku', 'like', '%'.$search.'%');
                     });
                 });
             })
@@ -42,8 +41,8 @@ class InventoryReconciliationController extends Controller
             ->when($filters['q'] ?? null, function ($q, $search) {
                 $q->whereHas('product', function ($product) use ($search) {
                     $product->withTrashed()->where(function ($where) use ($search) {
-                        $where->where('name', 'like', '%' . $search . '%')
-                            ->orWhere('sku', 'like', '%' . $search . '%');
+                        $where->where('name', 'like', '%'.$search.'%')
+                            ->orWhere('sku', 'like', '%'.$search.'%');
                     });
                 });
             })

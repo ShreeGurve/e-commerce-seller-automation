@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services;
 
 use Illuminate\Support\Facades\DB;
@@ -11,29 +12,43 @@ use Illuminate\Support\Facades\DB;
 class SummaryService
 {
     private bool $batching = false;
+
     private array $dirty = [];
 
-    public function begin(): void { $this->batching = true; }
+    public function begin(): void
+    {
+        $this->batching = true;
+    }
 
     public function touch(string $date, int $marketplaceId): void
     {
         $date = substr($date, 0, 10);
-        if ($this->batching) { $this->dirty["{$date}|{$marketplaceId}"] = [$date, $marketplaceId]; return; }
+        if ($this->batching) {
+            $this->dirty["{$date}|{$marketplaceId}"] = [$date, $marketplaceId];
+
+            return;
+        }
         $this->refreshDay($date, $marketplaceId);
     }
 
     public function flush(): int
     {
-        $this->batching = false; $n = 0;
-        foreach ($this->dirty as [$d, $m]) { $this->refreshDay($d, $m); $n++; }
+        $this->batching = false;
+        $n = 0;
+        foreach ($this->dirty as [$d, $m]) {
+            $this->refreshDay($d, $m);
+            $n++;
+        }
         $this->dirty = [];
+
         return $n;
     }
 
     public function refreshDay(string $date, int $mp): void
     {
         $now = now();
-        $start = $date . ' 00:00:00'; $end = $date . ' 23:59:59';
+        $start = $date.' 00:00:00';
+        $end = $date.' 23:59:59';
 
         $o = DB::table('orders')->where('marketplace_id', $mp)->whereNull('deleted_at')->where(fn ($q) => $q->whereNull('source')->orWhere('source', '!=', 'TEST'))->whereBetween('order_date', [$start, $end])
             ->selectRaw("SUM(CASE WHEN status <> 'CANCELLED' THEN 1 ELSE 0 END) orders, SUM(CASE WHEN status = 'CANCELLED' THEN 1 ELSE 0 END) cancelled, SUM(CASE WHEN status <> 'CANCELLED' THEN total_amount ELSE 0 END) sales")->first();
@@ -58,20 +73,36 @@ class SummaryService
     {
         $key = ['date' => $date, 'marketplace_id' => $mp];
         $nums = $zeroCheck ? array_intersect_key($vals, array_flip($zeroCheck)) : array_filter($vals, 'is_numeric');
-        if (! array_filter($nums, fn ($v) => (float) $v != 0.0)) { DB::table($table)->where($key)->delete(); return; }
+        if (! array_filter($nums, fn ($v) => (float) $v != 0.0)) {
+            DB::table($table)->where($key)->delete();
+
+            return;
+        }
         DB::table($table)->upsert([$key + $vals + ['updated_at' => $now]], ['date', 'marketplace_id'], array_merge(array_keys($vals), ['updated_at']));
     }
 
     /** every (day, channel) that has source data or an old summary row inside the range */
     public function rebuildRange(string $from, string $to): int
     {
-        $from = substr($from, 0, 10); $to = substr($to, 0, 10); $pairs = [];
-        $add = function ($rows, string $d, string $m) use (&$pairs) { foreach ($rows as $r) { $day = substr((string) $r->{$d}, 0, 10); $pairs["{$day}|{$r->{$m}}"] = [$day, (int) $r->{$m}]; } };
-        $add(DB::table('orders')->whereNull('deleted_at')->where(fn ($q) => $q->whereNull('source')->orWhere('source', '!=', 'TEST'))->whereBetween('order_date', [$from . ' 00:00:00', $to . ' 23:59:59'])->selectRaw('DATE(order_date) d, marketplace_id m')->distinct()->get(), 'd', 'm');
-        $add(DB::table('order_profits')->whereBetween('order_date', [$from . ' 00:00:00', $to . ' 23:59:59'])->selectRaw('DATE(order_date) d, marketplace_id m')->distinct()->get(), 'd', 'm');
-        $add(DB::table('advertising_daily')->whereBetween('date', [$from . ' 00:00:00', $to . ' 23:59:59'])->selectRaw('DATE(date) d, marketplace_id m')->distinct()->get(), 'd', 'm');
-        foreach (['daily_sales', 'daily_profit', 'daily_advertising'] as $t) $add(DB::table($t)->whereBetween('date', [$from . ' 00:00:00', $to . ' 23:59:59'])->selectRaw('DATE(date) d, marketplace_id m')->distinct()->get(), 'd', 'm');
-        foreach ($pairs as [$d, $m]) $this->refreshDay($d, $m);
+        $from = substr($from, 0, 10);
+        $to = substr($to, 0, 10);
+        $pairs = [];
+        $add = function ($rows, string $d, string $m) use (&$pairs) {
+            foreach ($rows as $r) {
+                $day = substr((string) $r->{$d}, 0, 10);
+                $pairs["{$day}|{$r->{$m}}"] = [$day, (int) $r->{$m}];
+            }
+        };
+        $add(DB::table('orders')->whereNull('deleted_at')->where(fn ($q) => $q->whereNull('source')->orWhere('source', '!=', 'TEST'))->whereBetween('order_date', [$from.' 00:00:00', $to.' 23:59:59'])->selectRaw('DATE(order_date) d, marketplace_id m')->distinct()->get(), 'd', 'm');
+        $add(DB::table('order_profits')->whereBetween('order_date', [$from.' 00:00:00', $to.' 23:59:59'])->selectRaw('DATE(order_date) d, marketplace_id m')->distinct()->get(), 'd', 'm');
+        $add(DB::table('advertising_daily')->whereBetween('date', [$from.' 00:00:00', $to.' 23:59:59'])->selectRaw('DATE(date) d, marketplace_id m')->distinct()->get(), 'd', 'm');
+        foreach (['daily_sales', 'daily_profit', 'daily_advertising'] as $t) {
+            $add(DB::table($t)->whereBetween('date', [$from.' 00:00:00', $to.' 23:59:59'])->selectRaw('DATE(date) d, marketplace_id m')->distinct()->get(), 'd', 'm');
+        }
+        foreach ($pairs as [$d, $m]) {
+            $this->refreshDay($d, $m);
+        }
+
         return count($pairs);
     }
 
@@ -79,17 +110,20 @@ class SummaryService
     public function rebuildAll(): int
     {
         $min = collect([DB::table('orders')->min('order_date'), DB::table('order_profits')->min('order_date'), DB::table('advertising_daily')->min('date')])->filter()->map(fn ($d) => substr((string) $d, 0, 10))->min();
+
         return $min ? $this->rebuildRange($min, now()->toDateString()) : 0;
     }
 
     /** end-of-day stock per product (so history of stock levels exists) */
     public function snapshotInventory(?string $date = null): int
     {
-        $date = $date ?: now()->toDateString(); $n = 0;
+        $date = $date ?: now()->toDateString();
+        $n = 0;
         DB::table('inventory')->select('product_id', 'available_qty', 'damaged_qty')->orderBy('product_id')->chunk(500, function ($rows) use ($date, &$n) {
             DB::table('daily_inventory')->upsert($rows->map(fn ($r) => ['date' => $date, 'product_id' => $r->product_id, 'available_qty' => $r->available_qty, 'damaged_qty' => $r->damaged_qty])->all(), ['date', 'product_id'], ['available_qty', 'damaged_qty']);
             $n += $rows->count();
         });
+
         return $n;
     }
 }

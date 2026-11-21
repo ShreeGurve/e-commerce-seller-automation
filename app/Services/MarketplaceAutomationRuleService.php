@@ -36,6 +36,7 @@ class MarketplaceAutomationRuleService
                 ->exists();
             if ($cooldownActive) {
                 $existing++;
+
                 continue;
             }
 
@@ -44,7 +45,7 @@ class MarketplaceAutomationRuleService
                 'product_id' => $recommendation['product_id'] ?? null,
                 'recommendation_type' => $recommendation['type'],
                 'priority' => $rule->priority_override ?: $recommendation['priority'],
-                'title' => Str::limit(($recommendation['product_name'] ?? 'Marketplace') . ' — ' . str_replace('_', ' ', $recommendation['type']), 178, ''),
+                'title' => Str::limit(($recommendation['product_name'] ?? 'Marketplace').' — '.str_replace('_', ' ', $recommendation['type']), 178, ''),
                 'reason' => $recommendation['reason'],
                 'suggested_action' => $rule->action_guidance ?: $recommendation['suggested_action'],
                 'metrics' => json_encode($recommendation['metrics'] ?? []),

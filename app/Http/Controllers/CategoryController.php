@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\Category;
@@ -21,6 +22,7 @@ class CategoryController extends Controller
         ]);
         $cat = Category::create($data);
         ActivityLogger::log('category.created', $cat, null, $data);
+
         return back()->with('success', 'Category added.');
     }
 
@@ -33,6 +35,7 @@ class CategoryController extends Controller
         $old = $category->only(array_keys($data));
         $category->update($data);
         ActivityLogger::log('category.updated', $category, $old, $data);
+
         return back()->with('success', 'Category updated.');
     }
 
@@ -43,6 +46,7 @@ class CategoryController extends Controller
         }
         $category->delete();
         ActivityLogger::log('category.deleted', $category);
+
         return back()->with('success', 'Category deleted.');
     }
 }

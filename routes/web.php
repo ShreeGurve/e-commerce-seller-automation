@@ -1,14 +1,111 @@
 <?php
-use App\Http\Controllers\{ReportController, PricingController, KeywordController, ListingController, ListingScoreRuleController, ClaimController, AdsController, ReconciliationController, SettlementController, ExpenseController, FeeRuleController, ProfitController, ImportController, MarketplaceController, OrderController, RefundController, ReturnController, CategoryController, DashboardController, InventoryController, ModuleController, ProductController, ProfileController, PurchaseController, RoleController, SettingsController, SupplierController, UserController, AutomationController, AutomationTaskController, ExecutiveDecisionDashboardController, FulfilmentController, KpiTrendController, ListingReadinessController, MarketplaceAutomationExecutionController, MarketplaceAutomationRuleController, MarketplaceBusinessIntelligenceController, MarketplaceRecommendationController, MarketplaceWriteAuditController, MarketplaceWriteEscalationController, MarketplaceWriteEvidenceController, MarketplaceWriteExecutionController, MarketplaceWriteIncidentController, MarketplaceWriteRecoveryController, MarketplaceWriteSlaController, MarketplaceWriteVerificationController, OrderOperationsInsightsController, ProductPerformanceController};
-use App\Http\Controllers\MarketplaceConnectionController;
-use App\Http\Controllers\ReorderController;
-use App\Http\Controllers\SupplierAnalyticsController;
-use App\Http\Controllers\InventoryForecastController;
-use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\BusinessAnalyticsController;
+
+use App\Http\Controllers\AdsController;
 use App\Http\Controllers\ApprovalController;
-use App\Http\Controllers\Auth\PasswordResetController;
+use App\Http\Controllers\ApprovalWorkflowController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\PasswordResetController;
+use App\Http\Controllers\AutomationControlCenterController;
+use App\Http\Controllers\AutomationController;
+use App\Http\Controllers\AutomationGovernanceController;
+use App\Http\Controllers\AutomationInsightsController;
+use App\Http\Controllers\AutomationIntelligenceController;
+use App\Http\Controllers\AutomationOperationsController;
+use App\Http\Controllers\AutomationOptimizationController;
+use App\Http\Controllers\AutomationPlanningController;
+use App\Http\Controllers\AutomationTaskController;
+use App\Http\Controllers\AutomationWorkforceController;
+use App\Http\Controllers\BusinessAlertIntelligenceController;
+use App\Http\Controllers\BusinessAnalyticsController;
+use App\Http\Controllers\BusinessAutomationInsightsController;
+use App\Http\Controllers\BusinessPerformanceController;
+use App\Http\Controllers\CashPlanningController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\ClaimController;
+use App\Http\Controllers\CommercialReconciliationController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ExecutiveDecisionDashboardController;
+use App\Http\Controllers\ExecutiveIntelligenceController;
+use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\FeeRuleController;
+use App\Http\Controllers\FinanceOperationsInsightController;
+use App\Http\Controllers\FinanceOperationsIntelligenceController;
+use App\Http\Controllers\FinancialPlanningIntelligenceController;
+use App\Http\Controllers\FulfilmentController;
+use App\Http\Controllers\ImportController;
+use App\Http\Controllers\InventoryAutomationController;
+use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\InventoryCorrectionController;
+use App\Http\Controllers\InventoryForecastController;
+use App\Http\Controllers\InventoryHealthController;
+use App\Http\Controllers\InventoryMovementCostController;
+use App\Http\Controllers\InventoryOperationsController;
+use App\Http\Controllers\InventoryReconciliationReportController;
+use App\Http\Controllers\InventoryValuationController;
+use App\Http\Controllers\KeywordController;
+use App\Http\Controllers\KpiTrendController;
+use App\Http\Controllers\ListingController;
+use App\Http\Controllers\ListingReadinessController;
+use App\Http\Controllers\ListingScoreRuleController;
+use App\Http\Controllers\MarketplaceAutomationExecutionController;
+use App\Http\Controllers\MarketplaceAutomationRuleController;
+use App\Http\Controllers\MarketplaceBusinessIntelligenceController;
+use App\Http\Controllers\MarketplaceConnectionController;
+use App\Http\Controllers\MarketplaceController;
+use App\Http\Controllers\MarketplaceFinancialAnalyticsController;
+use App\Http\Controllers\MarketplaceRecommendationController;
+use App\Http\Controllers\MarketplaceWriteAuditController;
+use App\Http\Controllers\MarketplaceWriteEscalationController;
+use App\Http\Controllers\MarketplaceWriteEvidenceController;
+use App\Http\Controllers\MarketplaceWriteExecutionController;
+use App\Http\Controllers\MarketplaceWriteIncidentController;
+use App\Http\Controllers\MarketplaceWriteRecoveryController;
+use App\Http\Controllers\MarketplaceWriteSlaController;
+use App\Http\Controllers\MarketplaceWriteVerificationController;
+use App\Http\Controllers\ModuleController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\OperationalInsightsController;
+use App\Http\Controllers\OrderController;
+use App\Http\Controllers\OrderOperationsController;
+use App\Http\Controllers\OrderOperationsInsightsController;
+use App\Http\Controllers\PricingController;
+use App\Http\Controllers\ProcurementAutomationController;
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProductPerformanceController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ProfitController;
+use App\Http\Controllers\PurchaseBudgetController;
+use App\Http\Controllers\PurchaseController;
+use App\Http\Controllers\PurchaseCostIntelligenceController;
+use App\Http\Controllers\PurchaseInvoiceDocumentController;
+use App\Http\Controllers\PurchaseInvoiceLineCheckController;
+use App\Http\Controllers\PurchaseInvoiceMatchController;
+use App\Http\Controllers\PurchaseQualityInspectionController;
+use App\Http\Controllers\ReconciliationController;
+use App\Http\Controllers\RefundController;
+use App\Http\Controllers\ReorderController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ReturnController;
+use App\Http\Controllers\RoleController;
+use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\SettlementController;
+use App\Http\Controllers\SmartReorderController;
+use App\Http\Controllers\SupplierAccountStatementController;
+use App\Http\Controllers\SupplierAnalyticsController;
+use App\Http\Controllers\SupplierComplianceController;
+use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\SupplierCreditNoteController;
+use App\Http\Controllers\SupplierDocumentController;
+use App\Http\Controllers\SupplierPaymentController;
+use App\Http\Controllers\SupplierPaymentPlanningController;
+use App\Http\Controllers\SupplierRelationshipController;
+use App\Http\Controllers\SupplierReturnController;
+use App\Http\Controllers\SupplierReturnSettlementController;
+use App\Http\Controllers\SupplierRiskController;
+use App\Http\Controllers\SupplierSourcingController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\WarehouseIntelligenceController;
+use App\Http\Middleware\CanImport;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -56,172 +153,172 @@ Route::middleware('auth')->group(function () {
     Route::delete('/suppliers/{supplier}', [SupplierController::class, 'destroy'])->middleware('can:purchases.edit')->name('suppliers.destroy');
 
     // Phase 47: monthly business performance targets and scorecard
-    Route::get('/business-performance', [\App\Http\Controllers\BusinessPerformanceController::class, 'index'])
+    Route::get('/business-performance', [BusinessPerformanceController::class, 'index'])
         ->middleware('can:reports.view')->name('business-performance.index');
-    Route::post('/business-performance/targets', [\App\Http\Controllers\BusinessPerformanceController::class, 'storeTarget'])
+    Route::post('/business-performance/targets', [BusinessPerformanceController::class, 'storeTarget'])
         ->middleware('can:reports.export')->name('business-performance.targets.store');
 
-    Route::get('/business-alerts/kpi-monitor', [\App\Http\Controllers\BusinessAlertIntelligenceController::class, 'kpiMonitor'])
+    Route::get('/business-alerts/kpi-monitor', [BusinessAlertIntelligenceController::class, 'kpiMonitor'])
         ->middleware('can:reports.view')->name('business-alerts.kpi-monitor');
-    Route::post('/business-alerts/kpi-evaluate', [\App\Http\Controllers\BusinessAlertIntelligenceController::class, 'evaluateKpis'])
+    Route::post('/business-alerts/kpi-evaluate', [BusinessAlertIntelligenceController::class, 'evaluateKpis'])
         ->middleware('can:reports.export')->name('business-alerts.kpi-evaluate');
-    Route::get('/business-alerts/recommendations', [\App\Http\Controllers\BusinessAlertIntelligenceController::class, 'recommendations'])
+    Route::get('/business-alerts/recommendations', [BusinessAlertIntelligenceController::class, 'recommendations'])
         ->middleware('can:reports.view')->name('business-alerts.recommendations');
-    Route::get('/business-alerts/digest.csv', [\App\Http\Controllers\BusinessAlertIntelligenceController::class, 'digest'])
+    Route::get('/business-alerts/digest.csv', [BusinessAlertIntelligenceController::class, 'digest'])
         ->middleware('can:reports.export')->name('business-alerts.digest');
 
     // Packages 63–65: add inside the existing authenticated Route::middleware('auth')->group(...).
-    Route::get('/business-automation/daily-digest', [\App\Http\Controllers\BusinessAutomationInsightsController::class, 'dailyDigest'])
+    Route::get('/business-automation/daily-digest', [BusinessAutomationInsightsController::class, 'dailyDigest'])
         ->middleware('can:reports.view')->name('business-automation.daily-digest');
-    Route::get('/business-automation/alert-sla', [\App\Http\Controllers\BusinessAutomationInsightsController::class, 'alertSla'])
+    Route::get('/business-automation/alert-sla', [BusinessAutomationInsightsController::class, 'alertSla'])
         ->middleware('can:reports.view')->name('business-automation.alert-sla');
-    Route::get('/business-automation/kpi-forecast', [\App\Http\Controllers\BusinessAutomationInsightsController::class, 'kpiForecast'])
+    Route::get('/business-automation/kpi-forecast', [BusinessAutomationInsightsController::class, 'kpiForecast'])
         ->middleware('can:reports.view')->name('business-automation.kpi-forecast');
 
     // Phases 51-53: Operational Intelligence & Reports
-    Route::get('/automation/operational-insights', [\App\Http\Controllers\OperationalInsightsController::class, 'index'])->middleware('can:reports.view')->name('operational-insights.index');
-    Route::get('/automation/operational-insights/export', [\App\Http\Controllers\OperationalInsightsController::class, 'export'])->middleware('can:reports.export')->name('operational-insights.export');
+    Route::get('/automation/operational-insights', [OperationalInsightsController::class, 'index'])->middleware('can:reports.view')->name('operational-insights.index');
+    Route::get('/automation/operational-insights/export', [OperationalInsightsController::class, 'export'])->middleware('can:reports.export')->name('operational-insights.export');
 
     // Phases 48-50: Automation Control & Governance
-    Route::get('/automation/governance/control-center', [\App\Http\Controllers\AutomationGovernanceController::class, 'index'])->middleware('can:reports.view')->name('governance.control-center');
-    Route::patch('/automation/control-center/alerts/{event}/assign', [\App\Http\Controllers\AutomationGovernanceController::class, 'assignEvent'])->middleware('can:purchases.edit')->name('governance.alerts.assign');
-    Route::patch('/automation/control-center/alerts/{event}/resolve', [\App\Http\Controllers\AutomationGovernanceController::class, 'resolveEvent'])->middleware('can:purchases.edit')->name('governance.alerts.resolve');
-    Route::post('/automation/control-center/approval-sla', [\App\Http\Controllers\AutomationGovernanceController::class, 'saveSlaPolicy'])->middleware('can:settings.manage')->name('governance.approval-sla.save');
+    Route::get('/automation/governance/control-center', [AutomationGovernanceController::class, 'index'])->middleware('can:reports.view')->name('governance.control-center');
+    Route::patch('/automation/control-center/alerts/{event}/assign', [AutomationGovernanceController::class, 'assignEvent'])->middleware('can:purchases.edit')->name('governance.alerts.assign');
+    Route::patch('/automation/control-center/alerts/{event}/resolve', [AutomationGovernanceController::class, 'resolveEvent'])->middleware('can:purchases.edit')->name('governance.alerts.resolve');
+    Route::post('/automation/control-center/approval-sla', [AutomationGovernanceController::class, 'saveSlaPolicy'])->middleware('can:settings.manage')->name('governance.approval-sla.save');
 
     // Phases 42-44: Executive Intelligence & Internal Automation
-    Route::get('/executive/intelligence', [\App\Http\Controllers\ExecutiveIntelligenceController::class, 'index'])->middleware('can:purchases.view')->name('executive.intelligence.index');
-    Route::get('/executive/intelligence/export', [\App\Http\Controllers\ExecutiveIntelligenceController::class, 'export'])->middleware('can:purchases.view')->name('executive.intelligence.export');
-    Route::post('/executive/intelligence/rules', [\App\Http\Controllers\ExecutiveIntelligenceController::class, 'saveRule'])->middleware('can:purchases.edit')->name('executive.intelligence.rules.save');
-    Route::post('/executive/intelligence/evaluate', [\App\Http\Controllers\ExecutiveIntelligenceController::class, 'evaluate'])->middleware('can:purchases.edit')->name('executive.intelligence.evaluate');
-    Route::patch('/executive/intelligence/events/{event}/resolve', [\App\Http\Controllers\ExecutiveIntelligenceController::class, 'resolveEvent'])->middleware('can:purchases.edit')->name('executive.intelligence.events.resolve');
+    Route::get('/executive/intelligence', [ExecutiveIntelligenceController::class, 'index'])->middleware('can:purchases.view')->name('executive.intelligence.index');
+    Route::get('/executive/intelligence/export', [ExecutiveIntelligenceController::class, 'export'])->middleware('can:purchases.view')->name('executive.intelligence.export');
+    Route::post('/executive/intelligence/rules', [ExecutiveIntelligenceController::class, 'saveRule'])->middleware('can:purchases.edit')->name('executive.intelligence.rules.save');
+    Route::post('/executive/intelligence/evaluate', [ExecutiveIntelligenceController::class, 'evaluate'])->middleware('can:purchases.edit')->name('executive.intelligence.evaluate');
+    Route::patch('/executive/intelligence/events/{event}/resolve', [ExecutiveIntelligenceController::class, 'resolveEvent'])->middleware('can:purchases.edit')->name('executive.intelligence.events.resolve');
 
     // Purchases
     Route::get('/purchases', [PurchaseController::class, 'index'])->middleware('can:purchases.view')->name('purchases.index');
     Route::get('/purchases/create', [PurchaseController::class, 'create'])->middleware('can:purchases.create')->name('purchases.create');
     Route::post('/purchases', [PurchaseController::class, 'store'])->middleware('can:purchases.create')->name('purchases.store');
     // Specific purchase feature routes must precede the dynamic {purchase} routes.
-    Route::get('/purchases/cost-intelligence', [\App\Http\Controllers\PurchaseCostIntelligenceController::class, 'index'])
+    Route::get('/purchases/cost-intelligence', [PurchaseCostIntelligenceController::class, 'index'])
         ->middleware('can:purchases.view')
         ->name('purchase-cost-intelligence.index');
 
-    Route::get('/purchases/cost-intelligence/export', [\App\Http\Controllers\PurchaseCostIntelligenceController::class, 'export'])
+    Route::get('/purchases/cost-intelligence/export', [PurchaseCostIntelligenceController::class, 'export'])
         ->middleware('can:purchases.view')
         ->name('purchase-cost-intelligence.export');
 
     // Phase 25: Purchase Receiving Quality Control
-    Route::get('/purchases/quality-control', [\App\Http\Controllers\PurchaseQualityInspectionController::class, 'index'])
+    Route::get('/purchases/quality-control', [PurchaseQualityInspectionController::class, 'index'])
         ->middleware('can:purchases.view')->name('purchase-quality.index');
-    Route::get('/purchases/quality-control/create', [\App\Http\Controllers\PurchaseQualityInspectionController::class, 'create'])
+    Route::get('/purchases/quality-control/create', [PurchaseQualityInspectionController::class, 'create'])
         ->middleware('can:purchases.create')->name('purchase-quality.create');
-    Route::post('/purchases/quality-control', [\App\Http\Controllers\PurchaseQualityInspectionController::class, 'store'])
+    Route::post('/purchases/quality-control', [PurchaseQualityInspectionController::class, 'store'])
         ->middleware('can:purchases.create')->name('purchase-quality.store');
-    Route::patch('/purchases/quality-control/{inspection}', [\App\Http\Controllers\PurchaseQualityInspectionController::class, 'update'])
+    Route::patch('/purchases/quality-control/{inspection}', [PurchaseQualityInspectionController::class, 'update'])
         ->middleware('can:purchases.edit')->name('purchase-quality.update');
 
     // Phase 24: Purchase Budgeting & Planning
-    Route::get('/purchases/budgets', [\App\Http\Controllers\PurchaseBudgetController::class, 'index'])
+    Route::get('/purchases/budgets', [PurchaseBudgetController::class, 'index'])
         ->middleware('can:purchases.view')
         ->name('purchase-budgets.index');
 
-    Route::post('/purchases/budgets', [\App\Http\Controllers\PurchaseBudgetController::class, 'store'])
+    Route::post('/purchases/budgets', [PurchaseBudgetController::class, 'store'])
         ->middleware('can:purchases.create')
         ->name('purchase-budgets.store');
 
-    Route::get('/purchases/budgets/export', [\App\Http\Controllers\PurchaseBudgetController::class, 'export'])
+    Route::get('/purchases/budgets/export', [PurchaseBudgetController::class, 'export'])
         ->middleware('can:purchases.view')
         ->name('purchase-budgets.export');
     // Phase 26: Supplier Returns & Replacement Management
-    Route::get('/purchases/supplier-returns', [\App\Http\Controllers\SupplierReturnController::class, 'index'])
+    Route::get('/purchases/supplier-returns', [SupplierReturnController::class, 'index'])
         ->middleware('can:purchases.view')->name('supplier-returns.index');
-    Route::get('/purchases/supplier-returns/create', [\App\Http\Controllers\SupplierReturnController::class, 'create'])
+    Route::get('/purchases/supplier-returns/create', [SupplierReturnController::class, 'create'])
         ->middleware('can:purchases.create')->name('supplier-returns.create');
-    Route::post('/purchases/supplier-returns', [\App\Http\Controllers\SupplierReturnController::class, 'store'])
+    Route::post('/purchases/supplier-returns', [SupplierReturnController::class, 'store'])
         ->middleware('can:purchases.create')->name('supplier-returns.store');
-    Route::patch('/purchases/supplier-returns/{supplierReturn}/status', [\App\Http\Controllers\SupplierReturnController::class, 'updateStatus'])
+    Route::patch('/purchases/supplier-returns/{supplierReturn}/status', [SupplierReturnController::class, 'updateStatus'])
         ->middleware('can:purchases.edit')->name('supplier-returns.status');
 
     // Phase 27: Supplier Return Settlement & Replacement Receipt Tracking
-    Route::get('/purchases/supplier-return-settlements', [\App\Http\Controllers\SupplierReturnSettlementController::class, 'index'])
+    Route::get('/purchases/supplier-return-settlements', [SupplierReturnSettlementController::class, 'index'])
         ->middleware('can:purchases.view')->name('supplier-return-settlements.index');
-    Route::post('/purchases/supplier-return-settlements', [\App\Http\Controllers\SupplierReturnSettlementController::class, 'store'])
+    Route::post('/purchases/supplier-return-settlements', [SupplierReturnSettlementController::class, 'store'])
         ->middleware('can:purchases.create')->name('supplier-return-settlements.store');
-    Route::patch('/purchases/supplier-return-settlements/{settlement}/confirm', [\App\Http\Controllers\SupplierReturnSettlementController::class, 'confirm'])
+    Route::patch('/purchases/supplier-return-settlements/{settlement}/confirm', [SupplierReturnSettlementController::class, 'confirm'])
         ->middleware('can:purchases.edit')->name('supplier-return-settlements.confirm');
-    Route::patch('/purchases/supplier-return-settlements/{settlement}/cancel', [\App\Http\Controllers\SupplierReturnSettlementController::class, 'cancel'])
+    Route::patch('/purchases/supplier-return-settlements/{settlement}/cancel', [SupplierReturnSettlementController::class, 'cancel'])
         ->middleware('can:purchases.edit')->name('supplier-return-settlements.cancel');
 
     // Phase 28: Supplier Invoice Matching & Purchase Reconciliation
-    Route::get('/purchases/invoice-matching', [\App\Http\Controllers\PurchaseInvoiceMatchController::class, 'index'])
+    Route::get('/purchases/invoice-matching', [PurchaseInvoiceMatchController::class, 'index'])
         ->middleware('can:purchases.view')->name('purchase-invoice-matching.index');
-    Route::get('/purchases/invoice-matching/create', [\App\Http\Controllers\PurchaseInvoiceMatchController::class, 'create'])
+    Route::get('/purchases/invoice-matching/create', [PurchaseInvoiceMatchController::class, 'create'])
         ->middleware('can:purchases.create')->name('purchase-invoice-matching.create');
-    Route::post('/purchases/invoice-matching', [\App\Http\Controllers\PurchaseInvoiceMatchController::class, 'store'])
+    Route::post('/purchases/invoice-matching', [PurchaseInvoiceMatchController::class, 'store'])
         ->middleware('can:purchases.create')->name('purchase-invoice-matching.store');
-    Route::patch('/purchases/invoice-matching/{match}/review', [\App\Http\Controllers\PurchaseInvoiceMatchController::class, 'review'])
+    Route::patch('/purchases/invoice-matching/{match}/review', [PurchaseInvoiceMatchController::class, 'review'])
         ->middleware('can:purchases.edit')->name('purchase-invoice-matching.review');
 
     // Phase 29: Invoice line-level quantity and unit-cost reconciliation
-    Route::get('/purchases/invoice-line-checks', [\App\Http\Controllers\PurchaseInvoiceLineCheckController::class, 'index'])
+    Route::get('/purchases/invoice-line-checks', [PurchaseInvoiceLineCheckController::class, 'index'])
         ->middleware('can:purchases.view')->name('purchase-invoice-line-checks.index');
-    Route::post('/purchases/invoice-matching/{match}/line-checks', [\App\Http\Controllers\PurchaseInvoiceLineCheckController::class, 'store'])
+    Route::post('/purchases/invoice-matching/{match}/line-checks', [PurchaseInvoiceLineCheckController::class, 'store'])
         ->middleware('can:purchases.create')->name('purchase-invoice-line-checks.store');
 
     // Phases 30–32: supplier invoice documents, GST checks and processing review
-    Route::get('/purchases/invoice-documents', [\App\Http\Controllers\PurchaseInvoiceDocumentController::class, 'index'])
+    Route::get('/purchases/invoice-documents', [PurchaseInvoiceDocumentController::class, 'index'])
         ->middleware('can:purchases.view')->name('purchase-invoice-documents.index');
-    Route::post('/purchases/invoice-matching/{match}/document', [\App\Http\Controllers\PurchaseInvoiceDocumentController::class, 'upload'])
+    Route::post('/purchases/invoice-matching/{match}/document', [PurchaseInvoiceDocumentController::class, 'upload'])
         ->middleware('can:purchases.create')->name('purchase-invoice-documents.upload');
-    Route::get('/purchases/invoice-matching/{match}/document', [\App\Http\Controllers\PurchaseInvoiceDocumentController::class, 'download'])
+    Route::get('/purchases/invoice-matching/{match}/document', [PurchaseInvoiceDocumentController::class, 'download'])
         ->middleware('can:purchases.view')->name('purchase-invoice-documents.download');
-    Route::post('/purchases/invoice-matching/{match}/gst-validation', [\App\Http\Controllers\PurchaseInvoiceDocumentController::class, 'validateGst'])
+    Route::post('/purchases/invoice-matching/{match}/gst-validation', [PurchaseInvoiceDocumentController::class, 'validateGst'])
         ->middleware('can:purchases.edit')->name('purchase-invoice-documents.gst-validation');
 
     // Phases 33–35: manual supplier payment, credit note and statement workflows
-    Route::get('/purchases/supplier-payments', [\App\Http\Controllers\SupplierPaymentController::class, 'index'])
+    Route::get('/purchases/supplier-payments', [SupplierPaymentController::class, 'index'])
         ->middleware('can:purchases.view')->name('supplier-invoice-payments.index');
-    Route::post('/purchases/invoice-matching/{match}/payments', [\App\Http\Controllers\SupplierPaymentController::class, 'store'])
+    Route::post('/purchases/invoice-matching/{match}/payments', [SupplierPaymentController::class, 'store'])
         ->middleware('can:purchases.create')->name('supplier-payments.store');
 
-    Route::get('/purchases/supplier-credit-notes', [\App\Http\Controllers\SupplierCreditNoteController::class, 'index'])
+    Route::get('/purchases/supplier-credit-notes', [SupplierCreditNoteController::class, 'index'])
         ->middleware('can:purchases.view')->name('supplier-credit-notes.index');
-    Route::post('/purchases/supplier-credit-notes', [\App\Http\Controllers\SupplierCreditNoteController::class, 'store'])
+    Route::post('/purchases/supplier-credit-notes', [SupplierCreditNoteController::class, 'store'])
         ->middleware('can:purchases.create')->name('supplier-credit-notes.store');
-    Route::post('/purchases/supplier-credit-notes/{credit}/apply', [\App\Http\Controllers\SupplierCreditNoteController::class, 'apply'])
+    Route::post('/purchases/supplier-credit-notes/{credit}/apply', [SupplierCreditNoteController::class, 'apply'])
         ->middleware('can:purchases.edit')->name('supplier-credit-notes.apply');
 
-    Route::get('/purchases/supplier-statements', [\App\Http\Controllers\SupplierAccountStatementController::class, 'index'])
+    Route::get('/purchases/supplier-statements', [SupplierAccountStatementController::class, 'index'])
         ->middleware('can:purchases.view')->name('supplier-statements.index');
 
     // Phases 36–38: internal procurement requisitions, supplier quotes and award review
-    Route::get('/purchases/procurement', [\App\Http\Controllers\ProcurementAutomationController::class, 'index'])
+    Route::get('/purchases/procurement', [ProcurementAutomationController::class, 'index'])
         ->middleware('can:purchases.view')->name('procurement.index');
-    Route::post('/purchases/procurement/requisitions', [\App\Http\Controllers\ProcurementAutomationController::class, 'storeRequisition'])
+    Route::post('/purchases/procurement/requisitions', [ProcurementAutomationController::class, 'storeRequisition'])
         ->middleware('can:purchases.create')->name('procurement.requisitions.store');
-    Route::patch('/purchases/procurement/requisitions/{requisition}/review', [\App\Http\Controllers\ProcurementAutomationController::class, 'approveRequisition'])
+    Route::patch('/purchases/procurement/requisitions/{requisition}/review', [ProcurementAutomationController::class, 'approveRequisition'])
         ->middleware('can:purchases.edit')->name('procurement.requisitions.review');
-    Route::post('/purchases/procurement/requisitions/{requisition}/quotes', [\App\Http\Controllers\ProcurementAutomationController::class, 'storeQuote'])
+    Route::post('/purchases/procurement/requisitions/{requisition}/quotes', [ProcurementAutomationController::class, 'storeQuote'])
         ->middleware('can:purchases.create')->name('procurement.quotes.store');
-    Route::patch('/purchases/procurement/requisitions/{requisition}/quotes/{quote}/award', [\App\Http\Controllers\ProcurementAutomationController::class, 'awardQuote'])
+    Route::patch('/purchases/procurement/requisitions/{requisition}/quotes/{quote}/award', [ProcurementAutomationController::class, 'awardQuote'])
         ->middleware('can:purchases.edit')->name('procurement.quotes.award');
 
     // Phases 39–41: warehouse locations, internal transfers and physical stock counts
-    Route::get('/warehouse/intelligence', [\App\Http\Controllers\WarehouseIntelligenceController::class, 'index'])
+    Route::get('/warehouse/intelligence', [WarehouseIntelligenceController::class, 'index'])
         ->middleware('can:products.view')->name('warehouse.intelligence.index');
-    Route::post('/warehouse/locations', [\App\Http\Controllers\WarehouseIntelligenceController::class, 'storeLocation'])
+    Route::post('/warehouse/locations', [WarehouseIntelligenceController::class, 'storeLocation'])
         ->middleware('can:products.edit')->name('warehouse.locations.store');
-    Route::patch('/warehouse/locations/{location}', [\App\Http\Controllers\WarehouseIntelligenceController::class, 'updateLocation'])
+    Route::patch('/warehouse/locations/{location}', [WarehouseIntelligenceController::class, 'updateLocation'])
         ->middleware('can:products.edit')->name('warehouse.locations.update');
-    Route::post('/warehouse/locations/{location}/balances', [\App\Http\Controllers\WarehouseIntelligenceController::class, 'storeBalance'])
+    Route::post('/warehouse/locations/{location}/balances', [WarehouseIntelligenceController::class, 'storeBalance'])
         ->middleware('can:products.edit')->name('warehouse.balances.store');
-    Route::post('/warehouse/transfers', [\App\Http\Controllers\WarehouseIntelligenceController::class, 'storeTransfer'])
+    Route::post('/warehouse/transfers', [WarehouseIntelligenceController::class, 'storeTransfer'])
         ->middleware('can:products.edit')->name('warehouse.transfers.store');
-    Route::patch('/warehouse/transfers/{transfer}/dispatch', [\App\Http\Controllers\WarehouseIntelligenceController::class, 'dispatchTransfer'])
+    Route::patch('/warehouse/transfers/{transfer}/dispatch', [WarehouseIntelligenceController::class, 'dispatchTransfer'])
         ->middleware('can:products.edit')->name('warehouse.transfers.dispatch');
-    Route::patch('/warehouse/transfers/{transfer}/receive', [\App\Http\Controllers\WarehouseIntelligenceController::class, 'receiveTransfer'])
+    Route::patch('/warehouse/transfers/{transfer}/receive', [WarehouseIntelligenceController::class, 'receiveTransfer'])
         ->middleware('can:products.edit')->name('warehouse.transfers.receive');
-    Route::post('/warehouse/stock-counts', [\App\Http\Controllers\WarehouseIntelligenceController::class, 'storeCount'])
+    Route::post('/warehouse/stock-counts', [WarehouseIntelligenceController::class, 'storeCount'])
         ->middleware('can:products.edit')->name('warehouse.stock-counts.store');
-    Route::patch('/warehouse/stock-counts/{count}/finalize', [\App\Http\Controllers\WarehouseIntelligenceController::class, 'finalizeCount'])
+    Route::patch('/warehouse/stock-counts/{count}/finalize', [WarehouseIntelligenceController::class, 'finalizeCount'])
         ->middleware('can:products.edit')->name('warehouse.stock-counts.finalize');
 
     Route::get('/purchases/{purchase}', [PurchaseController::class, 'show'])->whereNumber('purchase')->middleware('can:purchases.view')->name('purchases.show');
@@ -233,8 +330,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/purchases/{purchase}/payment', [PurchaseController::class, 'payment'])->whereNumber('purchase')->middleware('can:purchases.edit')->name('purchases.payment');
 
     // Phase 45: Smart reorder recommendations -> internal procurement requisition only
-    Route::get('/reorders/smart', [\App\Http\Controllers\SmartReorderController::class, 'index'])->middleware('can:purchases.view')->name('reorders.smart.index');
-    Route::post('/reorders/smart/generate', [\App\Http\Controllers\SmartReorderController::class, 'generate'])->middleware('can:purchases.create')->name('reorders.smart.generate');
+    Route::get('/reorders/smart', [SmartReorderController::class, 'index'])->middleware('can:purchases.view')->name('reorders.smart.index');
+    Route::post('/reorders/smart/generate', [SmartReorderController::class, 'generate'])->middleware('can:purchases.create')->name('reorders.smart.generate');
 
     // Phase 7: reorder planning
     Route::get('/reorders', [ReorderController::class, 'index'])->middleware('can:purchases.view')->name('reorders.index');
@@ -251,25 +348,25 @@ Route::middleware('auth')->group(function () {
     Route::post('/inventory-forecast/snapshot', [InventoryForecastController::class, 'snapshot'])->middleware('can:purchases.edit')->name('inventory-forecast.snapshot');
 
     // Inventory operations dashboards (Batches 18-26)
-    Route::get('/inventory/corrections', [\App\Http\Controllers\InventoryCorrectionController::class, 'index'])->middleware('can:inventory.view')->name('inventory.corrections');
-    Route::post('/inventory/{product}/corrections', [\App\Http\Controllers\InventoryCorrectionController::class, 'store'])->middleware('can:inventory.manage')->name('inventory.corrections.store');
-    Route::post('/inventory/corrections/{correction}/approve', [\App\Http\Controllers\InventoryCorrectionController::class, 'approve'])->middleware('can:inventory.manage')->name('inventory.corrections.approve');
-    Route::post('/inventory/corrections/{correction}/reject', [\App\Http\Controllers\InventoryCorrectionController::class, 'reject'])->middleware('can:inventory.manage')->name('inventory.corrections.reject');
-    Route::get('/inventory/reconciliation-report', [\App\Http\Controllers\InventoryReconciliationReportController::class, 'index'])->middleware('can:inventory.view')->name('inventory.reconciliation-report');
-    Route::get('/inventory/reconciliation-report/export', [\App\Http\Controllers\InventoryReconciliationReportController::class, 'export'])->middleware('can:inventory.view')->name('inventory.reconciliation-report.export');
-    Route::get('/inventory/automation', [\App\Http\Controllers\InventoryAutomationController::class, 'index'])->middleware('can:inventory.view')->name('inventory.automation');
-    Route::get('/inventory/automation/export', [\App\Http\Controllers\InventoryAutomationController::class, 'export'])->middleware('can:inventory.view')->name('inventory.automation.export');
-    Route::get('/inventory/ledger', [\App\Http\Controllers\InventoryOperationsController::class, 'ledger'])->middleware('can:inventory.view')->name('inventory.ledger');
-    Route::get('/inventory/ledger/export', [\App\Http\Controllers\InventoryOperationsController::class, 'ledgerExport'])->middleware('can:inventory.view')->name('inventory.ledger.export');
-    Route::get('/inventory/inactivity', [\App\Http\Controllers\InventoryOperationsController::class, 'inactivity'])->middleware('can:inventory.view')->name('inventory.inactivity');
-    Route::get('/inventory/reservations/audit', [\App\Http\Controllers\InventoryOperationsController::class, 'reservations'])->middleware('can:inventory.view')->name('inventory.reservations.audit');
-    Route::get('/inventory/reservations/audit/export', [\App\Http\Controllers\InventoryOperationsController::class, 'reservationExport'])->middleware('can:inventory.view')->name('inventory.reservations.export');
-    Route::get('/inventory/health', [\App\Http\Controllers\InventoryHealthController::class, 'index'])->middleware('can:inventory.view')->name('inventory.health');
-    Route::get('/inventory/health/export', [\App\Http\Controllers\InventoryHealthController::class, 'export'])->middleware('can:inventory.view')->name('inventory.health.export');
-    Route::get('/inventory/valuation', [\App\Http\Controllers\InventoryValuationController::class, 'index'])->middleware('can:inventory.view')->name('inventory.valuation');
-    Route::get('/inventory/valuation/export', [\App\Http\Controllers\InventoryValuationController::class, 'export'])->middleware('can:inventory.view')->name('inventory.valuation.export');
-    Route::get('/inventory/movement-costs', [\App\Http\Controllers\InventoryMovementCostController::class, 'index'])->middleware('can:inventory.view')->name('inventory.movement-costs');
-    Route::get('/inventory/movement-costs/export', [\App\Http\Controllers\InventoryMovementCostController::class, 'export'])->middleware('can:inventory.view')->name('inventory.movement-costs.export');
+    Route::get('/inventory/corrections', [InventoryCorrectionController::class, 'index'])->middleware('can:inventory.view')->name('inventory.corrections');
+    Route::post('/inventory/{product}/corrections', [InventoryCorrectionController::class, 'store'])->middleware('can:inventory.manage')->name('inventory.corrections.store');
+    Route::post('/inventory/corrections/{correction}/approve', [InventoryCorrectionController::class, 'approve'])->middleware('can:inventory.manage')->name('inventory.corrections.approve');
+    Route::post('/inventory/corrections/{correction}/reject', [InventoryCorrectionController::class, 'reject'])->middleware('can:inventory.manage')->name('inventory.corrections.reject');
+    Route::get('/inventory/reconciliation-report', [InventoryReconciliationReportController::class, 'index'])->middleware('can:inventory.view')->name('inventory.reconciliation-report');
+    Route::get('/inventory/reconciliation-report/export', [InventoryReconciliationReportController::class, 'export'])->middleware('can:inventory.view')->name('inventory.reconciliation-report.export');
+    Route::get('/inventory/automation', [InventoryAutomationController::class, 'index'])->middleware('can:inventory.view')->name('inventory.automation');
+    Route::get('/inventory/automation/export', [InventoryAutomationController::class, 'export'])->middleware('can:inventory.view')->name('inventory.automation.export');
+    Route::get('/inventory/ledger', [InventoryOperationsController::class, 'ledger'])->middleware('can:inventory.view')->name('inventory.ledger');
+    Route::get('/inventory/ledger/export', [InventoryOperationsController::class, 'ledgerExport'])->middleware('can:inventory.view')->name('inventory.ledger.export');
+    Route::get('/inventory/inactivity', [InventoryOperationsController::class, 'inactivity'])->middleware('can:inventory.view')->name('inventory.inactivity');
+    Route::get('/inventory/reservations/audit', [InventoryOperationsController::class, 'reservations'])->middleware('can:inventory.view')->name('inventory.reservations.audit');
+    Route::get('/inventory/reservations/audit/export', [InventoryOperationsController::class, 'reservationExport'])->middleware('can:inventory.view')->name('inventory.reservations.export');
+    Route::get('/inventory/health', [InventoryHealthController::class, 'index'])->middleware('can:inventory.view')->name('inventory.health');
+    Route::get('/inventory/health/export', [InventoryHealthController::class, 'export'])->middleware('can:inventory.view')->name('inventory.health.export');
+    Route::get('/inventory/valuation', [InventoryValuationController::class, 'index'])->middleware('can:inventory.view')->name('inventory.valuation');
+    Route::get('/inventory/valuation/export', [InventoryValuationController::class, 'export'])->middleware('can:inventory.view')->name('inventory.valuation.export');
+    Route::get('/inventory/movement-costs', [InventoryMovementCostController::class, 'index'])->middleware('can:inventory.view')->name('inventory.movement-costs');
+    Route::get('/inventory/movement-costs/export', [InventoryMovementCostController::class, 'export'])->middleware('can:inventory.view')->name('inventory.movement-costs.export');
 
     // Inventory core routes (dynamic product route stays after static routes)
     Route::get('/inventory', [InventoryController::class, 'index'])->middleware('can:inventory.view')->name('inventory.index');
@@ -305,9 +402,9 @@ Route::middleware('auth')->group(function () {
     Route::put('/settings', [SettingsController::class, 'update'])->middleware('can:settings.manage')->name('settings.update');
 
     // Order and return operations monitors (Batch 27-29)
-    Route::get('/orders/operations/sla', [\App\Http\Controllers\OrderOperationsController::class, 'sla'])->middleware('can:orders.view')->name('orders.operations.sla');
-    Route::get('/orders/operations/fulfillment-exceptions', [\App\Http\Controllers\OrderOperationsController::class, 'fulfillmentExceptions'])->middleware('can:orders.view')->name('orders.operations.fulfillment-exceptions');
-    Route::get('/returns/operations/intake-monitor', [\App\Http\Controllers\OrderOperationsController::class, 'returnIntake'])->middleware('can:returns.manage')->name('returns.operations.intake-monitor');
+    Route::get('/orders/operations/sla', [OrderOperationsController::class, 'sla'])->middleware('can:orders.view')->name('orders.operations.sla');
+    Route::get('/orders/operations/fulfillment-exceptions', [OrderOperationsController::class, 'fulfillmentExceptions'])->middleware('can:orders.view')->name('orders.operations.fulfillment-exceptions');
+    Route::get('/returns/operations/intake-monitor', [OrderOperationsController::class, 'returnIntake'])->middleware('can:returns.manage')->name('returns.operations.intake-monitor');
 
     // Orders, refunds
     Route::get('/orders', [OrderController::class, 'index'])->middleware('can:orders.view')->name('orders.index');
@@ -362,11 +459,11 @@ Route::middleware('auth')->group(function () {
         ->name('approvals.cancel');
 
     // Phase 46: configurable sequential approval policies (new requests only)
-    Route::get('/approvals/workflows', [\App\Http\Controllers\ApprovalWorkflowController::class, 'index'])
+    Route::get('/approvals/workflows', [ApprovalWorkflowController::class, 'index'])
         ->middleware('can:settings.manage')->name('approval-workflows.index');
-    Route::post('/approvals/workflows', [\App\Http\Controllers\ApprovalWorkflowController::class, 'store'])
+    Route::post('/approvals/workflows', [ApprovalWorkflowController::class, 'store'])
         ->middleware('can:settings.manage')->name('approval-workflows.store');
-    Route::delete('/approvals/workflows/{policy}', [\App\Http\Controllers\ApprovalWorkflowController::class, 'destroy'])
+    Route::delete('/approvals/workflows/{policy}', [ApprovalWorkflowController::class, 'destroy'])
         ->middleware('can:settings.manage')->name('approval-workflows.destroy');
 
     // Marketplace connector diagnostics (credentials are configured in .env, never stored in the UI).
@@ -430,11 +527,11 @@ Route::middleware('auth')->group(function () {
                 '/{evidence}',
                 [MarketplaceWriteEvidenceController::class, 'show']
             )->whereNumber('evidence')
-            ->name('show');
+                ->name('show');
         });
 
     // Import engine (CSV / Excel). Same permission as editing orders.
-    Route::middleware(\App\Http\Middleware\CanImport::class)->prefix('imports')->name('imports.')->group(function () {
+    Route::middleware(CanImport::class)->prefix('imports')->name('imports.')->group(function () {
         Route::get('/', [ImportController::class, 'index'])->name('index');
         Route::get('/create', [ImportController::class, 'create'])->name('create');
         Route::post('/', [ImportController::class, 'store'])->name('store');
@@ -489,15 +586,15 @@ Route::middleware('auth')->group(function () {
         ->middleware('can:finance.view')
         ->name('profit.export');
 
-    Route::get('/finance/cash-planning', [\App\Http\Controllers\CashPlanningController::class, 'index'])
+    Route::get('/finance/cash-planning', [CashPlanningController::class, 'index'])
         ->middleware('can:finance.view')
         ->name('cash-planning.index');
 
-    Route::get('/finance/supplier-payments', [\App\Http\Controllers\SupplierPaymentPlanningController::class, 'index'])
+    Route::get('/finance/supplier-payments', [SupplierPaymentPlanningController::class, 'index'])
         ->middleware('can:finance.view')
         ->name('supplier-payments.index');
 
-    Route::get('/finance/supplier-payments/export', [\App\Http\Controllers\SupplierPaymentPlanningController::class, 'export'])
+    Route::get('/finance/supplier-payments/export', [SupplierPaymentPlanningController::class, 'export'])
         ->middleware('can:finance.view')
         ->name('supplier-payments.export');
 
@@ -507,8 +604,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/insights', [AdsController::class, 'insights'])->name('insights');
         Route::get('/{level}', [AdsController::class, 'targets'])->where('level', 'keywords|terms')->name('targets');
     });
-
-
 
     // Claims (SAFE-T, reimbursement, disputes)
     Route::get('/claims', [ClaimController::class, 'index'])->middleware('can:claims.view')->name('claims.index');
@@ -668,52 +763,52 @@ Route::middleware('auth')->group(function () {
     });
     Route::get('/reports/{key}/export/{format}', [ReportController::class, 'export'])->middleware('can:reports.export')->where(['key' => '[a-z_]+', 'format' => 'csv|xlsx'])->name('reports.export');
 
-    Route::get('/supplier-relationships', [\App\Http\Controllers\SupplierRelationshipController::class, 'index'])
+    Route::get('/supplier-relationships', [SupplierRelationshipController::class, 'index'])
         ->middleware('can:purchases.view')
         ->name('supplier-relationships.index');
 
-    Route::post('/supplier-relationships', [\App\Http\Controllers\SupplierRelationshipController::class, 'store'])
+    Route::post('/supplier-relationships', [SupplierRelationshipController::class, 'store'])
         ->middleware('can:purchases.create')
         ->name('supplier-relationships.store');
 
-    Route::patch('/supplier-relationships/{interaction}/status', [\App\Http\Controllers\SupplierRelationshipController::class, 'updateStatus'])
+    Route::patch('/supplier-relationships/{interaction}/status', [SupplierRelationshipController::class, 'updateStatus'])
         ->middleware('can:purchases.edit')
         ->name('supplier-relationships.status');
 
     // Phase 19: Supplier Document Vault & Compliance Management
 
-    Route::get('/supplier-documents', [\App\Http\Controllers\SupplierDocumentController::class, 'index'])
+    Route::get('/supplier-documents', [SupplierDocumentController::class, 'index'])
         ->middleware('can:purchases.view')
         ->name('supplier-documents.index');
 
-    Route::post('/supplier-documents', [\App\Http\Controllers\SupplierDocumentController::class, 'store'])
+    Route::post('/supplier-documents', [SupplierDocumentController::class, 'store'])
         ->middleware('can:purchases.create')
         ->name('supplier-documents.store');
 
-    Route::get('/supplier-documents/{document}/download', [\App\Http\Controllers\SupplierDocumentController::class, 'download'])
+    Route::get('/supplier-documents/{document}/download', [SupplierDocumentController::class, 'download'])
         ->middleware('can:purchases.view')
         ->name('supplier-documents.download');
 
-    Route::patch('/supplier-documents/{document}/review', [\App\Http\Controllers\SupplierDocumentController::class, 'review'])
+    Route::patch('/supplier-documents/{document}/review', [SupplierDocumentController::class, 'review'])
         ->middleware('can:purchases.edit')
         ->name('supplier-documents.review');
 
     // Phase 20: Supplier Compliance Management
-    Route::get('/supplier-compliance', [\App\Http\Controllers\SupplierComplianceController::class, 'index'])
+    Route::get('/supplier-compliance', [SupplierComplianceController::class, 'index'])
         ->middleware('can:purchases.view')
         ->name('supplier-compliance.index');
 
     // Phase 21: Supplier Risk Management
-    Route::get('/supplier-risk', [\App\Http\Controllers\SupplierRiskController::class, 'index'])
+    Route::get('/supplier-risk', [SupplierRiskController::class, 'index'])
         ->middleware('can:purchases.view')
         ->name('supplier-risk.index');
 
-    Route::get('/supplier-risk/export', [\App\Http\Controllers\SupplierRiskController::class, 'export'])
+    Route::get('/supplier-risk/export', [SupplierRiskController::class, 'export'])
         ->middleware('can:purchases.view')
         ->name('supplier-risk.export');
 
     // Phase 22: Supplier Sourcing Management
-    Route::get('/supplier-sourcing', [\App\Http\Controllers\SupplierSourcingController::class, 'index'])
+    Route::get('/supplier-sourcing', [SupplierSourcingController::class, 'index'])
         ->middleware('can:purchases.view')
         ->name('supplier-sourcing.index');
 
@@ -726,65 +821,65 @@ Route::middleware('auth')->group(function () {
     Route::get('/returns/operations/disposition-reconciliation', [OrderOperationsInsightsController::class, 'returnDisposition'])
         ->middleware('can:returns.view')->name('returns.operations.disposition-reconciliation');
 
-        // Add these routes inside the existing authenticated route group in routes/web.php.
-        // Place all three before dynamic routes such as /orders/{order} and /claims/{claim}.
-        Route::get('/orders/operations/refund-reconciliation', [\App\Http\Controllers\CommercialReconciliationController::class, 'refunds'])
-            ->middleware('can:orders.view')->name('orders.operations.refund-reconciliation');
-        Route::get('/claims/operations/recovery-review', [\App\Http\Controllers\CommercialReconciliationController::class, 'claimRecovery'])
-            ->middleware('can:claims.view')->name('claims.operations.recovery-review');
-        Route::get('/orders/operations/settlement-coverage', [\App\Http\Controllers\CommercialReconciliationController::class, 'settlementCoverage'])
-            ->middleware('can:orders.view')->name('orders.operations.settlement-coverage');
+    // Add these routes inside the existing authenticated route group in routes/web.php.
+    // Place all three before dynamic routes such as /orders/{order} and /claims/{claim}.
+    Route::get('/orders/operations/refund-reconciliation', [CommercialReconciliationController::class, 'refunds'])
+        ->middleware('can:orders.view')->name('orders.operations.refund-reconciliation');
+    Route::get('/claims/operations/recovery-review', [CommercialReconciliationController::class, 'claimRecovery'])
+        ->middleware('can:claims.view')->name('claims.operations.recovery-review');
+    Route::get('/orders/operations/settlement-coverage', [CommercialReconciliationController::class, 'settlementCoverage'])
+        ->middleware('can:orders.view')->name('orders.operations.settlement-coverage');
 
-        // Add these routes inside the existing authenticated routes group.
-        // Keep these static finance routes before any dynamic /finance/{...} route.
-        Route::get('/finance/operations/profitability-exceptions', [\App\Http\Controllers\FinanceOperationsInsightController::class, 'profitabilityExceptions'])
-            ->middleware('can:finance.view')->name('finance.operations.profitability-exceptions');
-        Route::get('/finance/operations/refund-impact', [\App\Http\Controllers\FinanceOperationsInsightController::class, 'refundImpact'])
-            ->middleware('can:finance.view')->name('finance.operations.refund-impact');
-        Route::get('/finance/operations/marketplace-performance', [\App\Http\Controllers\FinanceOperationsInsightController::class, 'marketplacePerformance'])
-            ->middleware('can:finance.view')->name('finance.operations.marketplace-performance');
+    // Add these routes inside the existing authenticated routes group.
+    // Keep these static finance routes before any dynamic /finance/{...} route.
+    Route::get('/finance/operations/profitability-exceptions', [FinanceOperationsInsightController::class, 'profitabilityExceptions'])
+        ->middleware('can:finance.view')->name('finance.operations.profitability-exceptions');
+    Route::get('/finance/operations/refund-impact', [FinanceOperationsInsightController::class, 'refundImpact'])
+        ->middleware('can:finance.view')->name('finance.operations.refund-impact');
+    Route::get('/finance/operations/marketplace-performance', [FinanceOperationsInsightController::class, 'marketplacePerformance'])
+        ->middleware('can:finance.view')->name('finance.operations.marketplace-performance');
 
-        // Keep these static paths before any /finance/{...} catch-all routes.
-        Route::get('/finance/operations/risk-monitor', [\App\Http\Controllers\FinanceOperationsIntelligenceController::class, 'risk'])
-            ->middleware('can:finance.view')->name('finance.operations.risk-monitor');
-        Route::get('/finance/operations/profit-leakage', [\App\Http\Controllers\FinanceOperationsIntelligenceController::class, 'leakage'])
-            ->middleware('can:finance.view')->name('finance.operations.profit-leakage');
-        Route::get('/finance/operations/settlement-performance', [\App\Http\Controllers\FinanceOperationsIntelligenceController::class, 'settlements'])
-            ->middleware('can:finance.view')->name('finance.operations.settlement-performance');
+    // Keep these static paths before any /finance/{...} catch-all routes.
+    Route::get('/finance/operations/risk-monitor', [FinanceOperationsIntelligenceController::class, 'risk'])
+        ->middleware('can:finance.view')->name('finance.operations.risk-monitor');
+    Route::get('/finance/operations/profit-leakage', [FinanceOperationsIntelligenceController::class, 'leakage'])
+        ->middleware('can:finance.view')->name('finance.operations.profit-leakage');
+    Route::get('/finance/operations/settlement-performance', [FinanceOperationsIntelligenceController::class, 'settlements'])
+        ->middleware('can:finance.view')->name('finance.operations.settlement-performance');
 
-        // Place before any dynamic /finance/{...} route if your application has one.
-        Route::get('/finance/operations/cash-forecast', [\App\Http\Controllers\FinancialPlanningIntelligenceController::class, 'cashForecast'])
-            ->middleware('can:finance.view')->name('finance.operations.cash-forecast');
-        Route::get('/finance/operations/working-capital', [\App\Http\Controllers\FinancialPlanningIntelligenceController::class, 'workingCapital'])
-            ->middleware('can:finance.view')->name('finance.operations.working-capital');
-        Route::get('/finance/operations/financial-health', [\App\Http\Controllers\FinancialPlanningIntelligenceController::class, 'financialHealth'])
-            ->middleware('can:finance.view')->name('finance.operations.financial-health');
+    // Place before any dynamic /finance/{...} route if your application has one.
+    Route::get('/finance/operations/cash-forecast', [FinancialPlanningIntelligenceController::class, 'cashForecast'])
+        ->middleware('can:finance.view')->name('finance.operations.cash-forecast');
+    Route::get('/finance/operations/working-capital', [FinancialPlanningIntelligenceController::class, 'workingCapital'])
+        ->middleware('can:finance.view')->name('finance.operations.working-capital');
+    Route::get('/finance/operations/financial-health', [FinancialPlanningIntelligenceController::class, 'financialHealth'])
+        ->middleware('can:finance.view')->name('finance.operations.financial-health');
 
-        // Package 57 — Product Performance Scorecard
-        Route::get('/analytics/product-performance', [ProductPerformanceController::class, 'index'])
-            ->middleware('can:reports.view')->name('product-performance.index');
-        Route::get('/analytics/product-performance/export', [ProductPerformanceController::class, 'export'])
-            ->middleware('can:reports.export')->name('product-performance.export');
+    // Package 57 — Product Performance Scorecard
+    Route::get('/analytics/product-performance', [ProductPerformanceController::class, 'index'])
+        ->middleware('can:reports.view')->name('product-performance.index');
+    Route::get('/analytics/product-performance/export', [ProductPerformanceController::class, 'export'])
+        ->middleware('can:reports.export')->name('product-performance.export');
 
-        // Package 58 — Executive Decision Dashboard
-        Route::get('/executive/decision-dashboard', ExecutiveDecisionDashboardController::class)
-            ->middleware('can:reports.view')->name('executive.decision-dashboard');
+    // Package 58 — Executive Decision Dashboard
+    Route::get('/executive/decision-dashboard', ExecutiveDecisionDashboardController::class)
+        ->middleware('can:reports.view')->name('executive.decision-dashboard');
 
-        // Package 59 — Six-month KPI Target vs Actual Trends
-        Route::get('/business-performance/trends', [KpiTrendController::class, 'index'])
-            ->middleware('can:reports.view')->name('business-performance.trends');
+    // Package 59 — Six-month KPI Target vs Actual Trends
+    Route::get('/business-performance/trends', [KpiTrendController::class, 'index'])
+        ->middleware('can:reports.view')->name('business-performance.trends');
 
     // Modules not built yet
     Route::get('/m/{module}', ModuleController::class)->name('module');
 
     // Place before any catch-all/dynamic automation routes.
-    Route::get('/automation/task-queue', [\App\Http\Controllers\AutomationOperationsController::class, 'tasks'])
+    Route::get('/automation/task-queue', [AutomationOperationsController::class, 'tasks'])
         ->middleware('can:reports.view')->name('automation.tasks.index');
-    Route::post('/automation/task-queue', [\App\Http\Controllers\AutomationOperationsController::class, 'storeFollowup'])
+    Route::post('/automation/task-queue', [AutomationOperationsController::class, 'storeFollowup'])
         ->middleware('can:purchases.edit')->name('automation.tasks.store');
-    Route::get('/automation/alert-priorities', [\App\Http\Controllers\AutomationOperationsController::class, 'priorities'])
+    Route::get('/automation/alert-priorities', [AutomationOperationsController::class, 'priorities'])
         ->middleware('can:reports.view')->name('automation.alert-priorities.index');
-    Route::get('/automation/workflow-monitor', [\App\Http\Controllers\AutomationOperationsController::class, 'workflowMonitor'])
+    Route::get('/automation/workflow-monitor', [AutomationOperationsController::class, 'workflowMonitor'])
         ->middleware('can:reports.view')->name('automation.workflow-monitor.index');
 
     Route::get('/automation/tasks', [AutomationTaskController::class, 'index'])->middleware('can:reports.view')->name('automation.tasks.index');
@@ -793,29 +888,29 @@ Route::middleware('auth')->group(function () {
     Route::post('/automation/recurring-tasks', [AutomationTaskController::class, 'storeRecurring'])->middleware('can:purchases.edit')->name('automation.recurring.store');
     Route::patch('/automation/recurring-tasks/{template}/toggle', [AutomationTaskController::class, 'toggleRecurring'])->middleware('can:purchases.edit')->name('automation.recurring.toggle');
 
-    Route::get('/automation/planning/recommendations', [\App\Http\Controllers\AutomationPlanningController::class, 'recommendations'])->middleware('can:reports.view')->name('automation.planning.recommendations');
-    Route::get('/automation/planning/bottlenecks', [\App\Http\Controllers\AutomationPlanningController::class, 'bottlenecks'])->middleware('can:reports.view')->name('automation.planning.bottlenecks');
-    Route::get('/automation/planning/capacity', [\App\Http\Controllers\AutomationPlanningController::class, 'capacity'])->middleware('can:reports.view')->name('automation.planning.capacity');
-    Route::post('/automation/planning/capacity', [\App\Http\Controllers\AutomationPlanningController::class, 'saveCapacity'])->middleware('can:purchases.edit')->name('automation.planning.capacity.update');
-    Route::post('/automation/planning/task-effort', [\App\Http\Controllers\AutomationPlanningController::class, 'saveEffort'])->middleware('can:purchases.edit')->name('automation.planning.task-effort.update');
+    Route::get('/automation/planning/recommendations', [AutomationPlanningController::class, 'recommendations'])->middleware('can:reports.view')->name('automation.planning.recommendations');
+    Route::get('/automation/planning/bottlenecks', [AutomationPlanningController::class, 'bottlenecks'])->middleware('can:reports.view')->name('automation.planning.bottlenecks');
+    Route::get('/automation/planning/capacity', [AutomationPlanningController::class, 'capacity'])->middleware('can:reports.view')->name('automation.planning.capacity');
+    Route::post('/automation/planning/capacity', [AutomationPlanningController::class, 'saveCapacity'])->middleware('can:purchases.edit')->name('automation.planning.capacity.update');
+    Route::post('/automation/planning/task-effort', [AutomationPlanningController::class, 'saveEffort'])->middleware('can:purchases.edit')->name('automation.planning.task-effort.update');
 
-    Route::get('/automation/optimization/deadline-risk', [\App\Http\Controllers\AutomationOptimizationController::class, 'deadlineRisk'])->middleware('can:reports.view')->name('automation.optimization.deadline-risk');
-    Route::get('/automation/optimization/dependency-release', [\App\Http\Controllers\AutomationOptimizationController::class, 'dependencyRelease'])->middleware('can:reports.view')->name('automation.optimization.dependency-release');
-    Route::get('/automation/optimization/rebalance-simulator', [\App\Http\Controllers\AutomationOptimizationController::class, 'rebalanceSimulator'])->middleware('can:reports.view')->name('automation.optimization.rebalance-simulator');
+    Route::get('/automation/optimization/deadline-risk', [AutomationOptimizationController::class, 'deadlineRisk'])->middleware('can:reports.view')->name('automation.optimization.deadline-risk');
+    Route::get('/automation/optimization/dependency-release', [AutomationOptimizationController::class, 'dependencyRelease'])->middleware('can:reports.view')->name('automation.optimization.dependency-release');
+    Route::get('/automation/optimization/rebalance-simulator', [AutomationOptimizationController::class, 'rebalanceSimulator'])->middleware('can:reports.view')->name('automation.optimization.rebalance-simulator');
 
-    Route::get('/automation/intelligence/aging', [\App\Http\Controllers\AutomationIntelligenceController::class, 'agingAnalysis'])->middleware('can:reports.view')->name('automation.intelligence.aging');
-    Route::get('/automation/intelligence/throughput', [\App\Http\Controllers\AutomationIntelligenceController::class, 'throughputAnalysis'])->middleware('can:reports.view')->name('automation.intelligence.throughput');
-    Route::get('/automation/intelligence/dependency-impact', [\App\Http\Controllers\AutomationIntelligenceController::class, 'dependencyImpact'])->middleware('can:reports.view')->name('automation.intelligence.dependency-impact');
+    Route::get('/automation/intelligence/aging', [AutomationIntelligenceController::class, 'agingAnalysis'])->middleware('can:reports.view')->name('automation.intelligence.aging');
+    Route::get('/automation/intelligence/throughput', [AutomationIntelligenceController::class, 'throughputAnalysis'])->middleware('can:reports.view')->name('automation.intelligence.throughput');
+    Route::get('/automation/intelligence/dependency-impact', [AutomationIntelligenceController::class, 'dependencyImpact'])->middleware('can:reports.view')->name('automation.intelligence.dependency-impact');
 
-    Route::get('/automation/governance/due-date-compliance', [\App\Http\Controllers\AutomationGovernanceController::class, 'dueDateCompliance'])->middleware('can:reports.view')->name('automation.governance.due-date-compliance');
-    Route::get('/automation/governance/assignment-health', [\App\Http\Controllers\AutomationGovernanceController::class, 'assignmentHealth'])->middleware('can:reports.view')->name('automation.governance.assignment-health');
-    Route::get('/automation/governance/priority-alignment', [\App\Http\Controllers\AutomationGovernanceController::class, 'priorityAlignment'])->middleware('can:reports.view')->name('automation.governance.priority-alignment');
+    Route::get('/automation/governance/due-date-compliance', [AutomationGovernanceController::class, 'dueDateCompliance'])->middleware('can:reports.view')->name('automation.governance.due-date-compliance');
+    Route::get('/automation/governance/assignment-health', [AutomationGovernanceController::class, 'assignmentHealth'])->middleware('can:reports.view')->name('automation.governance.assignment-health');
+    Route::get('/automation/governance/priority-alignment', [AutomationGovernanceController::class, 'priorityAlignment'])->middleware('can:reports.view')->name('automation.governance.priority-alignment');
 
-    Route::get('/automation/control-center', [\App\Http\Controllers\AutomationControlCenterController::class, 'overview'])->middleware('can:reports.view')->name('automation.control-center');
-    Route::get('/automation/control-center/export', [\App\Http\Controllers\AutomationControlCenterController::class, 'export'])->middleware('can:reports.view')->name('automation.control-center.export');
-    Route::get('/automation/workflow-readiness', [\App\Http\Controllers\AutomationControlCenterController::class, 'readiness'])->middleware('can:reports.view')->name('automation.workflow-readiness');
+    Route::get('/automation/control-center', [AutomationControlCenterController::class, 'overview'])->middleware('can:reports.view')->name('automation.control-center');
+    Route::get('/automation/control-center/export', [AutomationControlCenterController::class, 'export'])->middleware('can:reports.view')->name('automation.control-center.export');
+    Route::get('/automation/workflow-readiness', [AutomationControlCenterController::class, 'readiness'])->middleware('can:reports.view')->name('automation.workflow-readiness');
 
-    Route::get('/finance/marketplace-analytics', [\App\Http\Controllers\MarketplaceFinancialAnalyticsController::class, 'index'])->middleware('can:finance.view')->name('finance.marketplace-analytics.index');
+    Route::get('/finance/marketplace-analytics', [MarketplaceFinancialAnalyticsController::class, 'index'])->middleware('can:finance.view')->name('finance.marketplace-analytics.index');
 
     Route::get('/analytics/marketplace-business-intelligence', [MarketplaceBusinessIntelligenceController::class, 'index'])->middleware('can:finance.view')->name('analytics.marketplace-business-intelligence.index');
 
@@ -833,13 +928,13 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::middleware('can:reports.view')->prefix('automation/workforce')->name('automation.workforce.')->group(function () {
-    Route::get('/escalations', [\App\Http\Controllers\AutomationWorkforceController::class, 'escalationIndex'])->name('escalations');
-    Route::get('/workload', [\App\Http\Controllers\AutomationWorkforceController::class, 'workloadIndex'])->name('workload');
-    Route::get('/performance', [\App\Http\Controllers\AutomationWorkforceController::class, 'performanceIndex'])->name('performance');
+    Route::get('/escalations', [AutomationWorkforceController::class, 'escalationIndex'])->name('escalations');
+    Route::get('/workload', [AutomationWorkforceController::class, 'workloadIndex'])->name('workload');
+    Route::get('/performance', [AutomationWorkforceController::class, 'performanceIndex'])->name('performance');
 });
 Route::middleware('can:purchases.edit')->prefix('automation/workforce')->name('automation.workforce.')->group(function () {
-    Route::post('/tasks/{task}/escalate', [\App\Http\Controllers\AutomationWorkforceController::class, 'escalate'])->name('escalate');
-    Route::post('/tasks/{task}/reassign', [\App\Http\Controllers\AutomationWorkforceController::class, 'reassign'])->name('reassign');
+    Route::post('/tasks/{task}/escalate', [AutomationWorkforceController::class, 'escalate'])->name('escalate');
+    Route::post('/tasks/{task}/reassign', [AutomationWorkforceController::class, 'reassign'])->name('reassign');
 });
 
 Route::post('/inventory/{product}/stock-count', [InventoryController::class, 'stockCount'])
@@ -847,13 +942,13 @@ Route::post('/inventory/{product}/stock-count', [InventoryController::class, 'st
     ->name('inventory.stock-count');
 
 Route::middleware('can:reports.view')->prefix('automation/insights')->name('automation.insights.')->group(function () {
-    Route::get('/productivity', [\App\Http\Controllers\AutomationInsightsController::class, 'productivity'])->name('productivity');
-    Route::get('/dependencies', [\App\Http\Controllers\AutomationInsightsController::class, 'dependencies'])->name('dependencies');
-    Route::get('/analytics', [\App\Http\Controllers\AutomationInsightsController::class, 'analytics'])->name('analytics');
+    Route::get('/productivity', [AutomationInsightsController::class, 'productivity'])->name('productivity');
+    Route::get('/dependencies', [AutomationInsightsController::class, 'dependencies'])->name('dependencies');
+    Route::get('/analytics', [AutomationInsightsController::class, 'analytics'])->name('analytics');
 });
 Route::middleware('can:purchases.edit')->prefix('automation/insights')->name('automation.insights.')->group(function () {
-    Route::post('/dependencies', [\App\Http\Controllers\AutomationInsightsController::class, 'storeDependency'])->name('dependencies.store');
-    Route::delete('/dependencies/{dependency}', [\App\Http\Controllers\AutomationInsightsController::class, 'destroyDependency'])->name('dependencies.destroy');
+    Route::post('/dependencies', [AutomationInsightsController::class, 'storeDependency'])->name('dependencies.store');
+    Route::delete('/dependencies/{dependency}', [AutomationInsightsController::class, 'destroyDependency'])->name('dependencies.destroy');
 });
 
 Route::middleware(['auth', 'can:finance.view'])

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\InventoryCorrectionRequest;
-use App\Models\InventoryTransaction;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -15,8 +14,12 @@ class InventoryReconciliationReportController extends Controller
         if ($request->filled('status') && in_array($request->status, ['pending', 'applied', 'rejected'], true)) {
             $query->where('status', $request->status);
         }
-        if ($request->filled('from')) $query->whereDate('created_at', '>=', $request->date('from'));
-        if ($request->filled('to')) $query->whereDate('created_at', '<=', $request->date('to'));
+        if ($request->filled('from')) {
+            $query->whereDate('created_at', '>=', $request->date('from'));
+        }
+        if ($request->filled('to')) {
+            $query->whereDate('created_at', '<=', $request->date('to'));
+        }
 
         $summary = [
             'pending' => (clone $query)->where('status', 'pending')->count(),
@@ -25,6 +28,7 @@ class InventoryReconciliationReportController extends Controller
             'net_variance' => (int) (clone $query)->where('status', 'applied')->sum('variance'),
         ];
         $requests = $query->latest()->paginate(25)->withQueryString();
+
         return view('inventory.reconciliation-report', compact('requests', 'summary'));
     }
 
@@ -34,8 +38,12 @@ class InventoryReconciliationReportController extends Controller
         if ($request->filled('status') && in_array($request->status, ['pending', 'applied', 'rejected'], true)) {
             $query->where('status', $request->status);
         }
-        if ($request->filled('from')) $query->whereDate('created_at', '>=', $request->date('from'));
-        if ($request->filled('to')) $query->whereDate('created_at', '<=', $request->date('to'));
+        if ($request->filled('from')) {
+            $query->whereDate('created_at', '>=', $request->date('from'));
+        }
+        if ($request->filled('to')) {
+            $query->whereDate('created_at', '<=', $request->date('to'));
+        }
 
         return response()->streamDownload(function () use ($query) {
             $out = fopen('php://output', 'w');
@@ -51,6 +59,6 @@ class InventoryReconciliationReportController extends Controller
                 }
             });
             fclose($out);
-        }, 'inventory-reconciliation-' . now()->format('Ymd-His') . '.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+        }, 'inventory-reconciliation-'.now()->format('Ymd-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 }

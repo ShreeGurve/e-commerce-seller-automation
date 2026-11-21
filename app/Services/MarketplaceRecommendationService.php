@@ -32,7 +32,9 @@ class MarketplaceRecommendationService
             ->join('orders as o', 'o.id', '=', 'op.order_id')
             ->whereNull('o.deleted_at')
             ->where('o.status', '!=', 'CANCELLED')
-            ->where(function ($q) { $q->whereNull('o.source')->orWhere('o.source', '!=', 'TEST'); });
+            ->where(function ($q) {
+                $q->whereNull('o.source')->orWhere('o.source', '!=', 'TEST');
+            });
 
         $currentSales = (clone $sales)->whereBetween('op.order_date', [$from, $to]);
         $previousSales = (clone $sales)->whereBetween('op.order_date', [$previousFrom, $previousTo]);

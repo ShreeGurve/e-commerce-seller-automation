@@ -11,6 +11,7 @@ class MarketplaceWriteAuditController extends Controller
     public function index(Request $request, MarketplaceWriteAuditService $service)
     {
         $filters = $service->normalizeFilters($request->only(['status', 'operation', 'marketplace', 'from', 'to']));
+
         return view('marketplaces.write-audit', $service->dashboard((int) $request->user()->business_id, $filters));
     }
 
@@ -30,12 +31,13 @@ class MarketplaceWriteAuditController extends Controller
                 fputcsv($out, array_map([$this, 'safeCsvValue'], $values));
             }
             fclose($out);
-        }, 'marketplace-write-audit-' . now()->format('Ymd-His') . '.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+        }, 'marketplace-write-audit-'.now()->format('Ymd-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     private function safeCsvValue($value): string
     {
         $value = (string) ($value ?? '');
-        return preg_match('/^[\s]*[=+@\-]/u', $value) ? "'" . $value : $value;
+
+        return preg_match('/^[\s]*[=+@\-]/u', $value) ? "'".$value : $value;
     }
 }

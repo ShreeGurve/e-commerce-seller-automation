@@ -3,10 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
-use App\Models\OrderFulfillmentEvent;
-use App\Models\ProductReturn;
+use App\Models\ReturnItem;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class OrderOperationsInsightsController extends Controller
 {
@@ -24,8 +23,10 @@ class OrderOperationsInsightsController extends Controller
             $events = $order->fulfillmentEvents;
             $order->handover_event = $events->first(fn ($e) => in_array(strtoupper($e->event_type), ['PICKED_UP', 'PICKUP', 'HANDOVER', 'CARRIER_HANDOVER', 'DISPATCHED'], true));
             $order->handover_gap = ! $order->fulfillment?->picked_up_at && ! $order->handover_event;
+
             return $order;
         });
+
         return view('orders.carrier-handover', compact('orders', 'from', 'to'));
     }
 
@@ -33,7 +34,9 @@ class OrderOperationsInsightsController extends Controller
     public function deliveryAging(Request $request)
     {
         $threshold = (int) $request->input('days', 5);
-        if (! in_array($threshold, [2, 3, 5, 7, 10, 14], true)) $threshold = 5;
+        if (! in_array($threshold, [2, 3, 5, 7, 10, 14], true)) {
+            $threshold = 5;
+        }
         $orders = Order::query()->where('fulfillment_type', 'SELF')
             ->whereNotNull('shipped_at')->whereIn('status', ['SHIPPED', 'DELIVERED'])
             ->with('marketplace')->orderBy('shipped_at')->paginate(30)->withQueryString();
@@ -42,21 +45,24 @@ class OrderOperationsInsightsController extends Controller
             $order->delivery_age_days = max(0, (int) floor($order->shipped_at->diffInHours($end) / 24));
             $order->delivery_overdue = ! $order->delivered_at && $order->delivery_age_days >= $threshold;
             $order->delivery_duration_days = $order->delivered_at ? round($order->shipped_at->diffInHours($order->delivered_at) / 24, 1) : null;
+
             return $order;
         });
+
         return view('orders.delivery-aging', compact('orders', 'threshold'));
     }
 
     /** Package 32: condition versus restock quantity checks; read-only. */
     public function returnDisposition(Request $request)
     {
-        $items = \App\Models\ReturnItem::query()->whereHas('productReturn')
+        $items = ReturnItem::query()->whereHas('productReturn')
             ->with(['productReturn.order.marketplace', 'product'])
             ->orderByDesc('id')->get();
         $exceptions = $items->filter(function ($item) {
             $received = (int) $item->received_qty;
             $restocked = (int) $item->restocked_qty;
             $condition = strtoupper((string) $item->condition);
+
             return ($condition === 'SELLABLE' && $restocked < $received)
                 || (in_array($condition, ['USED', 'DAMAGED', 'SCRAP', 'MISSING'], true) && $restocked > 0)
                 || $restocked > $received;
@@ -68,10 +74,11 @@ class OrderOperationsInsightsController extends Controller
         $exceptions = $exceptions->values();
         $page = max(1, (int) $request->input('page', 1));
         $perPage = 30;
-        $paginator = new \Illuminate\Pagination\LengthAwarePaginator(
+        $paginator = new LengthAwarePaginator(
             $exceptions->forPage($page, $perPage)->values(), $exceptions->count(), $perPage, $page,
             ['path' => $request->url(), 'query' => $request->query()]
         );
+
         return view('returns.disposition-reconciliation', ['items' => $paginator, 'conditionFilter' => $conditionFilter]);
     }
 }

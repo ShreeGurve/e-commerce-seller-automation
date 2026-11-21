@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
-use App\Models\OrderFulfillment;
 use App\Models\ProductReturn;
 use App\Models\ReturnItem;
 use Illuminate\Http\Request;
@@ -13,7 +12,9 @@ class OrderOperationsController extends Controller
     public function sla(Request $request)
     {
         $days = (int) $request->input('age_days', 1);
-        if (!in_array($days, [1, 2, 3, 5, 7], true)) $days = 1;
+        if (! in_array($days, [1, 2, 3, 5, 7], true)) {
+            $days = 1;
+        }
 
         $orders = Order::query()->with(['marketplace', 'fulfillment'])
             ->whereIn('status', ['IMPORTED', 'CONFIRMED', 'PACKED'])
@@ -40,9 +41,16 @@ class OrderOperationsController extends Controller
             ->get()
             ->filter(function ($order) {
                 $f = $order->fulfillment;
-                if (!$f) return true;
-                if ($order->status === 'PACKED') return !$f->carrier || !$f->tracking_number || !$f->invoice_number || !$f->packed_at;
-                if ($order->status === 'SHIPPED') return !$f->tracking_number || !$order->shipped_at;
+                if (! $f) {
+                    return true;
+                }
+                if ($order->status === 'PACKED') {
+                    return ! $f->carrier || ! $f->tracking_number || ! $f->invoice_number || ! $f->packed_at;
+                }
+                if ($order->status === 'SHIPPED') {
+                    return ! $f->tracking_number || ! $order->shipped_at;
+                }
+
                 return false;
             })->values();
 
@@ -51,6 +59,7 @@ class OrderOperationsController extends Controller
             'packed' => $orders->filter(fn ($o) => $o->status === 'PACKED')->count(),
             'shipped' => $orders->filter(fn ($o) => $o->status === 'SHIPPED')->count(),
         ];
+
         return view('orders.fulfillment-exceptions', compact('orders', 'summary'));
     }
 
@@ -66,6 +75,7 @@ class OrderOperationsController extends Controller
             'received_units' => (int) ReturnItem::whereHas('productReturn', fn ($q) => $q->whereIn('status', ['REQUESTED', 'INSPECTED']))->sum('received_qty'),
             'unreceived_units' => (int) ReturnItem::whereHas('productReturn', fn ($q) => $q->whereIn('status', ['REQUESTED', 'INSPECTED']))->selectRaw('COALESCE(SUM(GREATEST(quantity - received_qty, 0)), 0) as aggregate')->value('aggregate'),
         ];
+
         return view('returns.intake-monitor', compact('returns', 'summary'));
     }
 }

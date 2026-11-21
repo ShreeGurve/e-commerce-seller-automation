@@ -10,6 +10,7 @@ class MarketplaceWriteRecoveryService
     public function dashboard(object $user): array
     {
         $businessId = (int) $user->business_id;
+
         return [
             'cases' => DB::table('marketplace_write_recovery_cases as c')
                 ->join('marketplace_write_incidents as i', 'i.id', '=', 'c.incident_id')
@@ -28,22 +29,24 @@ class MarketplaceWriteRecoveryService
     {
         $businessId = (int) $user->business_id;
         $incidentId = (int) ($data['incident_id'] ?? 0);
-        if (!DB::table('marketplace_write_incidents')->where('id', $incidentId)->where('business_id', $businessId)->exists()) {
+        if (! DB::table('marketplace_write_incidents')->where('id', $incidentId)->where('business_id', $businessId)->exists()) {
             throw ValidationException::withMessages(['incident_id' => 'Select an incident belonging to your business.']);
         }
         $ownerId = $data['owner_id'] ?? null;
-        if ($ownerId && !DB::table('users')->where('id', $ownerId)->where('business_id', $businessId)->exists()) {
+        if ($ownerId && ! DB::table('users')->where('id', $ownerId)->where('business_id', $businessId)->exists()) {
             throw ValidationException::withMessages(['owner_id' => 'Select an owner belonging to your business.']);
         }
         if (DB::table('marketplace_write_recovery_cases')->where('business_id', $businessId)->where('incident_id', $incidentId)->whereIn('status', ['OPEN', 'IN_PROGRESS'])->exists()) {
             throw ValidationException::withMessages(['incident_id' => 'An active recovery case already exists for this incident.']);
         }
         $playbook = trim((string) ($data['playbook'] ?? ''));
-        if ($playbook === '' || mb_strlen($playbook) > 80) throw ValidationException::withMessages(['playbook' => 'Enter a playbook name (maximum 80 characters).']);
+        if ($playbook === '' || mb_strlen($playbook) > 80) {
+            throw ValidationException::withMessages(['playbook' => 'Enter a playbook name (maximum 80 characters).']);
+        }
         $caseId = DB::table('marketplace_write_recovery_cases')->insertGetId([
             'business_id' => $businessId, 'incident_id' => $incidentId, 'playbook' => $playbook,
             'status' => 'OPEN', 'owner_id' => $ownerId ?: null,
-            'target_at' => !empty($data['target_at']) ? $data['target_at'] : null,
+            'target_at' => ! empty($data['target_at']) ? $data['target_at'] : null,
             'created_by' => $user->id, 'created_at' => now(), 'updated_at' => now(),
         ]);
         $steps = [
@@ -60,6 +63,7 @@ class MarketplaceWriteRecoveryService
                 'sort_order' => $index + 1, 'created_at' => now(), 'updated_at' => now(),
             ]);
         }
+
         return $caseId;
     }
 
@@ -67,15 +71,21 @@ class MarketplaceWriteRecoveryService
     {
         $businessId = (int) $user->business_id;
         $case = DB::table('marketplace_write_recovery_cases')->where('id', $caseId)->where('business_id', $businessId)->first();
-        if (!$case) abort(404);
+        if (! $case) {
+            abort(404);
+        }
         $status = strtoupper((string) ($data['status'] ?? ''));
-        if (!in_array($status, ['PENDING', 'DONE', 'BLOCKED'], true)) throw ValidationException::withMessages(['status' => 'Invalid recovery step status.']);
+        if (! in_array($status, ['PENDING', 'DONE', 'BLOCKED'], true)) {
+            throw ValidationException::withMessages(['status' => 'Invalid recovery step status.']);
+        }
         $updated = DB::table('marketplace_write_recovery_steps')->where('id', $stepId)->where('recovery_case_id', $caseId)->update([
             'status' => $status, 'step_notes' => $data['step_notes'] ?? null,
             'completed_by' => $status === 'DONE' ? $user->id : null,
             'completed_at' => $status === 'DONE' ? now() : null, 'updated_at' => now(),
         ]);
-        if (!$updated) abort(404);
+        if (! $updated) {
+            abort(404);
+        }
         $remaining = DB::table('marketplace_write_recovery_steps')->where('recovery_case_id', $caseId)->where('status', '!=', 'DONE')->count();
         DB::table('marketplace_write_recovery_cases')->where('id', $caseId)->update([
             'status' => $remaining === 0 ? 'READY_TO_VERIFY' : 'IN_PROGRESS', 'updated_at' => now(),
@@ -85,11 +95,17 @@ class MarketplaceWriteRecoveryService
     public function close(object $user, int $caseId, array $data): void
     {
         $summary = trim((string) ($data['resolution_summary'] ?? ''));
-        if ($summary === '') throw ValidationException::withMessages(['resolution_summary' => 'Add a resolution summary before closing.']);
+        if ($summary === '') {
+            throw ValidationException::withMessages(['resolution_summary' => 'Add a resolution summary before closing.']);
+        }
         $case = DB::table('marketplace_write_recovery_cases')->where('id', $caseId)->where('business_id', (int) $user->business_id)->first();
-        if (!$case) abort(404);
+        if (! $case) {
+            abort(404);
+        }
         $pending = DB::table('marketplace_write_recovery_steps')->where('recovery_case_id', $caseId)->where('status', '!=', 'DONE')->exists();
-        if ($pending) throw ValidationException::withMessages(['resolution_summary' => 'Complete all recovery steps before closing the case.']);
+        if ($pending) {
+            throw ValidationException::withMessages(['resolution_summary' => 'Complete all recovery steps before closing the case.']);
+        }
         DB::table('marketplace_write_recovery_cases')->where('id', $caseId)->update(['status' => 'CLOSED', 'resolution_summary' => $summary, 'updated_at' => now()]);
     }
 }

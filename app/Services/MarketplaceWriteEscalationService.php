@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -10,6 +11,7 @@ class MarketplaceWriteEscalationService
     public function dashboard(object $user): array
     {
         $businessId = (int) $user->business_id;
+
         return [
             'rules' => DB::table('marketplace_write_escalation_rules as r')->leftJoin('users as u', 'u.id', '=', 'r.escalate_to')
                 ->where('r.business_id', $businessId)->select('r.*', 'u.name as assignee_name')->orderBy('r.severity')->orderBy('r.breach_type')->get(),
@@ -25,12 +27,12 @@ class MarketplaceWriteEscalationService
         $severity = strtoupper((string) ($data['severity'] ?? ''));
         $type = strtoupper((string) ($data['breach_type'] ?? 'RESPONSE'));
         $minutes = filter_var($data['after_minutes'] ?? null, FILTER_VALIDATE_INT);
-        if (!in_array($severity, ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'], true) || !in_array($type, ['RESPONSE', 'RESOLUTION'], true) || $minutes === false || $minutes < 1 || $minutes > 43200) {
+        if (! in_array($severity, ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'], true) || ! in_array($type, ['RESPONSE', 'RESOLUTION'], true) || $minutes === false || $minutes < 1 || $minutes > 43200) {
             throw ValidationException::withMessages(['severity' => 'Select a valid severity, breach type and escalation delay (1–43200 minutes).']);
         }
         $businessId = (int) $user->business_id;
         $target = $data['escalate_to'] ?? null;
-        if ($target !== null && $target !== '' && !DB::table('users')->where('id', $target)->where('business_id', $businessId)->exists()) {
+        if ($target !== null && $target !== '' && ! DB::table('users')->where('id', $target)->where('business_id', $businessId)->exists()) {
             throw ValidationException::withMessages(['escalate_to' => 'Choose a user belonging to this business.']);
         }
         DB::table('marketplace_write_escalation_rules')->updateOrInsert(
@@ -48,10 +50,14 @@ class MarketplaceWriteEscalationService
             $incidents = DB::table('marketplace_write_incidents')->where('business_id', $rule->business_id)
                 ->where('severity', $rule->severity)->whereIn('status', ['OPEN', 'INVESTIGATING'])->get();
             foreach ($incidents as $incident) {
-                $dueAt = \Illuminate\Support\Carbon::parse($incident->created_at)->addMinutes((int) $rule->after_minutes);
-                if (now()->lessThanOrEqualTo($dueAt)) continue;
+                $dueAt = Carbon::parse($incident->created_at)->addMinutes((int) $rule->after_minutes);
+                if (now()->lessThanOrEqualTo($dueAt)) {
+                    continue;
+                }
                 $slaType = $rule->breach_type === 'RESPONSE' ? 'RESPONDED' : 'RESOLVED';
-                if (DB::table('marketplace_write_sla_events')->where('incident_id', $incident->id)->where('event_type', $slaType)->exists()) continue;
+                if (DB::table('marketplace_write_sla_events')->where('incident_id', $incident->id)->where('event_type', $slaType)->exists()) {
+                    continue;
+                }
                 $inserted = DB::table('marketplace_write_escalations')->insertOrIgnore([
                     'business_id' => $rule->business_id, 'incident_id' => $incident->id, 'rule_id' => $rule->id,
                     'escalated_to' => $rule->escalate_to, 'escalated_at' => now(),
@@ -59,7 +65,9 @@ class MarketplaceWriteEscalationService
                     'created_at' => now(), 'updated_at' => now(),
                 ]);
                 if ($inserted) {
-                    if ($rule->escalate_to) DB::table('marketplace_write_incidents')->where('id', $incident->id)->where('business_id', $rule->business_id)->update(['assigned_to' => $rule->escalate_to, 'updated_at' => now()]);
+                    if ($rule->escalate_to) {
+                        DB::table('marketplace_write_incidents')->where('id', $incident->id)->where('business_id', $rule->business_id)->update(['assigned_to' => $rule->escalate_to, 'updated_at' => now()]);
+                    }
                     DB::table('marketplace_write_incident_events')->insert([
                         'incident_id' => $incident->id, 'business_id' => $rule->business_id, 'recorded_by' => null,
                         'event_type' => 'ESCALATED', 'from_status' => $incident->status, 'to_status' => $incident->status,
@@ -71,6 +79,7 @@ class MarketplaceWriteEscalationService
                 }
             }
         }
+
         return $count;
     }
 }

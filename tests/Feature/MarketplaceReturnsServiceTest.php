@@ -2,7 +2,14 @@
 
 namespace Tests\Feature;
 
-use App\Models\{Marketplace, Order, OrderItem, Product, ProductReturn, ReturnInspection, User};
+use App\Models\Marketplace;
+use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\Product;
+use App\Models\ProductReturn;
+use App\Models\Refund;
+use App\Models\ReturnInspection;
+use App\Models\User;
 use App\Services\MarketplaceReturnsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
@@ -23,12 +30,14 @@ class MarketplaceReturnsServiceTest extends TestCase
         $item = OrderItem::create(['order_id' => $order->id, 'product_id' => $product->id, 'external_line_id' => 'LINE-1', 'marketplace_sku' => 'SKU-RET-1',
             'quantity' => 2, 'qty_deducted' => 2, 'unit_price' => 100, 'discount' => 0, 'gst_rate' => 0, 'tax_amount' => 0,
             'line_total' => 200, 'cogs_at_sale' => 40, 'packaging_at_sale' => 0, 'other_cost_at_sale' => 0]);
+
         return compact('user', 'marketplace', 'product', 'order', 'item');
     }
 
     public function test_return_staging_is_idempotent_and_does_not_create_operational_return(): void
     {
-        $f = $this->fixture(); $service = app(MarketplaceReturnsService::class);
+        $f = $this->fixture();
+        $service = app(MarketplaceReturnsService::class);
         $payload = ['external_return_id' => 'RET-EXT-1', 'external_order_id' => $f['order']->external_order_id, 'return_date' => now()->toDateString(),
             'return_type' => 'DAMAGED', 'items' => [['external_line_id' => 'LINE-1', 'quantity' => 1]]];
         $first = $service->stageReturn($f['marketplace'], $payload);
@@ -40,7 +49,8 @@ class MarketplaceReturnsServiceTest extends TestCase
 
     public function test_approved_return_import_creates_return_and_matching_line_once(): void
     {
-        $f = $this->fixture(); $service = app(MarketplaceReturnsService::class);
+        $f = $this->fixture();
+        $service = app(MarketplaceReturnsService::class);
         $staged = $service->stageReturn($f['marketplace'], ['external_return_id' => 'RET-EXT-2', 'external_order_id' => $f['order']->external_order_id,
             'return_date' => now()->toDateString(), 'return_type' => 'DAMAGED', 'items' => [['external_line_id' => 'LINE-1', 'quantity' => 1]]]);
         $return = $service->approveReturn($staged, $f['user']);
@@ -53,7 +63,8 @@ class MarketplaceReturnsServiceTest extends TestCase
 
     public function test_import_rejects_return_quantity_above_remaining_order_quantity(): void
     {
-        $f = $this->fixture(); $service = app(MarketplaceReturnsService::class);
+        $f = $this->fixture();
+        $service = app(MarketplaceReturnsService::class);
         $first = $service->stageReturn($f['marketplace'], ['external_return_id' => 'RET-EXT-3', 'external_order_id' => $f['order']->external_order_id,
             'return_date' => now()->toDateString(), 'items' => [['external_line_id' => 'LINE-1', 'quantity' => 2]]]);
         $service->approveReturn($first, $f['user']);
@@ -69,7 +80,8 @@ class MarketplaceReturnsServiceTest extends TestCase
 
     public function test_inspection_sets_disposition_and_claim_eligibility_without_stock_mutation(): void
     {
-        $f = $this->fixture(); $service = app(MarketplaceReturnsService::class);
+        $f = $this->fixture();
+        $service = app(MarketplaceReturnsService::class);
         $staged = $service->stageReturn($f['marketplace'], ['external_return_id' => 'RET-EXT-5', 'external_order_id' => $f['order']->external_order_id,
             'return_date' => now()->toDateString(), 'return_type' => 'DAMAGED', 'items' => [['external_line_id' => 'LINE-1', 'quantity' => 1]]]);
         $return = $service->approveReturn($staged, $f['user']);
@@ -83,10 +95,12 @@ class MarketplaceReturnsServiceTest extends TestCase
 
     public function test_inspection_cannot_restock_damaged_units(): void
     {
-        $f = $this->fixture(); $service = app(MarketplaceReturnsService::class);
+        $f = $this->fixture();
+        $service = app(MarketplaceReturnsService::class);
         $staged = $service->stageReturn($f['marketplace'], ['external_return_id' => 'RET-EXT-6', 'external_order_id' => $f['order']->external_order_id,
             'return_date' => now()->toDateString(), 'items' => [['external_line_id' => 'LINE-1', 'quantity' => 1]]]);
-        $return = $service->approveReturn($staged, $f['user']); $item = $return->items->first();
+        $return = $service->approveReturn($staged, $f['user']);
+        $item = $return->items->first();
         try {
             $service->inspect($return, [['return_item_id' => $item->id, 'received_qty' => 1, 'condition' => 'DAMAGED', 'restock_qty' => 1]], $f['user']);
             $this->fail('Damaged stock cannot be marked for restock.');
@@ -97,7 +111,8 @@ class MarketplaceReturnsServiceTest extends TestCase
 
     public function test_refund_import_rejects_non_inr_and_is_staged_only(): void
     {
-        $f = $this->fixture(); $service = app(MarketplaceReturnsService::class);
+        $f = $this->fixture();
+        $service = app(MarketplaceReturnsService::class);
         $data = ['external_refund_id' => 'REF-EXT-1', 'external_order_id' => $f['order']->external_order_id, 'amount' => 50,
             'currency' => 'USD', 'refund_date' => now()->toDateString()];
         try {
@@ -109,6 +124,6 @@ class MarketplaceReturnsServiceTest extends TestCase
         $data['currency'] = 'INR';
         $staged = $service->stageRefund($f['marketplace'], $data);
         $this->assertSame('PENDING', $staged->status);
-        $this->assertSame(0, \App\Models\Refund::count());
+        $this->assertSame(0, Refund::count());
     }
 }

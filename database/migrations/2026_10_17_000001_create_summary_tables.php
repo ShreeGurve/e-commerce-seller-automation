@@ -1,9 +1,11 @@
 <?php
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         // Pre-added daily numbers so the dashboard stays fast with hundreds of thousands of orders.
@@ -62,6 +64,8 @@ return new class extends Migration {
 
     public function down(): void
     {
-        foreach (['daily_inventory', 'daily_advertising', 'daily_profit', 'daily_sales'] as $t) Schema::dropIfExists($t);
+        foreach (['daily_inventory', 'daily_advertising', 'daily_profit', 'daily_sales'] as $t) {
+            Schema::dropIfExists($t);
+        }
     }
 };

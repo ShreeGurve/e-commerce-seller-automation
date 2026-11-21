@@ -8,6 +8,7 @@ use Illuminate\Validation\ValidationException;
 class MarketplaceWriteAuditService
 {
     private const STATUSES = ['PREPARED', 'SUBMITTING', 'ACCEPTED', 'REVIEW_REQUIRED', 'FAILED', 'EXPIRED'];
+
     private const OPERATIONS = ['PRICE_UPDATE', 'INVENTORY_UPDATE'];
 
     public function dashboard(int $businessId, array $filters = []): array
@@ -38,23 +39,24 @@ class MarketplaceWriteAuditService
         $status = strtoupper(trim((string) ($filters['status'] ?? '')));
         $operation = strtoupper(trim((string) ($filters['operation'] ?? '')));
         $marketplace = strtolower(trim((string) ($filters['marketplace'] ?? '')));
-        if ($status !== '' && !in_array($status, self::STATUSES, true)) {
+        if ($status !== '' && ! in_array($status, self::STATUSES, true)) {
             throw ValidationException::withMessages(['status' => 'Choose a valid write status.']);
         }
-        if ($operation !== '' && !in_array($operation, self::OPERATIONS, true)) {
+        if ($operation !== '' && ! in_array($operation, self::OPERATIONS, true)) {
             throw ValidationException::withMessages(['operation' => 'Choose a valid marketplace write operation.']);
         }
-        if ($marketplace !== '' && !in_array($marketplace, ['amazon', 'flipkart'], true)) {
+        if ($marketplace !== '' && ! in_array($marketplace, ['amazon', 'flipkart'], true)) {
             throw ValidationException::withMessages(['marketplace' => 'Choose Amazon or Flipkart.']);
         }
         foreach (['from', 'to'] as $field) {
-            if (!empty($filters[$field]) && !preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $filters[$field])) {
+            if (! empty($filters[$field]) && ! preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $filters[$field])) {
                 throw ValidationException::withMessages([$field => 'Use a valid date in YYYY-MM-DD format.']);
             }
         }
-        if (!empty($filters['from']) && !empty($filters['to']) && $filters['from'] > $filters['to']) {
+        if (! empty($filters['from']) && ! empty($filters['to']) && $filters['from'] > $filters['to']) {
             throw ValidationException::withMessages(['to' => 'The end date must be on or after the start date.']);
         }
+
         return ['status' => $status, 'operation' => $operation, 'marketplace' => $marketplace,
             'from' => $filters['from'] ?? '', 'to' => $filters['to'] ?? ''];
     }
@@ -76,15 +78,26 @@ class MarketplaceWriteAuditService
                 'v.checked_at as verified_at', 'verifier.name as verified_by_name',
             ]);
         $this->applyFilters($query, $filters);
+
         return $query;
     }
 
     private function applyFilters($query, array $filters): void
     {
-        if (!empty($filters['status'])) $query->where('a.status', strtoupper($filters['status']));
-        if (!empty($filters['operation'])) $query->where('a.operation', strtoupper($filters['operation']));
-        if (!empty($filters['marketplace'])) $query->where('a.marketplace_code', strtolower($filters['marketplace']));
-        if (!empty($filters['from'])) $query->whereDate('a.created_at', '>=', $filters['from']);
-        if (!empty($filters['to'])) $query->whereDate('a.created_at', '<=', $filters['to']);
+        if (! empty($filters['status'])) {
+            $query->where('a.status', strtoupper($filters['status']));
+        }
+        if (! empty($filters['operation'])) {
+            $query->where('a.operation', strtoupper($filters['operation']));
+        }
+        if (! empty($filters['marketplace'])) {
+            $query->where('a.marketplace_code', strtolower($filters['marketplace']));
+        }
+        if (! empty($filters['from'])) {
+            $query->whereDate('a.created_at', '>=', $filters['from']);
+        }
+        if (! empty($filters['to'])) {
+            $query->whereDate('a.created_at', '<=', $filters['to']);
+        }
     }
 }

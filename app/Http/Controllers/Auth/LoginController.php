@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
@@ -8,7 +9,10 @@ use Illuminate\Support\Facades\Auth;
 
 class LoginController extends Controller
 {
-    public function show() { return view('auth.login'); }
+    public function show()
+    {
+        return view('auth.login');
+    }
 
     public function store(Request $request)
     {
@@ -18,6 +22,7 @@ class LoginController extends Controller
             $request->session()->regenerate();
             $request->user()->forceFill(['last_login_at' => now()])->save();
             ActivityLogger::log('auth.login');
+
             return redirect()->intended(route('dashboard'));
         }
 
@@ -30,6 +35,7 @@ class LoginController extends Controller
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
         return redirect()->route('login');
     }
 }

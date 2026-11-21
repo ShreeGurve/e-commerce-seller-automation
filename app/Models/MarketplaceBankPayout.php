@@ -19,8 +19,23 @@ class MarketplaceBankPayout extends Model
         'difference' => 'decimal:2', 'reviewed_at' => 'datetime',
     ];
 
-    public function marketplace() { return $this->belongsTo(Marketplace::class); }
-    public function settlement() { return $this->belongsTo(Settlement::class); }
-    public function creator() { return $this->belongsTo(User::class, 'created_by'); }
-    public function reviewer() { return $this->belongsTo(User::class, 'reviewed_by'); }
+    public function marketplace()
+    {
+        return $this->belongsTo(Marketplace::class);
+    }
+
+    public function settlement()
+    {
+        return $this->belongsTo(Settlement::class);
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function reviewer()
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
 }

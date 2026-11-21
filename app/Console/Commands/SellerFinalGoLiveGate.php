@@ -9,6 +9,7 @@ use Symfony\Component\Console\Exception\CommandNotFoundException;
 class SellerFinalGoLiveGate extends Command
 {
     protected $signature = 'seller-automation:final-go-live-gate';
+
     protected $description = 'Run the read-only Seller Automation release checks and summarize go-live blockers';
 
     public function handle(): int
@@ -50,9 +51,11 @@ class SellerFinalGoLiveGate extends Command
         $this->line('Human sign-off still required: marketplace seller/API approvals and sandbox tests; confirmation that TEST orders are excluded from all financial outputs; backup restore drill; production scheduler/worker monitoring; full automated and manual regression tests; and rollback plan.');
         if ($failed > 0) {
             $this->error("Final gate: NOT READY — {$failed} command(s) failed or were not registered.");
+
             return self::FAILURE;
         }
         $this->warn('Final gate: TECHNICAL CHECKS COMPLETED, NOT A PRODUCTION CERTIFICATION. Complete all human sign-off items before enabling live marketplace writes.');
+
         return self::SUCCESS;
     }
 }

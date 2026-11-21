@@ -4,6 +4,4 @@ namespace App\Marketplaces\Api;
 
 use RuntimeException;
 
-class ConnectorDisabled extends RuntimeException
-{
-}
+class ConnectorDisabled extends RuntimeException {}

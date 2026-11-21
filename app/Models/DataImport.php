@@ -1,5 +1,7 @@
 <?php
+
 namespace App\Models;
+
 use Illuminate\Database\Eloquent\Model;
 
 class DataImport extends Model
@@ -10,6 +12,7 @@ class DataImport extends Model
         'impressions' => ['Impressions / views', false], 'clicks' => ['Clicks', false], 'spend' => ['Spend (₹)', true],
         'sales' => ['Sales from ads (₹)', false], 'orders' => ['Orders from ads', false], 'units' => ['Units from ads', false],
     ];
+
     public const TYPES = [
         'ORDERS' => ['label' => 'Orders', 'fields' => [
             'external_order_id' => ['Order ID', true], 'order_date' => ['Order date', true], 'sku' => ['SKU', true],
@@ -46,15 +49,36 @@ class DataImport extends Model
             'marketplace_sku' => ['Marketplace SKU', true], 'product_sku' => ['Our product SKU', true],
             'external_product_id' => ['ASIN / FSN', false], 'fulfillment_sku' => ['FNSKU', false], 'listing_status' => ['Listing status', false]]],
     ];
+
     public const DATE_FORMATS = ['auto' => 'Auto (2026-10-05, 05-10-2026, ISO)', 'd/m/Y' => 'DD/MM/YYYY', 'd-m-Y' => 'DD-MM-YYYY', 'm/d/Y' => 'MM/DD/YYYY', 'Y-m-d' => 'YYYY-MM-DD', 'd M Y' => 'DD Mon YYYY'];
 
     protected $fillable = ['marketplace_id', 'data_type', 'file_name', 'stored_path', 'file_hash', 'file_size', 'status', 'options', 'mapping',
         'total_rows', 'ok_rows', 'failed_rows', 'duplicate_rows', 'error_message', 'uploaded_by', 'imported_at'];
+
     protected $casts = ['options' => 'array', 'mapping' => 'array', 'imported_at' => 'datetime'];
 
-    public function marketplace() { return $this->belongsTo(Marketplace::class); }
-    public function uploader() { return $this->belongsTo(User::class, 'uploaded_by'); }
-    public function rows() { return $this->hasMany(ImportRow::class, 'import_id'); }
-    public function fields(): array { return self::TYPES[$this->data_type]['fields']; }
-    public function typeLabel(): string { return self::TYPES[$this->data_type]['label'] ?? $this->data_type; }
+    public function marketplace()
+    {
+        return $this->belongsTo(Marketplace::class);
+    }
+
+    public function uploader()
+    {
+        return $this->belongsTo(User::class, 'uploaded_by');
+    }
+
+    public function rows()
+    {
+        return $this->hasMany(ImportRow::class, 'import_id');
+    }
+
+    public function fields(): array
+    {
+        return self::TYPES[$this->data_type]['fields'];
+    }
+
+    public function typeLabel(): string
+    {
+        return self::TYPES[$this->data_type]['label'] ?? $this->data_type;
+    }
 }

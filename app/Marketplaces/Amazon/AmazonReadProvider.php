@@ -57,16 +57,26 @@ class AmazonReadProvider implements MarketplaceReadProvider
             'sortBy' => 'lastUpdatedDate',
             'sortOrder' => 'DESC',
         ];
-        if ($from) $query['lastUpdatedAfter'] = $from->format(DATE_ATOM);
-        if ($to) $query['lastUpdatedBefore'] = $to->format(DATE_ATOM);
-        if ($cursor) $query['pageToken'] = $cursor;
+        if ($from) {
+            $query['lastUpdatedAfter'] = $from->format(DATE_ATOM);
+        }
+        if ($to) {
+            $query['lastUpdatedBefore'] = $to->format(DATE_ATOM);
+        }
+        if ($cursor) {
+            $query['pageToken'] = $cursor;
+        }
 
         $data = $this->get($connection, '/listings/2021-08-01/items/'.rawurlencode($sellerId), $query);
         $items = [];
         foreach (($data['items'] ?? []) as $item) {
-            if (!is_array($item)) continue;
+            if (! is_array($item)) {
+                continue;
+            }
             $sku = (string) ($item['sku'] ?? '');
-            if ($sku === '') continue;
+            if ($sku === '') {
+                continue;
+            }
             $summary = $item['summaries'][0] ?? [];
             $items[] = [
                 'external_id' => $sku,
@@ -81,7 +91,7 @@ class AmazonReadProvider implements MarketplaceReadProvider
             ];
         }
 
-        return new MarketplaceReadPage($items, $data['pagination']['nextToken'] ?? null, !empty($data['pagination']['nextToken']));
+        return new MarketplaceReadPage($items, $data['pagination']['nextToken'] ?? null, ! empty($data['pagination']['nextToken']));
     }
 
     private function orders(MarketplaceConnection $connection, string $marketplaceId, ?DateTimeInterface $from, ?DateTimeInterface $to, ?string $cursor): MarketplaceReadPage
@@ -89,20 +99,30 @@ class AmazonReadProvider implements MarketplaceReadProvider
         $query = ['marketplaceIds' => $marketplaceId, 'maxResultsPerPage' => 100, 'includedData' => 'PROCEEDS'];
         if ($from) {
             $query['createdAfter'] = $from->format(DATE_ATOM);
-            if ($to) $query['createdBefore'] = $to->format(DATE_ATOM);
+            if ($to) {
+                $query['createdBefore'] = $to->format(DATE_ATOM);
+            }
         } else {
             $query['lastUpdatedAfter'] = now()->subDays(7)->toIso8601String();
-            if ($to) $query['lastUpdatedBefore'] = $to->format(DATE_ATOM);
+            if ($to) {
+                $query['lastUpdatedBefore'] = $to->format(DATE_ATOM);
+            }
         }
-        if ($cursor) $query['paginationToken'] = $cursor;
+        if ($cursor) {
+            $query['paginationToken'] = $cursor;
+        }
 
         // Do not request BUYER or RECIPIENT datasets. The staging service also strips PII recursively.
         $data = $this->get($connection, '/orders/2026-01-01/orders', $query);
         $items = [];
         foreach (($data['orders'] ?? []) as $order) {
-            if (!is_array($order)) continue;
+            if (! is_array($order)) {
+                continue;
+            }
             $id = (string) ($order['orderId'] ?? '');
-            if ($id === '') continue;
+            if ($id === '') {
+                continue;
+            }
             $items[] = [
                 'external_id' => $id,
                 'payload' => [
@@ -126,35 +146,45 @@ class AmazonReadProvider implements MarketplaceReadProvider
             ];
         }
 
-        return new MarketplaceReadPage($items, $data['pagination']['nextToken'] ?? null, !empty($data['pagination']['nextToken']));
+        return new MarketplaceReadPage($items, $data['pagination']['nextToken'] ?? null, ! empty($data['pagination']['nextToken']));
     }
 
     /** Prefer the retail unit price; fall back to the ITEM proceeds subtotal divided by ordered quantity. */
     private function orderItemUnitPrice(array $line): mixed
     {
         $unitPrice = data_get($line, 'product.price.unitPrice.amount');
-        if (is_numeric($unitPrice)) return $unitPrice;
+        if (is_numeric($unitPrice)) {
+            return $unitPrice;
+        }
 
         $quantity = max(1, (int) ($line['quantityOrdered'] ?? 1));
         foreach (($line['proceeds']['breakdowns'] ?? []) as $breakdown) {
             if (is_array($breakdown) && strtoupper((string) ($breakdown['type'] ?? '')) === 'ITEM') {
                 $amount = data_get($breakdown, 'subtotal.amount');
-                if (is_numeric($amount)) return number_format((float) $amount / $quantity, 2, '.', '');
+                if (is_numeric($amount)) {
+                    return number_format((float) $amount / $quantity, 2, '.', '');
+                }
             }
         }
+
         return null;
     }
 
     private function orderItemCurrency(array $line): ?string
     {
         $currency = data_get($line, 'product.price.unitPrice.currencyCode');
-        if (is_string($currency) && $currency !== '') return strtoupper($currency);
+        if (is_string($currency) && $currency !== '') {
+            return strtoupper($currency);
+        }
         foreach (($line['proceeds']['breakdowns'] ?? []) as $breakdown) {
             if (is_array($breakdown) && strtoupper((string) ($breakdown['type'] ?? '')) === 'ITEM') {
                 $currency = data_get($breakdown, 'subtotal.currencyCode');
-                if (is_string($currency) && $currency !== '') return strtoupper($currency);
+                if (is_string($currency) && $currency !== '') {
+                    return strtoupper($currency);
+                }
             }
         }
+
         return null;
     }
 
@@ -166,14 +196,20 @@ class AmazonReadProvider implements MarketplaceReadProvider
             'marketplaceIds' => $marketplaceId,
             'details' => 'true',
         ];
-        if ($cursor) $query['nextToken'] = $cursor;
+        if ($cursor) {
+            $query['nextToken'] = $cursor;
+        }
 
         $data = $this->get($connection, '/fba/inventory/v1/summaries', $query);
         $items = [];
         foreach (($data['payload']['inventorySummaries'] ?? $data['inventorySummaries'] ?? []) as $summary) {
-            if (!is_array($summary)) continue;
+            if (! is_array($summary)) {
+                continue;
+            }
             $sku = (string) ($summary['sellerSku'] ?? '');
-            if ($sku === '') continue;
+            if ($sku === '') {
+                continue;
+            }
             $details = $summary['inventoryDetails'] ?? [];
             $items[] = [
                 'external_id' => $sku.':FBA',
@@ -192,6 +228,7 @@ class AmazonReadProvider implements MarketplaceReadProvider
         }
 
         $next = $data['payload']['pagination']['nextToken'] ?? $data['pagination']['nextToken'] ?? null;
+
         return new MarketplaceReadPage($items, is_string($next) ? $next : null, is_string($next) && $next !== '');
     }
 
@@ -212,11 +249,14 @@ class AmazonReadProvider implements MarketplaceReadProvider
             ])
             ->acceptJson()->connectTimeout(8)->timeout(30)->get($path, $query);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             throw new RuntimeException('Amazon SP-API read request failed (HTTP '.$response->status().'). Check the seller authorization, operation role and marketplace region.');
         }
         $json = $response->json();
-        if (!is_array($json)) throw new RuntimeException('Amazon SP-API returned an invalid JSON response.');
+        if (! is_array($json)) {
+            throw new RuntimeException('Amazon SP-API returned an invalid JSON response.');
+        }
+
         return $json;
     }
 }

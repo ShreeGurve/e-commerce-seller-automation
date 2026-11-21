@@ -1,8 +1,13 @@
 <?php
+
 namespace App\Http\Controllers;
 
-use App\Models\{Inventory, InventoryStockCount, InventoryTransaction, Product};
-use App\Services\{ActivityLogger, InventoryService};
+use App\Models\Inventory;
+use App\Models\InventoryStockCount;
+use App\Models\InventoryTransaction;
+use App\Models\Product;
+use App\Services\ActivityLogger;
+use App\Services\InventoryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -37,6 +42,7 @@ class InventoryController extends Controller
     public function show(Product $product)
     {
         $inv = $this->service->ensureRow($product);
+
         return view('inventory.show', [
             'product' => $product, 'inv' => $inv,
             'ledger' => InventoryTransaction::with('user')->where('product_id', $product->id)->latest('id')->paginate(30),
@@ -51,6 +57,7 @@ class InventoryController extends Controller
             'note' => 'nullable|string|max:255',
         ]);
         $this->service->record($product, $data['type'], (int) $data['quantity'], ['note' => $data['note'] ?? null]);
+
         return redirect()->route('inventory.show', $product)->with('success', 'Stock updated.');
     }
 
@@ -61,6 +68,7 @@ class InventoryController extends Controller
         $old = $inv->only(array_keys($data));
         $inv->update($data);
         ActivityLogger::log('inventory.levels_changed', $product, $old, $data);
+
         return redirect()->route('inventory.show', $product)->with('success', 'Stock levels saved.');
     }
 
@@ -90,7 +98,7 @@ class InventoryController extends Controller
 
             if ($variance !== 0) {
                 $this->service->record($product, 'ADJUSTMENT', $variance, [
-                    'note' => 'Physical stock count: ' . $data['note'],
+                    'note' => 'Physical stock count: '.$data['note'],
                 ]);
             }
 

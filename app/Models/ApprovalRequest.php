@@ -25,24 +25,23 @@ class ApprovalRequest extends Model
     {
         static::saving(function (ApprovalRequest $approval): void {
             // Keep the old field used by the existing UI and the canonical field aligned.
-            if ($approval->isDirty('request_type') && !$approval->isDirty('type')) {
+            if ($approval->isDirty('request_type') && ! $approval->isDirty('type')) {
                 $approval->type = $approval->request_type;
-            } elseif ($approval->isDirty('type') && !$approval->isDirty('request_type')) {
+            } elseif ($approval->isDirty('type') && ! $approval->isDirty('request_type')) {
                 $approval->request_type = $approval->type ?: 'other';
-            } elseif (!$approval->type) {
+            } elseif (! $approval->type) {
                 $approval->type = $approval->request_type ?: 'other';
-            } elseif (!$approval->request_type) {
+            } elseif (! $approval->request_type) {
                 $approval->request_type = $approval->type;
             }
 
-            if ($approval->isDirty('decision_note') && !$approval->isDirty('review_note')) {
+            if ($approval->isDirty('decision_note') && ! $approval->isDirty('review_note')) {
                 $approval->review_note = $approval->decision_note;
-            } elseif ($approval->isDirty('review_note') && !$approval->isDirty('decision_note')) {
+            } elseif ($approval->isDirty('review_note') && ! $approval->isDirty('decision_note')) {
                 $approval->decision_note = $approval->review_note;
             }
         });
     }
-
 
     public function workflowSteps()
     {

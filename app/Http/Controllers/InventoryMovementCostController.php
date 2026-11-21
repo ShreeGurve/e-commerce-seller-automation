@@ -28,6 +28,7 @@ class InventoryMovementCostController extends Controller
             'units' => (int) (clone $summaryQuery)->sum('qty_change'),
             'costed_value' => (float) (clone $summaryQuery)->selectRaw('COALESCE(SUM(ABS(qty_change) * unit_cost), 0) as aggregate')->value('aggregate'),
         ];
+
         return view('inventory.movement-costs', compact('rows', 'summary'));
     }
 
@@ -45,14 +46,16 @@ class InventoryMovementCostController extends Controller
 
         return response()->streamDownload(function () use ($query) {
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['Ledger ID','Date','Product','SKU','Movement Type','Quantity Change','Unit Cost','Absolute Movement Cost']);
+            fputcsv($out, ['Ledger ID', 'Date', 'Product', 'SKU', 'Movement Type', 'Quantity Change', 'Unit Cost', 'Absolute Movement Cost']);
             $query->chunk(500, function ($rows) use ($out) {
-                foreach ($rows as $r) fputcsv($out, [
-                    $r->id, optional($r->created_at)->toDateTimeString(), $r->product?->name, $r->product?->sku,
-                    $r->type, $r->qty_change, $r->unit_cost, abs((int)$r->qty_change) * (float)$r->unit_cost,
-                ]);
+                foreach ($rows as $r) {
+                    fputcsv($out, [
+                        $r->id, optional($r->created_at)->toDateTimeString(), $r->product?->name, $r->product?->sku,
+                        $r->type, $r->qty_change, $r->unit_cost, abs((int) $r->qty_change) * (float) $r->unit_cost,
+                    ]);
+                }
             });
             fclose($out);
-        }, 'inventory-movement-costs-' . now()->format('Ymd-His') . '.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+        }, 'inventory-movement-costs-'.now()->format('Ymd-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 }

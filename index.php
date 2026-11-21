@@ -1,4 +1,5 @@
 <?php
+
 // Root entry point so the app runs at http://127.0.0.1/laravel/seller-automation/
 // (no virtual host, no /public in the URL). Mirrors public/index.php with root-relative paths.
 use Illuminate\Http\Request;

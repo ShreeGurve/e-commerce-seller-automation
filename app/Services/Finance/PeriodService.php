@@ -37,6 +37,7 @@ class PeriodService
         $period->closed_at = now();
         $period->notes = $notes;
         $period->save();
+
         return $period;
     }
 
@@ -45,8 +46,11 @@ class PeriodService
         $period->status = 'OPEN';
         $period->reopened_by = $userId;
         $period->reopened_at = now();
-        if ($notes !== null) $period->notes = $notes;
+        if ($notes !== null) {
+            $period->notes = $notes;
+        }
         $period->save();
+
         return $period;
     }
 }

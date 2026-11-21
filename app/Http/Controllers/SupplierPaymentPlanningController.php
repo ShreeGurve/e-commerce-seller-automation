@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Purchase;
+use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -26,7 +27,7 @@ class SupplierPaymentPlanningController extends Controller
             ->with('supplier')
             ->whereIn('status', ['ORDERED', 'RECEIVED'])
             ->whereNull('deleted_at')
-            ->when(!empty($filters['supplier_id']), fn ($q) => $q->where('supplier_id', $filters['supplier_id']))
+            ->when(! empty($filters['supplier_id']), fn ($q) => $q->where('supplier_id', $filters['supplier_id']))
             ->whereRaw('(total_amount - amount_paid) > 0.009')
             ->orderBy('purchase_date')
             ->get()
@@ -39,7 +40,7 @@ class SupplierPaymentPlanningController extends Controller
                     ? Carbon::parse($baseDate)->addDays($days)->startOfDay()
                     : null;
 
-                if (!$dueDate) {
+                if (! $dueDate) {
                     $bucket = 'unknown';
                     $priority = 2;
                 } elseif ($dueDate->lt($today)) {
@@ -66,10 +67,17 @@ class SupplierPaymentPlanningController extends Controller
             ->sortBy(fn ($row) => sprintf('%d-%s-%010d', $row->priority, $row->due_date?->format('Ymd') ?? '99999999', $row->purchase->id))
             ->values();
 
-        $visible = $purchases->filter(function ($row) use ($statusFilter, $horizonDate) {
-            if ($statusFilter === 'all') return true;
-            if ($statusFilter === 'due') return $row->bucket === 'due';
-            if ($statusFilter === 'upcoming') return $row->bucket === 'upcoming';
+        $visible = $purchases->filter(function ($row) use ($statusFilter) {
+            if ($statusFilter === 'all') {
+                return true;
+            }
+            if ($statusFilter === 'due') {
+                return $row->bucket === 'due';
+            }
+            if ($statusFilter === 'upcoming') {
+                return $row->bucket === 'upcoming';
+            }
+
             return $row->bucket === $statusFilter;
         })->values();
 
@@ -77,7 +85,7 @@ class SupplierPaymentPlanningController extends Controller
         $overdueAmount = (float) $purchases->where('bucket', 'overdue')->sum('balance');
         $dueSoonAmount = (float) $purchases->filter(fn ($row) => in_array($row->bucket, ['due', 'upcoming'], true))->sum('balance');
         $unknownAmount = (float) $purchases->where('bucket', 'unknown')->sum('balance');
-        $suppliers = \App\Models\Supplier::query()->orderBy('name')->get(['id', 'name']);
+        $suppliers = Supplier::query()->orderBy('name')->get(['id', 'name']);
         $supplierExposure = $purchases->groupBy(fn ($row) => $row->supplier?->id ?? 0)->map(function ($rows) {
             return (object) [
                 'name' => $rows->first()->supplier?->name ?? 'Unknown supplier',
@@ -100,7 +108,8 @@ class SupplierPaymentPlanningController extends Controller
             ->whereRaw('(total_amount - amount_paid) > 0.009')
             ->orderBy('purchase_date')->get();
 
-        $filename = 'supplier-payment-plan-' . now()->format('Ymd-His') . '.csv';
+        $filename = 'supplier-payment-plan-'.now()->format('Ymd-His').'.csv';
+
         return response()->streamDownload(function () use ($rows) {
             $out = fopen('php://output', 'w');
             fputcsv($out, ['PO Number', 'Supplier', 'Invoice Date', 'Purchase Date', 'Payment Terms', 'Estimated Due Date', 'Total', 'Paid', 'Outstanding', 'PO Status']);
@@ -134,6 +143,7 @@ class SupplierPaymentPlanningController extends Controller
         if (preg_match('/\b(?:immediate|due\s+on\s+receipt|cod|cash\s+on\s+delivery|advance)\b/i', $terms)) {
             return 0;
         }
+
         return null;
     }
 }

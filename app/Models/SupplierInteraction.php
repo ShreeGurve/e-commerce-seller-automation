@@ -16,6 +16,13 @@ class SupplierInteraction extends Model
         'completed_at' => 'datetime',
     ];
 
-    public function supplier() { return $this->belongsTo(Supplier::class); }
-    public function creator() { return $this->belongsTo(User::class, 'created_by'); }
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class);
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 }

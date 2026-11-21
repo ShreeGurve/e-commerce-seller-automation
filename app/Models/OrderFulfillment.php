@@ -20,6 +20,13 @@ class OrderFulfillment extends Model
         'last_tracking_at' => 'datetime',
     ];
 
-    public function order() { return $this->belongsTo(Order::class); }
-    public function events() { return $this->hasMany(OrderFulfillmentEvent::class, 'order_id', 'order_id')->latest('id'); }
+    public function order()
+    {
+        return $this->belongsTo(Order::class);
+    }
+
+    public function events()
+    {
+        return $this->hasMany(OrderFulfillmentEvent::class, 'order_id', 'order_id')->latest('id');
+    }
 }

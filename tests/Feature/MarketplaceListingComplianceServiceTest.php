@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Models\{Listing, Marketplace, MarketplaceListingIssue, Product};
+use App\Models\Listing;
+use App\Models\Marketplace;
+use App\Models\Product;
 use App\Services\MarketplaceListingComplianceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
@@ -16,6 +18,7 @@ class MarketplaceListingComplianceServiceTest extends TestCase
     {
         $product = Product::create(['sku' => 'COMP-'.uniqid(), 'name' => 'Compliance test item']);
         $marketplace = Marketplace::create(['code' => 'test-'.uniqid(), 'name' => 'Test Marketplace', 'is_active' => true]);
+
         return Listing::create(['product_id' => $product->id, 'marketplace_id' => $marketplace->id, 'status' => 'LIVE']);
     }
 

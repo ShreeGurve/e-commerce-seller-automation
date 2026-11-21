@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Marketplaces\Flipkart;
 
 use App\Marketplaces\BaseAdapter;
@@ -51,6 +52,7 @@ class FlipkartAdapter extends BaseAdapter
             'listing_status' => ['listing status', 'status'],
         ],
     ];
+
     protected array $statusMap = [
         'pending' => 'IMPORTED', 'approved' => 'CONFIRMED', 'packed' => 'PACKED', 'readytodispatch' => 'PACKED', 'rtd' => 'PACKED',
         'shipped' => 'SHIPPED', 'dispatched' => 'SHIPPED', 'intransit' => 'SHIPPED', 'delivered' => 'DELIVERED',

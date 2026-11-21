@@ -34,10 +34,18 @@ class PurchaseCostIntelligenceController extends Controller
             )
             ->groupBy('pi.product_id', 'pr.name', 'pr.sku', 's.id', 's.name');
 
-        if ($request->filled('product_id')) $query->where('pi.product_id', $request->integer('product_id'));
-        if ($request->filled('supplier_id')) $query->where('s.id', $request->integer('supplier_id'));
-        if ($request->filled('from')) $query->whereDate('p.received_at', '>=', $request->date('from'));
-        if ($request->filled('to')) $query->whereDate('p.received_at', '<=', $request->date('to'));
+        if ($request->filled('product_id')) {
+            $query->where('pi.product_id', $request->integer('product_id'));
+        }
+        if ($request->filled('supplier_id')) {
+            $query->where('s.id', $request->integer('supplier_id'));
+        }
+        if ($request->filled('from')) {
+            $query->whereDate('p.received_at', '>=', $request->date('from'));
+        }
+        if ($request->filled('to')) {
+            $query->whereDate('p.received_at', '<=', $request->date('to'));
+        }
 
         $rows = $query->get()->map(function ($row) {
             $row->latest_cost = DB::table('purchase_items as pi')
@@ -64,6 +72,7 @@ class PurchaseCostIntelligenceController extends Controller
                 : null;
             $row->negotiation_target = round((float) $row->average_unit_cost * 0.97, 2);
             $row->target_saving = max(0, round((float) $row->average_unit_cost - $row->negotiation_target, 2));
+
             return $row;
         })->sortByDesc(fn ($r) => abs((float) ($r->change_percent ?? 0)))->values();
 

@@ -27,6 +27,7 @@ class MarketplaceInventoryReconciliationController extends Controller
         if ($selectedRun) {
             $items = $selectedRun->items()->with(['product', 'correctionRequest'])->orderByRaw("CASE status WHEN 'MISMATCH' THEN 0 WHEN 'UNMAPPED' THEN 1 ELSE 2 END")->paginate(30);
         }
+
         return view('marketplaces.inventory-reconciliation.index', compact('connections', 'runs', 'selectedRun', 'items'));
     }
 
@@ -34,6 +35,7 @@ class MarketplaceInventoryReconciliationController extends Controller
     {
         abort_unless($connection->business_id === $request->user()->business_id, 404);
         $run = $service->reconcile($connection);
+
         return redirect()->route('marketplaces.inventory-reconciliation', ['run' => $run->id])
             ->with('success', 'Inventory reconciliation completed. No stock quantities were changed.');
     }
@@ -43,6 +45,7 @@ class MarketplaceInventoryReconciliationController extends Controller
         $item->loadMissing('run');
         abort_unless($item->run?->business_id === $request->user()->business_id, 404);
         $service->requestCorrection($item, $request->user());
+
         return back()->with('success', 'A pending stock correction request was created. Stock remains unchanged until an authorized reviewer approves it.');
     }
 }

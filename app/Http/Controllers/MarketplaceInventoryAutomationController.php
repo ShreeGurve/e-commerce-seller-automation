@@ -34,7 +34,7 @@ class MarketplaceInventoryAutomationController extends Controller
                 'enabled' => (bool) ($data['enabled'] ?? false),
                 'interval_hours' => $data['interval_hours'],
                 'low_stock_threshold' => $data['low_stock_threshold'],
-                'next_run_at' => !empty($data['enabled']) ? now() : null,
+                'next_run_at' => ! empty($data['enabled']) ? now() : null,
             ]
         );
 

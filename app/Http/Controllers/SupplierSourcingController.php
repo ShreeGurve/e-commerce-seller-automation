@@ -47,6 +47,7 @@ class SupplierSourcingController extends Controller
                 $row->rating_out_of_5 = $review === null ? null : round((float) $review, 1);
                 $row->score = (int) round(($deliveryPct * .35) + ($ratingPct * .35) + ($costScore * .30));
                 $row->risk_label = $row->score >= 80 ? 'Preferred' : ($row->score >= 60 ? 'Consider' : 'Review');
+
                 return $row;
             });
 
@@ -62,6 +63,7 @@ class SupplierSourcingController extends Controller
                     $row->score = (int) round(($deliveryPct * .35) + ($ratingPct * .35) + ($costScore * .30));
                     $row->cost_score = round($costScore, 1);
                     $row->risk_label = $row->score >= 80 ? 'Preferred' : ($row->score >= 60 ? 'Consider' : 'Review');
+
                     return $row;
                 })->sortByDesc('score')->values();
             }

@@ -10,6 +10,7 @@ class AutomationIntelligenceController extends Controller
     private function businessId(): ?int
     {
         $user = auth()->user();
+
         return $user && method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()
             ? null
             : (int) ($user->business_id ?? 0);
@@ -21,6 +22,7 @@ class AutomationIntelligenceController extends Controller
         if ($this->businessId() !== null) {
             $query->where('business_id', $this->businessId());
         }
+
         return $query;
     }
 
@@ -36,6 +38,7 @@ class AutomationIntelligenceController extends Controller
         $rows = $tasks->map(function ($task) {
             $age = $task->created_at ? (int) $task->created_at->diffInDays(now()) : 0;
             $band = $age >= 30 ? '30+ days' : ($age >= 14 ? '14–29 days' : ($age >= 7 ? '7–13 days' : '0–6 days'));
+
             return (object) ['task' => $task, 'age' => $age, 'band' => $band];
         })->sortByDesc('age')->values();
 
@@ -62,10 +65,11 @@ class AutomationIntelligenceController extends Controller
         $people = $completed->groupBy(fn ($task) => $task->assigned_to ?: 0)
             ->map(function ($items) {
                 $first = $items->first();
+
                 return (object) [
                     'name' => $first->assignee->name ?? 'Unassigned',
                     'count' => $items->count(),
-                    'on_time' => $items->filter(fn ($task) => !$task->due_at || $task->completed_at <= $task->due_at)->count(),
+                    'on_time' => $items->filter(fn ($task) => ! $task->due_at || $task->completed_at <= $task->due_at)->count(),
                 ];
             })->sortByDesc('count')->values();
 
@@ -90,8 +94,9 @@ class AutomationIntelligenceController extends Controller
         $impact = $dependencies->groupBy('predecessor_task_id')->map(function ($links, $id) use ($tasks) {
             $task = $tasks->get($id);
             $dependents = $links->map(fn ($link) => $tasks->get($link->dependent_task_id))->filter();
-            $openDependents = $dependents->filter(fn ($dependent) => !in_array($dependent->status, ['COMPLETED', 'CANCELLED'], true));
+            $openDependents = $dependents->filter(fn ($dependent) => ! in_array($dependent->status, ['COMPLETED', 'CANCELLED'], true));
             $blockedDependents = $openDependents->filter(fn ($dependent) => $dependent->status !== 'COMPLETED');
+
             return (object) [
                 'task' => $task,
                 'dependent_count' => $dependents->count(),
@@ -99,7 +104,7 @@ class AutomationIntelligenceController extends Controller
                 'blocked_count' => $blockedDependents->count(),
             ];
         })->filter(fn ($row) => $row->task && $row->dependent_count > 0)
-          ->sortByDesc(fn ($row) => ($row->blocked_count * 3) + $row->open_count)->values();
+            ->sortByDesc(fn ($row) => ($row->blocked_count * 3) + $row->open_count)->values();
 
         return view('automation.dependency-impact', [
             'rows' => $impact,

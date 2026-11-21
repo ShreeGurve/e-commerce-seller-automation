@@ -17,8 +17,23 @@ class InventoryCorrectionRequest extends Model
         'applied_at' => 'datetime',
     ];
 
-    public function product() { return $this->belongsTo(Product::class)->withTrashed(); }
-    public function requester() { return $this->belongsTo(User::class, 'requested_by'); }
-    public function reviewer() { return $this->belongsTo(User::class, 'reviewed_by'); }
-    public function transaction() { return $this->belongsTo(InventoryTransaction::class, 'inventory_transaction_id'); }
+    public function product()
+    {
+        return $this->belongsTo(Product::class)->withTrashed();
+    }
+
+    public function requester()
+    {
+        return $this->belongsTo(User::class, 'requested_by');
+    }
+
+    public function reviewer()
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function transaction()
+    {
+        return $this->belongsTo(InventoryTransaction::class, 'inventory_transaction_id');
+    }
 }

@@ -4,10 +4,11 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
-        if (!Schema::hasTable('automation_task_dependencies')) {
+        if (! Schema::hasTable('automation_task_dependencies')) {
             Schema::create('automation_task_dependencies', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('predecessor_task_id')->constrained('automation_tasks')->cascadeOnDelete();

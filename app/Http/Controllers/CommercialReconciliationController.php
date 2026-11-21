@@ -24,6 +24,7 @@ class CommercialReconciliationController extends Controller
             ->where('o.source', '<>', 'TEST')->whereNull('o.deleted_at')->whereNull('r.deleted_at')
             ->whereBetween('r.refund_date', [$from, $to])->groupBy('r.order_id')
             ->havingRaw('SUM(r.amount) > MAX(o.total_amount)')->get()->count();
+
         return view('operations.refund-reconciliation', compact('rows', 'summary', 'overOrder', 'from', 'to'));
     }
 
@@ -33,13 +34,16 @@ class CommercialReconciliationController extends Controller
         [$from, $to] = $this->dateRange($request);
         $query = DB::table('claims as c')->leftJoin('orders as o', 'o.id', '=', 'c.order_id')
             ->leftJoin('marketplaces as m', 'm.id', '=', 'c.marketplace_id')->whereNull('c.deleted_at')
-            ->where(function ($q) { $q->whereNull('o.source')->orWhere('o.source', '<>', 'TEST'); })
+            ->where(function ($q) {
+                $q->whereNull('o.source')->orWhere('o.source', '<>', 'TEST');
+            })
             ->whereBetween(DB::raw('COALESCE(c.submitted_at, DATE(c.created_at))'), [$from, $to]);
         $rows = (clone $query)->select('c.id', 'c.claim_number', 'c.claim_type', 'c.status', 'c.claim_amount', 'c.approved_amount', 'c.rejected_amount', 'c.submitted_at', 'c.decision_date', 'm.name as marketplace_name', 'o.order_number')
             ->orderByDesc('c.created_at')->paginate(30)->withQueryString();
         $summary = (clone $query)->selectRaw('COUNT(*) as claim_count, COALESCE(SUM(c.claim_amount),0) as claimed, COALESCE(SUM(c.approved_amount),0) as approved, COALESCE(SUM(c.rejected_amount),0) as rejected')->first();
         $openStatuses = ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'APPEAL'];
         $openExposure = (clone $query)->whereIn('c.status', $openStatuses)->sum(DB::raw('GREATEST(c.claim_amount - c.approved_amount - c.rejected_amount, 0)'));
+
         return view('operations.claim-recovery', compact('rows', 'summary', 'openExposure', 'from', 'to'));
     }
 
@@ -58,9 +62,12 @@ class CommercialReconciliationController extends Controller
             ->orderByDesc('si.posted_date')->limit(100)->get();
         $summary = [
             'eligible' => DB::table('orders')->where('source', '<>', 'TEST')->whereNull('deleted_at')->whereIn('status', $eligible)->whereBetween('order_date', [$from.' 00:00:00', $to.' 23:59:59'])->count(),
-            'missing' => DB::table('orders as o')->where('o.source', '<>', 'TEST')->whereNull('o.deleted_at')->whereIn('o.status', $eligible)->whereBetween('o.order_date', [$from.' 00:00:00', $to.' 23:59:59'])->whereNotExists(function ($q) { $q->selectRaw('1')->from('settlement_items as si')->whereColumn('si.order_id', 'o.id'); })->count(),
+            'missing' => DB::table('orders as o')->where('o.source', '<>', 'TEST')->whereNull('o.deleted_at')->whereIn('o.status', $eligible)->whereBetween('o.order_date', [$from.' 00:00:00', $to.' 23:59:59'])->whereNotExists(function ($q) {
+                $q->selectRaw('1')->from('settlement_items as si')->whereColumn('si.order_id', 'o.id');
+            })->count(),
             'unlinked' => DB::table('settlement_items as si')->join('settlements as s', 's.id', '=', 'si.settlement_id')->whereNull('si.order_id')->whereNotNull('si.external_order_id')->whereBetween('s.period_start', [$from, $to])->count(),
         ];
+
         return view('operations.settlement-coverage', compact('missing', 'unlinked', 'summary', 'from', 'to'));
     }
 
@@ -69,6 +76,7 @@ class CommercialReconciliationController extends Controller
         $data = $request->validate(['from' => ['nullable', 'date'], 'to' => ['nullable', 'date', 'after_or_equal:from']]);
         $to = $data['to'] ?? now()->toDateString();
         $from = $data['from'] ?? now()->subDays(30)->toDateString();
+
         return [$from, $to];
     }
 }

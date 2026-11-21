@@ -16,6 +16,13 @@ class MarketplaceSyncRecord extends Model
         return ['payload' => 'array', 'first_seen_at' => 'datetime', 'last_seen_at' => 'datetime'];
     }
 
-    public function run() { return $this->belongsTo(MarketplaceSyncRun::class, 'sync_run_id'); }
-    public function connection() { return $this->belongsTo(MarketplaceConnection::class, 'marketplace_connection_id'); }
+    public function run()
+    {
+        return $this->belongsTo(MarketplaceSyncRun::class, 'sync_run_id');
+    }
+
+    public function connection()
+    {
+        return $this->belongsTo(MarketplaceConnection::class, 'marketplace_connection_id');
+    }
 }

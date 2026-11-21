@@ -27,7 +27,9 @@ class FinanceOperationsIntelligenceController extends Controller
             ->where('ri.status', 'OPEN')
             ->whereDate('ri.created_at', '<=', $f['to'])
             ->whereDate('ri.created_at', '>=', $f['from'])
-            ->where(function ($q) { $q->whereNull('o.source')->orWhere('o.source', '!=', 'TEST'); })
+            ->where(function ($q) {
+                $q->whereNull('o.source')->orWhere('o.source', '!=', 'TEST');
+            })
             ->select('ri.id', 'ri.issue_type', 'ri.message', 'ri.expected_amount', 'ri.actual_amount', 'ri.difference', 'ri.created_at', 'ri.external_order_id')
             ->orderByDesc('ri.created_at')->limit(250)->get();
 
@@ -41,6 +43,7 @@ class FinanceOperationsIntelligenceController extends Controller
             'overdue_claims' => $claims,
             'unlinked_settlement_lines' => $unlinked,
         ];
+
         return view('finance.operations.risk', compact('f', 'issues', 'summary'));
     }
 
@@ -59,12 +62,23 @@ class FinanceOperationsIntelligenceController extends Controller
             $r->fee_pct = round(((float) $r->fees / (float) $r->revenue) * 100, 2);
             $r->refund_pct = round(((float) $r->refunds / (float) $r->revenue) * 100, 2);
             $flags = [];
-            if ((float) $r->profit < 0) $flags[] = 'Negative contribution';
-            if ($r->margin_pct >= 0 && $r->margin_pct < 10) $flags[] = 'Margin below 10%';
-            if ($r->fee_pct > 20) $flags[] = 'Fees above 20% of revenue';
-            if ($r->refund_pct > 15) $flags[] = 'Refunds above 15% of revenue';
-            if ((float) $r->ads > 0 && (float) $r->profit < (float) $r->ads) $flags[] = 'Profit below allocated ad spend';
+            if ((float) $r->profit < 0) {
+                $flags[] = 'Negative contribution';
+            }
+            if ($r->margin_pct >= 0 && $r->margin_pct < 10) {
+                $flags[] = 'Margin below 10%';
+            }
+            if ($r->fee_pct > 20) {
+                $flags[] = 'Fees above 20% of revenue';
+            }
+            if ($r->refund_pct > 15) {
+                $flags[] = 'Refunds above 15% of revenue';
+            }
+            if ((float) $r->ads > 0 && (float) $r->profit < (float) $r->ads) {
+                $flags[] = 'Profit below allocated ad spend';
+            }
             $r->signals = $flags;
+
             return $r;
         })->filter(fn ($r) => count($r->signals) > 0)->values();
         $summary = [
@@ -73,6 +87,7 @@ class FinanceOperationsIntelligenceController extends Controller
             'low_margin_products' => $signals->filter(fn ($r) => $r->margin_pct >= 0 && $r->margin_pct < 10)->count(),
             'refund_exposure' => (float) $signals->sum('refunds'),
         ];
+
         return view('finance.operations.leakage', compact('f', 'signals', 'summary'));
     }
 
@@ -82,7 +97,9 @@ class FinanceOperationsIntelligenceController extends Controller
         $f = $this->dates($request);
         $rows = DB::table('settlements as s')->join('marketplaces as m', 'm.id', '=', 's.marketplace_id')
             ->leftJoin('settlement_items as si', 'si.settlement_id', '=', 's.id')
-            ->where(function ($q) use ($f) { $q->whereBetween('s.period_end', [$f['from'], $f['to']])->orWhereBetween('s.period_start', [$f['from'], $f['to']]); })
+            ->where(function ($q) use ($f) {
+                $q->whereBetween('s.period_end', [$f['from'], $f['to']])->orWhereBetween('s.period_start', [$f['from'], $f['to']]);
+            })
             ->groupBy('s.id', 'm.name', 's.external_settlement_id', 's.period_start', 's.period_end', 's.total_amount', 's.item_count', 's.created_at')
             ->selectRaw('s.id, m.name marketplace, s.external_settlement_id, s.period_start, s.period_end, s.total_amount, s.item_count, s.created_at, COUNT(si.id) imported_lines, SUM(CASE WHEN si.order_id IS NULL THEN 1 ELSE 0 END) unlinked_lines, SUM(CASE WHEN si.kind = "SALE" THEN si.amount ELSE 0 END) sales, SUM(CASE WHEN si.kind = "REFUND" THEN si.amount ELSE 0 END) refunds, SUM(CASE WHEN si.kind IN ("REFERRAL_FEE","CLOSING_FEE","SHIPPING_FEE","COLLECTION_FEE","PAYMENT_FEE","OTHER_FEE","FEE_TAX") THEN si.amount ELSE 0 END) fees')
             ->orderByDesc('s.period_end')->limit(300)->get();
@@ -92,6 +109,7 @@ class FinanceOperationsIntelligenceController extends Controller
             'unlinked_lines' => (int) $rows->sum('unlinked_lines'),
             'line_count_variances' => $rows->filter(fn ($r) => (int) $r->item_count !== (int) $r->imported_lines)->count(),
         ];
+
         return view('finance.operations.settlements', compact('f', 'rows', 'summary'));
     }
 }

@@ -1,7 +1,15 @@
 <?php
+
 namespace App\Services;
 
-use App\Models\{Claim, Order, OrderItem, ReconciliationIssue, Refund, SettlementItem};
+use App\Models\Claim;
+use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\Product;
+use App\Models\ProductMarketplace;
+use App\Models\ReconciliationIssue;
+use App\Models\Refund;
+use App\Models\SettlementItem;
 use App\Support\Money;
 use Illuminate\Support\Facades\DB;
 
@@ -18,22 +26,26 @@ class ReconciliationService
     /** Settlement lines that arrived before their order: attach them now. Returns affected order ids. */
     public function relink(): array
     {
-        $touched = []; $cache = [];
+        $touched = [];
+        $cache = [];
         SettlementItem::whereNull('order_id')->whereNotNull('external_order_id')->with('settlement:id,marketplace_id')->chunkById(500, function ($chunk) use (&$touched, &$cache) {
             foreach ($chunk as $it) {
-                $key = $it->settlement->marketplace_id . '|' . $it->external_order_id;
+                $key = $it->settlement->marketplace_id.'|'.$it->external_order_id;
                 $cache[$key] ??= Order::where('marketplace_id', $it->settlement->marketplace_id)->where('external_order_id', $it->external_order_id)->value('id') ?: 0;
-                if (! $cache[$key]) continue;
+                if (! $cache[$key]) {
+                    continue;
+                }
                 $itemId = null;
                 if ($it->sku) {
-                    $pid = \App\Models\ProductMarketplace::where('marketplace_id', $it->settlement->marketplace_id)->where('marketplace_sku', $it->sku)->value('product_id')
-                        ?? \App\Models\Product::where('sku', $it->sku)->value('id');
+                    $pid = ProductMarketplace::where('marketplace_id', $it->settlement->marketplace_id)->where('marketplace_sku', $it->sku)->value('product_id')
+                        ?? Product::where('sku', $it->sku)->value('id');
                     $itemId = $pid ? OrderItem::where('order_id', $cache[$key])->where('product_id', $pid)->value('id') : null;
                 }
                 $it->update(['order_id' => $cache[$key], 'order_item_id' => $itemId]);
                 $touched[$cache[$key]] = true;
             }
         });
+
         return array_keys($touched);
     }
 
@@ -41,10 +53,15 @@ class ReconciliationService
     public function run(?array $orderIds = null, ?array $settlementIds = null): array
     {
         $relinked = $this->relink();
-        foreach ($relinked as $id) { if ($o = Order::find($id)) $this->profit->safe($o); }
+        foreach ($relinked as $id) {
+            if ($o = Order::find($id)) {
+                $this->profit->safe($o);
+            }
+        }
         $scope = $orderIds === null ? null : array_values(array_unique(array_merge($orderIds, $relinked)));
 
-        $found = []; $scanned = [];
+        $found = [];
+        $scanned = [];
         $waitDays = (int) SettingsService::get('settlement_wait_days', 14);
         $tolPct = (float) SettingsService::get('recon_fee_tolerance_percent', 20);
         $gstIsCost = (float) SettingsService::get('fee_gst_rate', 18) > 0;
@@ -63,8 +80,12 @@ class ReconciliationService
                 $hasSettlement = $k->isNotEmpty();
                 $sale = Money::p($k['SALE'] ?? 0);
                 $actualFees = 0;
-                foreach (SettlementItem::FEE_KINDS as $fk) $actualFees += -Money::p($k[$fk] ?? 0);
-                if ($gstIsCost) $actualFees += -Money::p($k['FEE_TAX'] ?? 0);
+                foreach (SettlementItem::FEE_KINDS as $fk) {
+                    $actualFees += -Money::p($k[$fk] ?? 0);
+                }
+                if ($gstIsCost) {
+                    $actualFees += -Money::p($k['FEE_TAX'] ?? 0);
+                }
                 $estFee = Money::p($estFees[$o->id] ?? 0);
 
                 if (! $hasSettlement) {
@@ -72,6 +93,7 @@ class ReconciliationService
                         $expected = Money::p($o->total_amount) - $estFee;
                         $found[] = $this->issue('MISSING_SETTLEMENT', $o, null, $expected, 0, "No payout line found {$o->order_date->diffInDays(now())} days after the order.");
                     }
+
                     continue;
                 }
                 if ($sale > 0 || $k->has('SALE')) {
@@ -83,7 +105,8 @@ class ReconciliationService
                 if ($estFee > 0 && $actualFees > 0 && abs($actualFees - $estFee) > max(500, (int) round($estFee * $tolPct / 100))) {
                     $found[] = $this->issue('FEE_MISMATCH', $o, null, $estFee, $actualFees, 'Fees charged differ from your fee rules.');
                 }
-                $paidRefund = -Money::p($k['REFUND'] ?? 0); $manual = Money::p($manualRefunds[$o->id] ?? 0);
+                $paidRefund = -Money::p($k['REFUND'] ?? 0);
+                $manual = Money::p($manualRefunds[$o->id] ?? 0);
                 if (($paidRefund > 0 || $manual > 0) && abs($paidRefund - $manual) > 100) {
                     $found[] = $this->issue('REFUND_MISMATCH', $o, null, $manual, $paidRefund, 'Refund recorded in the system differs from the refund in the settlement.');
                 }
@@ -96,8 +119,11 @@ class ReconciliationService
             $approved = Claim::where('approved_amount', '>', 0)->whereNotNull('order_id')->whereIn('order_id', $scanned)->whereDate('decision_date', '<=', $cutoff->toDateString())
                 ->selectRaw('order_id, SUM(approved_amount) a')->groupBy('order_id')->pluck('a', 'order_id');
             foreach ($approved as $oid => $a) {
-                $ap = Money::p($a); $pd = Money::p($paidBy[$oid] ?? 0);
-                if ($pd < $ap - 100 && ($o = Order::find($oid))) $found[] = $this->issue('CLAIM_UNPAID', $o, null, $ap, $pd, 'Claim approved but the reimbursement is not in any settlement yet.');
+                $ap = Money::p($a);
+                $pd = Money::p($paidBy[$oid] ?? 0);
+                if ($pd < $ap - 100 && ($o = Order::find($oid))) {
+                    $found[] = $this->issue('CLAIM_UNPAID', $o, null, $ap, $pd, 'Claim approved but the reimbursement is not in any settlement yet.');
+                }
             }
         }
 
@@ -112,6 +138,7 @@ class ReconciliationService
 
         $opened = $this->sync($found, $scanned, $settlementIds);
         $this->setOrderStatuses($scanned);
+
         return ['scanned' => count($scanned), 'open' => ReconciliationIssue::where('status', 'OPEN')->count(), 'new' => $opened, 'relinked' => count($relinked)];
     }
 
@@ -123,7 +150,8 @@ class ReconciliationService
     /** @return int number of newly opened issues */
     private function sync(array $found, array $scannedOrderIds, ?array $settlementIds): int
     {
-        $new = 0; $fps = [];
+        $new = 0;
+        $fps = [];
         foreach ($found as $f) {
             $fps[] = $f['fp'];
             $diff = $f['expected'] === null ? null : $f['actual'] - $f['expected'];
@@ -131,9 +159,16 @@ class ReconciliationService
                 'expected_amount' => $f['expected'] === null ? null : Money::m($f['expected']), 'actual_amount' => Money::m($f['actual']),
                 'difference' => $diff === null ? null : Money::m($diff), 'message' => $f['message']];
             $issue = ReconciliationIssue::where('fingerprint', $f['fp'])->first();
-            if (! $issue) { ReconciliationIssue::create($vals + ['fingerprint' => $f['fp'], 'status' => 'OPEN', 'detected_at' => now()]); $new++; }
-            elseif ($issue->status === 'RESOLVED') { $issue->update($vals + ['status' => 'OPEN', 'resolved_at' => null, 'resolved_by' => null]); $new++; }   // came back
-            elseif ($issue->status === 'OPEN') { $issue->update($vals); }
+            if (! $issue) {
+                ReconciliationIssue::create($vals + ['fingerprint' => $f['fp'], 'status' => 'OPEN', 'detected_at' => now()]);
+                $new++;
+            } elseif ($issue->status === 'RESOLVED') {
+                $issue->update($vals + ['status' => 'OPEN', 'resolved_at' => null, 'resolved_by' => null]);
+                $new++;
+            }   // came back
+            elseif ($issue->status === 'OPEN') {
+                $issue->update($vals);
+            }
             // IGNORED stays ignored
         }
         // anything we checked that is now fine closes itself
@@ -141,6 +176,7 @@ class ReconciliationService
             ->where(fn ($q) => $q->where(fn ($w) => $w->whereIn('issue_type', self::ORDER_TYPES)->whereIn('order_id', $scannedOrderIds ?: [0]))
                 ->orWhere(fn ($w) => $w->where('issue_type', 'UNKNOWN_ORDER')->when($settlementIds !== null, fn ($x) => $x->whereIn('settlement_id', $settlementIds))))
             ->whereNotIn('fingerprint', $fps ?: ['-'])->update(['status' => 'RESOLVED', 'resolved_at' => now(), 'note' => 'Auto-closed: no longer detected']);
+
         return $new;
     }
 
@@ -150,8 +186,12 @@ class ReconciliationService
             $withSettlement = SettlementItem::whereIn('order_id', $chunk)->distinct()->pluck('order_id')->all();
             $withIssue = ReconciliationIssue::where('status', 'OPEN')->whereIn('order_id', $chunk)->distinct()->pluck('order_id')->all();
             Order::whereIn('id', $chunk)->update(['recon_status' => 'PENDING']);
-            if ($withSettlement) Order::whereIn('id', array_diff($withSettlement, $withIssue))->update(['recon_status' => 'MATCHED']);
-            if ($withIssue) Order::whereIn('id', $withIssue)->update(['recon_status' => 'MISMATCH']);
+            if ($withSettlement) {
+                Order::whereIn('id', array_diff($withSettlement, $withIssue))->update(['recon_status' => 'MATCHED']);
+            }
+            if ($withIssue) {
+                Order::whereIn('id', $withIssue)->update(['recon_status' => 'MISMATCH']);
+            }
         }
         Order::where('status', 'CANCELLED')->where('recon_status', '!=', 'NOT_APPLICABLE')->update(['recon_status' => 'NOT_APPLICABLE']);
     }

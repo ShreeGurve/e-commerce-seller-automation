@@ -22,6 +22,7 @@ class MarketplaceWriteExecutionController extends Controller
         } catch (RuntimeException $e) {
             throw ValidationException::withMessages(['policy' => $e->getMessage()]);
         }
+
         return back()->with('success', 'Marketplace write policy updated. Environment-level gates remain independently enforced.');
     }
 
@@ -38,6 +39,7 @@ class MarketplaceWriteExecutionController extends Controller
             'idempotency_key' => ['nullable', 'string', 'max:100'],
         ]);
         $attempt = $service->prepare($request->user(), $data);
+
         return back()->with('success', 'Local preview prepared as attempt #'.$attempt->id.'. No marketplace API call was made. A different user must approve the exact payload before submission.');
     }
 
@@ -50,6 +52,7 @@ class MarketplaceWriteExecutionController extends Controller
             throw ValidationException::withMessages(['attempt' => $e->getMessage()]);
         }
         $message = $result->error_message ?: 'Marketplace submission status: '.$result->status.'.';
+
         return back()->with($result->status === 'ACCEPTED' ? 'success' : 'warning', $message);
     }
 }

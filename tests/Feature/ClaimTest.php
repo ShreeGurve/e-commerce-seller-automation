@@ -1,9 +1,26 @@
 <?php
+
 namespace Tests\Feature;
 
 use App\Marketplaces\Amazon\AmazonAdapter;
-use App\Models\{Claim, ClaimDocument, Marketplace, Order, OrderProfit, Product, ProductCostHistory, ReconciliationIssue, ReturnMedia, Settlement, SettlementItem, User};
-use App\Services\{ClaimService, InventoryService, OrderService, ProfitService, ReconciliationService, ReturnService};
+use App\Models\Claim;
+use App\Models\ClaimDocument;
+use App\Models\Marketplace;
+use App\Models\Order;
+use App\Models\OrderProfit;
+use App\Models\Product;
+use App\Models\ProductCostHistory;
+use App\Models\ReconciliationIssue;
+use App\Models\ReturnMedia;
+use App\Models\Settlement;
+use App\Models\SettlementItem;
+use App\Models\User;
+use App\Services\ClaimService;
+use App\Services\InventoryService;
+use App\Services\OrderService;
+use App\Services\ProfitService;
+use App\Services\ReconciliationService;
+use App\Services\ReturnService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -13,7 +30,11 @@ class ClaimTest extends TestCase
 {
     use RefreshDatabase;
 
-    private User $u; private Product $p; private Marketplace $mp;
+    private User $u;
+
+    private Product $p;
+
+    private Marketplace $mp;
 
     protected function setUp(): void
     {
@@ -34,19 +55,29 @@ class ClaimTest extends TestCase
     {
         $o = app(OrderService::class)->create(['marketplace_id' => $this->mp->id, 'external_order_id' => $ext, 'order_date' => now()->subDays(3)],
             [['product_id' => $this->p->id, 'quantity' => 2, 'unit_price' => '118']], $this->u);
-        foreach (['PACKED', 'SHIPPED'] as $s) app(OrderService::class)->changeStatus($o, $s);
+        foreach (['PACKED', 'SHIPPED'] as $s) {
+            app(OrderService::class)->changeStatus($o, $s);
+        }
+
         return $o->fresh();
     }
+
     private function claim(Order $o, string $amount = '100', string $type = 'DAMAGED_ITEM'): Claim
     {
         return app(ClaimService::class)->create(['marketplace_id' => $this->mp->id, 'order_id' => $o->id, 'claim_type' => $type, 'claim_amount' => $amount], $this->u);
     }
-    private function go(Claim $c, string $to, array $d = []): Claim { return app(ClaimService::class)->transition($c, $to, $d, $this->u); }
+
+    private function go(Claim $c, string $to, array $d = []): Claim
+    {
+        return app(ClaimService::class)->transition($c, $to, $d, $this->u);
+    }
+
     private function item(array $x): SettlementItem
     {
         static $n = 0;
         $st = Settlement::firstOrCreate(['marketplace_id' => $this->mp->id, 'external_settlement_id' => 'S1']);
-        return SettlementItem::create($x + ['settlement_id' => $st->id, 'posted_date' => now()->subDay()->toDateString(), 'row_hash' => sha1('h' . ++$n)]);
+
+        return SettlementItem::create($x + ['settlement_id' => $st->id, 'posted_date' => now()->subDay()->toDateString(), 'row_hash' => sha1('h'.++$n)]);
     }
 
     public function test_return_inspection_suggests_a_claim_and_duplicates_are_blocked(): void
@@ -73,12 +104,20 @@ class ClaimTest extends TestCase
     public function test_status_flow_decisions_and_appeal(): void
     {
         $c = $this->claim($this->order());
-        try { $this->go($c, 'APPROVED'); $this->fail('draft cannot jump to approved'); } catch (ValidationException) {}
+        try {
+            $this->go($c, 'APPROVED');
+            $this->fail('draft cannot jump to approved');
+        } catch (ValidationException) {
+        }
 
         $c = $this->go($c, 'SUBMITTED', ['external_claim_id' => 'CASE-9']);
         $this->assertSame('CASE-9', $c->external_claim_id);
         $c = $this->go($c, 'UNDER_REVIEW');
-        try { $this->go($c, 'PARTIALLY_APPROVED', ['approved_amount' => '100']); $this->fail('partial must be below the claim'); } catch (ValidationException) {}
+        try {
+            $this->go($c, 'PARTIALLY_APPROVED', ['approved_amount' => '100']);
+            $this->fail('partial must be below the claim');
+        } catch (ValidationException) {
+        }
         $c = $this->go($c, 'PARTIALLY_APPROVED', ['approved_amount' => '60']);
         $this->assertSame(['60.00', '40.00'], [(string) $c->approved_amount, (string) $c->rejected_amount]);
 
@@ -109,8 +148,12 @@ class ClaimTest extends TestCase
 
     public function test_deadline_alerts_use_the_configured_windows(): void
     {
-        $mk = function (int $days, string $status = 'DRAFT') { static $n = 0; return Claim::create(['claim_number' => 'X' . ++$n, 'marketplace_id' => $this->mp->id, 'claim_type' => 'DAMAGED_ITEM',
-            'status' => $status, 'claim_amount' => '10', 'deadline' => now()->addDays($days)->toDateString()]); };
+        $mk = function (int $days, string $status = 'DRAFT') {
+            static $n = 0;
+
+            return Claim::create(['claim_number' => 'X'.++$n, 'marketplace_id' => $this->mp->id, 'claim_type' => 'DAMAGED_ITEM',
+                'status' => $status, 'claim_amount' => '10', 'deadline' => now()->addDays($days)->toDateString()]);
+        };
         $this->assertSame('URGENT', $mk(2)->deadlineState());
         $this->assertSame('WARNING', $mk(6)->deadlineState());
         $this->assertSame('OK', $mk(20)->deadlineState());

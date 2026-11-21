@@ -1,9 +1,21 @@
 <?php
+
 namespace Tests\Feature;
 
 use App\Marketplaces\Amazon\AmazonAdapter;
-use App\Models\{AdvertisingDaily, DataImport, Marketplace, Order, OrderProfit, Product, ProductCostHistory, User};
-use App\Services\{AdsService, ImportProcessor, InventoryService, OrderService, ProfitService};
+use App\Models\AdvertisingDaily;
+use App\Models\DataImport;
+use App\Models\Marketplace;
+use App\Models\Order;
+use App\Models\OrderProfit;
+use App\Models\Product;
+use App\Models\ProductCostHistory;
+use App\Models\User;
+use App\Services\AdsService;
+use App\Services\ImportProcessor;
+use App\Services\InventoryService;
+use App\Services\OrderService;
+use App\Services\ProfitService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -12,7 +24,11 @@ class AdvertisingTest extends TestCase
 {
     use RefreshDatabase;
 
-    private User $u; private Product $p; private Marketplace $mp;
+    private User $u;
+
+    private Product $p;
+
+    private Marketplace $mp;
 
     protected function setUp(): void
     {
@@ -28,25 +44,42 @@ class AdvertisingTest extends TestCase
         app(InventoryService::class)->record($this->p, 'STOCK_IN', 50);   // no fee rules: order profit = 200 revenue - 100 cogs = 100.00
     }
 
-    private function day(): string { return now()->subDays(3)->toDateString(); }
+    private function day(): string
+    {
+        return now()->subDays(3)->toDateString();
+    }
+
     private function order(string $ext): Order
     {
         return app(OrderService::class)->create(['marketplace_id' => $this->mp->id, 'external_order_id' => $ext, 'order_date' => now()->subDays(3)],
             [['product_id' => $this->p->id, 'quantity' => 2, 'unit_price' => '118']], $this->u);
     }
+
     private function import(string $type, string $csv, array $map): DataImport
     {
-        Storage::fake('local'); Storage::disk('local')->put('imports/a.csv', $csv);
+        Storage::fake('local');
+        Storage::disk('local')->put('imports/a.csv', $csv);
+
         return DataImport::create(['marketplace_id' => $this->mp->id, 'data_type' => $type, 'file_name' => 'a.csv', 'stored_path' => 'imports/a.csv', 'file_hash' => str_repeat('c', 64),
             'status' => 'MAPPED', 'mapping' => $map, 'uploaded_by' => $this->u->id, 'options' => ['date_format' => 'auto']]);
     }
+
     private const M = ['date' => 'date', 'campaign' => 'campaign', 'impressions' => 'imp', 'clicks' => 'clicks', 'spend' => 'spend', 'sales' => 'sales', 'orders' => 'orders'];
-    private function processImport(DataImport $i): array { return app(ImportProcessor::class)->run($i, true); }
-    private function profits(): array { return OrderProfit::orderBy('id')->get()->map(fn ($r) => [(string) $r->ads_cost, (string) $r->estimated_profit])->all(); }
+
+    private function processImport(DataImport $i): array
+    {
+        return app(ImportProcessor::class)->run($i, true);
+    }
+
+    private function profits(): array
+    {
+        return OrderProfit::orderBy('id')->get()->map(fn ($r) => [(string) $r->ads_cost, (string) $r->estimated_profit])->all();
+    }
 
     public function test_product_ad_spend_lands_on_that_products_orders_exactly_and_updates_on_revision(): void
     {
-        $this->order('A1'); $this->order('A2');
+        $this->order('A1');
+        $this->order('A2');
         $csv = fn ($spend) => "date,campaign,sku,imp,clicks,spend,sales,orders\n{$this->day()},C1,SKU1,1000,50,$spend,236,1\n";
         $map = self::M + ['sku' => 'sku'];
 
@@ -90,8 +123,8 @@ class AdvertisingTest extends TestCase
     {
         $this->order('A1');
         $h = "date,campaign,sku,imp,clicks,spend,sales,orders\n";
-        $this->processImport($this->import('ADS_CAMPAIGN', $h . "{$this->day()},C1,,1000,50,100.00,500,3\n", self::M));
-        $this->processImport($this->import('ADS_PRODUCT', $h . "{$this->day()},C1,SKU1,1000,50,40.00,236,1\n", self::M + ['sku' => 'sku']));
+        $this->processImport($this->import('ADS_CAMPAIGN', $h."{$this->day()},C1,,1000,50,100.00,500,3\n", self::M));
+        $this->processImport($this->import('ADS_PRODUCT', $h."{$this->day()},C1,SKU1,1000,50,40.00,236,1\n", self::M + ['sku' => 'sku']));
         $f = ['from' => $this->day(), 'to' => $this->day()];
         $this->assertSame(100.0, app(AdsService::class)->totalSpend($f['from'], $f['to']));       // campaign report wins, not 140
         $r = app(ProfitService::class)->report($f);
@@ -100,8 +133,9 @@ class AdvertisingTest extends TestCase
 
     public function test_keyword_intelligence_finds_wasted_winners_and_low_conversion(): void
     {
-        $h = "date,campaign,group,keyword,match,imp,clicks,spend,sales,orders\n"; $d = $this->day();
-        $csv = $h . "$d,C1,G1,wasted kw,broad,900,40,300.00,0,0\n$d,C1,G1,winner kw,exact,500,30,20.00,200.00,2\n$d,C1,G1,meh kw,phrase,3000,60,50.00,120.00,1\n";
+        $h = "date,campaign,group,keyword,match,imp,clicks,spend,sales,orders\n";
+        $d = $this->day();
+        $csv = $h."$d,C1,G1,wasted kw,broad,900,40,300.00,0,0\n$d,C1,G1,winner kw,exact,500,30,20.00,200.00,2\n$d,C1,G1,meh kw,phrase,3000,60,50.00,120.00,1\n";
         $map = ['date' => 'date', 'campaign' => 'campaign', 'ad_group' => 'group', 'keyword' => 'keyword', 'match_type' => 'match', 'impressions' => 'imp', 'clicks' => 'clicks', 'spend' => 'spend', 'sales' => 'sales', 'orders' => 'orders'];
         $this->processImport($this->import('ADS_KEYWORD', $csv, $map));
         $i = app(AdsService::class)->insights(['from' => $d, 'to' => $d]);
@@ -113,8 +147,9 @@ class AdvertisingTest extends TestCase
 
     public function test_bad_rows_are_reported_not_guessed(): void
     {
-        $h = "date,campaign,sku,imp,clicks,spend,sales,orders\n"; $d = $this->day();
-        $csv = $h . "$d,C1,NOPE,10,1,5.00,0,0\n$d,C2,SKU1,10,1,5.00,0,0\n$d,C2,SKU1,10,1,6.00,0,0\nnot-a-date,C3,SKU1,1,1,1.00,0,0\n";
+        $h = "date,campaign,sku,imp,clicks,spend,sales,orders\n";
+        $d = $this->day();
+        $csv = $h."$d,C1,NOPE,10,1,5.00,0,0\n$d,C2,SKU1,10,1,5.00,0,0\n$d,C2,SKU1,10,1,6.00,0,0\nnot-a-date,C3,SKU1,1,1,1.00,0,0\n";
         $s = $this->processImport($this->import('ADS_PRODUCT', $csv, self::M + ['sku' => 'sku']));
         $this->assertSame([1, 3], [$s['ok'], $s['error']]);       // unknown SKU, repeated key, bad date
     }

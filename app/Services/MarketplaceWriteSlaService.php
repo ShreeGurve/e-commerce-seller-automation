@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -22,13 +23,14 @@ class MarketplaceWriteSlaService
 
         $now = now();
         $rows = $incidents->map(function ($incident) use ($now) {
-            $responseDue = $incident->response_minutes ? \Illuminate\Support\Carbon::parse($incident->created_at)->addMinutes((int) $incident->response_minutes) : null;
-            $resolutionDue = $incident->resolution_minutes ? \Illuminate\Support\Carbon::parse($incident->created_at)->addMinutes((int) $incident->resolution_minutes) : null;
+            $responseDue = $incident->response_minutes ? Carbon::parse($incident->created_at)->addMinutes((int) $incident->response_minutes) : null;
+            $resolutionDue = $incident->resolution_minutes ? Carbon::parse($incident->created_at)->addMinutes((int) $incident->resolution_minutes) : null;
             $responseEvent = DB::table('marketplace_write_sla_events')->where('incident_id', $incident->id)->where('event_type', 'RESPONDED')->exists();
+
             return (object) array_merge((array) $incident, [
                 'response_due_at' => $responseDue,
                 'resolution_due_at' => $resolutionDue,
-                'response_breached' => !$responseEvent && $responseDue && $now->greaterThan($responseDue),
+                'response_breached' => ! $responseEvent && $responseDue && $now->greaterThan($responseDue),
                 'resolution_breached' => $resolutionDue && $now->greaterThan($resolutionDue),
             ]);
         });
@@ -41,7 +43,7 @@ class MarketplaceWriteSlaService
     public function savePolicy(object $user, array $data): object
     {
         $severity = strtoupper((string) ($data['severity'] ?? ''));
-        if (!in_array($severity, ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'], true)) {
+        if (! in_array($severity, ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'], true)) {
             throw ValidationException::withMessages(['severity' => 'Choose a supported incident severity.']);
         }
         $response = filter_var($data['response_minutes'] ?? null, FILTER_VALIDATE_INT);
@@ -54,13 +56,14 @@ class MarketplaceWriteSlaService
             ['business_id' => $businessId, 'severity' => $severity],
             ['response_minutes' => $response, 'resolution_minutes' => $resolution, 'enabled' => (bool) ($data['enabled'] ?? true), 'updated_by' => $user->id, 'updated_at' => now(), 'created_at' => now()]
         );
+
         return DB::table('marketplace_write_sla_policies')->where('business_id', $businessId)->where('severity', $severity)->first();
     }
 
     public function recordResponse(object $user, int $incidentId): void
     {
         $incident = DB::table('marketplace_write_incidents')->where('business_id', (int) $user->business_id)->where('id', $incidentId)->first();
-        if (!$incident) {
+        if (! $incident) {
             throw ValidationException::withMessages(['incident' => 'Incident not found for this business.']);
         }
         DB::table('marketplace_write_sla_events')->insertOrIgnore([

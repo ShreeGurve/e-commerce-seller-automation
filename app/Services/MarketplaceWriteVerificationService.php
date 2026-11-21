@@ -43,7 +43,7 @@ class MarketplaceWriteVerificationService
     public function record(int $attemptId, User $user, array $data): object
     {
         $status = strtoupper((string) ($data['status'] ?? ''));
-        if (!in_array($status, self::STATUSES, true)) {
+        if (! in_array($status, self::STATUSES, true)) {
             throw ValidationException::withMessages(['status' => 'Select a supported verification outcome.']);
         }
 
@@ -52,16 +52,16 @@ class MarketplaceWriteVerificationService
             throw ValidationException::withMessages(['verification_note' => 'Add a verification note between 10 and 2,000 characters.']);
         }
         $evidenceUrl = trim((string) ($data['evidence_url'] ?? '')) ?: null;
-        if ($evidenceUrl !== null && (!filter_var($evidenceUrl, FILTER_VALIDATE_URL) || !str_starts_with(strtolower($evidenceUrl), 'https://'))) {
+        if ($evidenceUrl !== null && (! filter_var($evidenceUrl, FILTER_VALIDATE_URL) || ! str_starts_with(strtolower($evidenceUrl), 'https://'))) {
             throw ValidationException::withMessages(['evidence_url' => 'Evidence links must use HTTPS. Do not paste access tokens or private credentials.']);
         }
 
         return DB::transaction(function () use ($attemptId, $user, $data, $status, $note, $evidenceUrl) {
             $attempt = DB::table('marketplace_write_attempts')->where('id', $attemptId)->lockForUpdate()->first();
-            if (!$attempt || (int) $attempt->business_id !== (int) $user->business_id) {
+            if (! $attempt || (int) $attempt->business_id !== (int) $user->business_id) {
                 throw ValidationException::withMessages(['attempt' => 'Marketplace write attempt was not found for this business.']);
             }
-            if (!in_array($attempt->status, ['ACCEPTED', 'REVIEW_REQUIRED'], true)) {
+            if (! in_array($attempt->status, ['ACCEPTED', 'REVIEW_REQUIRED'], true)) {
                 throw ValidationException::withMessages(['attempt' => 'Only accepted or uncertain submissions can be verified.']);
             }
             if ((int) $attempt->approved_by === (int) $user->id) {
@@ -120,7 +120,7 @@ class MarketplaceWriteVerificationService
     {
         $attempt = DB::table('marketplace_write_attempts')->where('id', $attemptId)
             ->where('business_id', $user->business_id)->first();
-        if (!$attempt) {
+        if (! $attempt) {
             throw new RuntimeException('Marketplace write attempt was not found.');
         }
 

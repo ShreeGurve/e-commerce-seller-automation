@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\Order;
@@ -15,6 +16,7 @@ class RefundController extends Controller
             'return_id' => 'nullable|integer', 'notes' => 'nullable|string|max:2000',
         ]);
         $service->record($order, $d, $request->user());
+
         return redirect()->route('orders.show', $order)->with('success', 'Refund recorded.');
     }
 }

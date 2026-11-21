@@ -1,8 +1,11 @@
 <?php
+
 namespace App\Http\Controllers;
 
-use App\Models\{DataImport, Marketplace};
-use App\Services\{ImportProcessor, ImportService};
+use App\Models\DataImport;
+use App\Models\Marketplace;
+use App\Services\ImportProcessor;
+use App\Services\ImportService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -27,7 +30,9 @@ class ImportController extends Controller
             'marketplace_id' => 'required|exists:marketplaces,id',
             'data_type' => ['required', Rule::in(array_keys(DataImport::TYPES))],
             'file' => ['required', 'file', 'max:20480', function ($attr, $value, $fail) use ($allowed) {
-                if (! in_array(strtolower($value->getClientOriginalExtension()), $allowed, true)) $fail('Upload a .csv, .txt, .tsv, .xlsx or .xls file.');
+                if (! in_array(strtolower($value->getClientOriginalExtension()), $allowed, true)) {
+                    $fail('Upload a .csv, .txt, .tsv, .xlsx or .xls file.');
+                }
             }],
             'price_mode' => ['nullable', Rule::in(['unit', 'line'])],
             'date_format' => ['required', Rule::in(array_keys(DataImport::DATE_FORMATS))],
@@ -39,15 +44,19 @@ class ImportController extends Controller
         $before = DataImport::where('id', '!=', $import->id)->where('marketplace_id', $import->marketplace_id)->where('data_type', $import->data_type)
             ->where('file_hash', $import->file_hash)->where('status', 'IMPORTED')->first();
         $redirect = redirect()->route('imports.map', $import);
+
         return $before ? $redirect->with('error', "Heads up: this exact file was already imported on {$before->imported_at?->format('d M Y H:i')}. Re-importing is safe (existing records are skipped), but check you picked the right file.") : $redirect;
     }
 
     public function map(DataImport $dataImport)
     {
         $this->authorizeType($dataImport->data_type);
-        if ($dataImport->status === 'IMPORTED') return redirect()->route('imports.show', $dataImport);
+        if ($dataImport->status === 'IMPORTED') {
+            return redirect()->route('imports.show', $dataImport);
+        }
         [$headers, $sample] = $this->service->preview($dataImport, 3);
         $map = $dataImport->mapping ?: $this->service->suggestMapping($dataImport, $headers);
+
         return view('imports.map', ['import' => $dataImport, 'headers' => $headers, 'sample' => $sample, 'map' => $map]);
     }
 
@@ -56,13 +65,17 @@ class ImportController extends Controller
         $this->authorizeType($dataImport->data_type);
         abort_if(in_array($dataImport->status, ['IMPORTED', 'RUNNING'], true), 403);
         $this->service->saveMapping($dataImport, (array) $request->input('map', []), $request->user());
+
         return redirect()->route('imports.preview', $dataImport);
     }
 
     public function preview(DataImport $dataImport)
     {
         $this->authorizeType($dataImport->data_type);
-        if (! in_array($dataImport->status, ['MAPPED', 'FAILED'], true)) return redirect()->route('imports.show', $dataImport);
+        if (! in_array($dataImport->status, ['MAPPED', 'FAILED'], true)) {
+            return redirect()->route('imports.show', $dataImport);
+        }
+
         return view('imports.preview', ['import' => $dataImport, 's' => $this->processor->run($dataImport, false)]);
     }
 
@@ -70,6 +83,7 @@ class ImportController extends Controller
     {
         $this->authorizeType($dataImport->data_type);
         $s = $this->processor->run($dataImport, true);
+
         return redirect()->route('imports.show', $dataImport)->with('success', "Import finished: {$s['created']} created, {$s['duplicate']} duplicate row(s) skipped, {$s['error']} row(s) with errors.");
     }
 
@@ -80,6 +94,7 @@ class ImportController extends Controller
         $filter = $request->query('rows', 'problems');
         $rows = $dataImport->rows()->when($filter === 'problems', fn ($q) => $q->where('status', '!=', 'OK'))
             ->when(in_array($filter, ['OK', 'ERROR', 'DUPLICATE']), fn ($q) => $q->where('status', $filter))->orderBy('row_number')->paginate(50)->withQueryString();
+
         return view('imports.show', ['import' => $dataImport, 'rows' => $rows, 'filter' => $filter]);
     }
 
@@ -87,7 +102,8 @@ class ImportController extends Controller
     {
         $this->authorizeType($dataImport->data_type);
         [$headers] = $this->service->preview($dataImport, 0);
-        $safe = fn ($v) => is_string($v) && preg_match('/^[=+\-@\t\r]/', $v) ? "'" . $v : $v;      // stop Excel formula injection
+        $safe = fn ($v) => is_string($v) && preg_match('/^[=+\-@\t\r]/', $v) ? "'".$v : $v;      // stop Excel formula injection
+
         return response()->streamDownload(function () use ($dataImport, $headers, $safe) {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF");
@@ -105,7 +121,9 @@ class ImportController extends Controller
     /** Settlements need finance.manage, ad reports need advertising.manage, everything else orders.edit. */
     private function authorizeType(string $type): void
     {
-        $perm = match (true) { $type === 'SETTLEMENTS' => 'finance.manage', str_starts_with($type, 'ADS_') => 'advertising.manage', $type === 'KEYWORDS' => 'listings.manage', $type === 'COMPETITORS' => 'products.edit', default => 'orders.edit' };
+        $perm = match (true) {
+            $type === 'SETTLEMENTS' => 'finance.manage', str_starts_with($type, 'ADS_') => 'advertising.manage', $type === 'KEYWORDS' => 'listings.manage', $type === 'COMPETITORS' => 'products.edit', default => 'orders.edit'
+        };
         abort_unless(auth()->user()->can($perm), 403);
     }
 }

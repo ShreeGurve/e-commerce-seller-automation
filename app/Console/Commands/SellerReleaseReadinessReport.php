@@ -3,7 +3,6 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Throwable;
@@ -11,6 +10,7 @@ use Throwable;
 class SellerReleaseReadinessReport extends Command
 {
     protected $signature = 'seller-automation:release-readiness {--output= : Optional path for a Markdown report}';
+
     protected $description = 'Generate a read-only Seller Automation release readiness summary';
 
     public function handle(): int
@@ -53,8 +53,9 @@ class SellerReleaseReadinessReport extends Command
             $target = str_starts_with($path, DIRECTORY_SEPARATOR) || preg_match('/^[A-Za-z]:\\\\/', $path)
                 ? $path : base_path($path);
             $directory = dirname($target);
-            if (!is_dir($directory) || !is_writable($directory)) {
+            if (! is_dir($directory) || ! is_writable($directory)) {
                 $this->error('Output directory does not exist or is not writable: '.$directory);
+
                 return self::FAILURE;
             }
             file_put_contents($target, $report);
@@ -62,6 +63,7 @@ class SellerReleaseReadinessReport extends Command
         }
 
         $failures = count(array_filter($checks, fn ($item) => $item['status'] === 'FAIL'));
+
         return $failures ? self::FAILURE : self::SUCCESS;
     }
 }

@@ -28,6 +28,7 @@ class MarketplaceAutomationRuleController extends Controller
             'action_guidance' => ['nullable', 'string', 'max:500'],
         ]);
         $service->createRule($data, $request->user()?->id);
+
         return back()->with('success', 'Automation rule created.');
     }
 
@@ -35,6 +36,7 @@ class MarketplaceAutomationRuleController extends Controller
     {
         $data = $request->validate(['is_enabled' => ['required', 'boolean']]);
         $service->setRuleEnabled($rule, (bool) $data['is_enabled']);
+
         return back()->with('success', 'Automation rule updated.');
     }
 
@@ -42,6 +44,7 @@ class MarketplaceAutomationRuleController extends Controller
     {
         $filters = $request->validate(['days' => ['nullable', 'integer', 'in:7,14,30,60,90']]);
         $result = $service->generate($filters);
+
         return back()->with('success', "Scan complete: {$result['created']} task(s) created, {$result['existing']} already existed.");
     }
 
@@ -52,6 +55,7 @@ class MarketplaceAutomationRuleController extends Controller
             'review_note' => ['nullable', 'string', 'max:2000'],
         ]);
         $service->reviewTask($task, $data['decision'], $request->user()?->id, $data['review_note'] ?? null);
+
         return back()->with('success', 'Task status updated. No marketplace or inventory action was executed.');
     }
 }

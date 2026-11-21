@@ -1,9 +1,21 @@
 <?php
+
 namespace Tests\Feature;
 
 use App\Marketplaces\Amazon\AmazonAdapter;
-use App\Models\{CompetitorPrice, DataImport, FeeRule, Marketplace, MarketplaceProductSetting, OrderProfit, PriceHistory, Product, ProductCostHistory, User};
-use App\Services\{ImportProcessor, OrderService, PricingService};
+use App\Models\CompetitorPrice;
+use App\Models\DataImport;
+use App\Models\FeeRule;
+use App\Models\Marketplace;
+use App\Models\MarketplaceProductSetting;
+use App\Models\OrderProfit;
+use App\Models\PriceHistory;
+use App\Models\Product;
+use App\Models\ProductCostHistory;
+use App\Models\User;
+use App\Services\ImportProcessor;
+use App\Services\OrderService;
+use App\Services\PricingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -12,7 +24,11 @@ class PricingTest extends TestCase
 {
     use RefreshDatabase;
 
-    private User $u; private Product $p; private Marketplace $mp;
+    private User $u;
+
+    private Product $p;
+
+    private Marketplace $mp;
 
     protected function setUp(): void
     {
@@ -29,7 +45,10 @@ class PricingTest extends TestCase
         FeeRule::create(['marketplace_id' => $this->mp->id, 'fee_type' => 'CLOSING', 'percentage' => 0, 'fixed_amount' => 10, 'effective_from' => '2026-01-01']);
     }
 
-    private function a(?string $price = null): array { return app(PricingService::class)->analyze($this->p->fresh(), $this->mp, $price); }
+    private function a(?string $price = null): array
+    {
+        return app(PricingService::class)->analyze($this->p->fresh(), $this->mp, $price);
+    }
 
     public function test_break_even_minimum_and_target_prices_come_from_the_real_fee_rules(): void
     {
@@ -133,7 +152,9 @@ class PricingTest extends TestCase
     public function test_competitor_price_import_creates_updates_and_never_duplicates(): void
     {
         $imp = function (string $csv) {
-            Storage::fake('local'); Storage::disk('local')->put('imports/c.csv', $csv);
+            Storage::fake('local');
+            Storage::disk('local')->put('imports/c.csv', $csv);
+
             return DataImport::create(['marketplace_id' => $this->mp->id, 'data_type' => 'COMPETITORS', 'file_name' => 'c.csv', 'stored_path' => 'imports/c.csv', 'file_hash' => str_repeat('e', 64),
                 'status' => 'MAPPED', 'uploaded_by' => $this->u->id, 'options' => ['date_format' => 'auto'],
                 'mapping' => ['sku' => 'sku', 'competitor' => 'seller', 'competitor_price' => 'price', 'captured_on' => 'date']]);

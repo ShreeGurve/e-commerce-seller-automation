@@ -1,10 +1,12 @@
 <?php
+
 namespace App\Http\Controllers;
 
-use App\Models\{Product, Purchase, PurchaseItem, Supplier};
+use App\Models\Product;
+use App\Models\PurchaseItem;
+use App\Models\Supplier;
 use App\Services\PurchaseService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class ReorderController extends Controller
@@ -24,10 +26,13 @@ class ReorderController extends Controller
                 $inv = $product->inventory;
                 $available = (int) ($inv?->available_qty ?? 0);
                 $reorderAt = (int) ($inv?->reorder_level ?? 0);
-                if ($reorderAt <= 0) $reorderAt = (int) ($inv?->minimum_stock ?? 0);
+                if ($reorderAt <= 0) {
+                    $reorderAt = (int) ($inv?->minimum_stock ?? 0);
+                }
                 $onOrder = (int) ($open[$product->id] ?? 0);
                 $target = $reorderAt > 0 ? max($reorderAt * 2, $reorderAt + 1) : 0;
                 $suggested = $target > 0 ? max(0, $target - $available - $onOrder) : 0;
+
                 return (object) [
                     'product' => $product, 'available' => $available, 'reorder_at' => $reorderAt,
                     'on_order' => $onOrder, 'suggested' => $suggested,
@@ -67,7 +72,9 @@ class ReorderController extends Controller
             $product = $eligible->get((int) $line['product_id']);
             $inventory = $product?->inventory;
             $trigger = (int) ($inventory?->reorder_level ?? 0);
-            if ($trigger <= 0) $trigger = (int) ($inventory?->minimum_stock ?? 0);
+            if ($trigger <= 0) {
+                $trigger = (int) ($inventory?->minimum_stock ?? 0);
+            }
             if (! $product || $trigger <= 0 || (int) ($inventory?->available_qty ?? 0) > $trigger) {
                 throw ValidationException::withMessages(['items' => 'One or more selected products are no longer eligible for reorder. Refresh the reorder suggestions and try again.']);
             }

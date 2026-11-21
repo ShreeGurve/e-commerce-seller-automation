@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
@@ -12,12 +13,16 @@ use Illuminate\Validation\Rules\Password as PasswordRule;
 
 class PasswordResetController extends Controller
 {
-    public function showForgot() { return view('auth.forgot'); }
+    public function showForgot()
+    {
+        return view('auth.forgot');
+    }
 
     public function sendLink(Request $request)
     {
         $request->validate(['email' => 'required|email']);
         Password::sendResetLink($request->only('email'));
+
         // Same answer whether or not the email exists (no account enumeration).
         return back()->with('status', 'If that email is registered, a reset link has been sent.');
     }
@@ -38,6 +43,7 @@ class PasswordResetController extends Controller
             event(new PasswordReset($user));
             ActivityLogger::log('auth.password_reset', $user);
         });
+
         return $status === Password::PASSWORD_RESET
             ? redirect()->route('login')->with('status', 'Password reset. You can sign in now.')
             : back()->withInput($request->only('email'))->withErrors(['email' => 'This reset link is invalid or has expired.']);

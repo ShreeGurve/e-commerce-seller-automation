@@ -1,9 +1,21 @@
 <?php
+
 namespace Tests\Feature;
 
 use App\Marketplaces\Amazon\AmazonAdapter;
-use App\Models\{DataImport, Keyword, KeywordGroup, KeywordRanking, Listing, ListingReview, ListingScoreRule, Marketplace, Product, User};
-use App\Services\{ImportProcessor, ListingScoreService, ListingService};
+use App\Models\DataImport;
+use App\Models\Keyword;
+use App\Models\KeywordGroup;
+use App\Models\KeywordRanking;
+use App\Models\Listing;
+use App\Models\ListingReview;
+use App\Models\ListingScoreRule;
+use App\Models\Marketplace;
+use App\Models\Product;
+use App\Models\User;
+use App\Services\ImportProcessor;
+use App\Services\ListingScoreService;
+use App\Services\ListingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -13,7 +25,11 @@ class ListingKeywordTest extends TestCase
 {
     use RefreshDatabase;
 
-    private User $u; private Product $p; private Marketplace $mp;
+    private User $u;
+
+    private Product $p;
+
+    private Marketplace $mp;
 
     protected function setUp(): void
     {
@@ -40,7 +56,11 @@ class ListingKeywordTest extends TestCase
 
         $l2 = $this->save(['title' => 'Steel Water Bottle 1 Litre Insulated']);
         $this->assertSame([2, $l->id], [$l2->current->version_no, $l2->id]);                  // same listing, new version
-        try { $this->save(['title' => 'Steel Water Bottle 1 Litre Insulated']); $this->fail('identical save must be refused'); } catch (ValidationException) {}
+        try {
+            $this->save(['title' => 'Steel Water Bottle 1 Litre Insulated']);
+            $this->fail('identical save must be refused');
+        } catch (ValidationException) {
+        }
 
         $l3 = app(ListingService::class)->restore($l2, $l2->versions()->where('version_no', 1)->first(), $this->u);
         $this->assertSame('Steel Water Bottle 1 Litre', $l3->current->title);                  // restored copy is a NEW version, history is kept
@@ -74,7 +94,9 @@ class ListingKeywordTest extends TestCase
 
     private function import(string $csv): DataImport
     {
-        Storage::fake('local'); Storage::disk('local')->put('imports/k.csv', $csv);
+        Storage::fake('local');
+        Storage::disk('local')->put('imports/k.csv', $csv);
+
         return DataImport::create(['marketplace_id' => $this->mp->id, 'data_type' => 'KEYWORDS', 'file_name' => 'k.csv', 'stored_path' => 'imports/k.csv', 'file_hash' => str_repeat('d', 64),
             'status' => 'MAPPED', 'uploaded_by' => $this->u->id, 'options' => ['date_format' => 'auto'],
             'mapping' => ['sku' => 'sku', 'keyword' => 'keyword', 'keyword_type' => 'type', 'search_volume' => 'vol', 'competition' => 'comp', 'rank' => 'rank', 'group' => 'grp']]);
@@ -83,7 +105,7 @@ class ListingKeywordTest extends TestCase
     public function test_keyword_import_creates_updates_and_never_duplicates(): void
     {
         $h = "sku,keyword,type,vol,comp,rank,grp\n";
-        $csv = $h . "SKU1,steel water bottle,Primary,5000,High,12,core\nSKU1,insulated flask,long tail,800,medium,,core\nSKU1,bad type,weird,1,low,,\nNOPE,x,primary,1,low,,\n";
+        $csv = $h."SKU1,steel water bottle,Primary,5000,High,12,core\nSKU1,insulated flask,long tail,800,medium,,core\nSKU1,bad type,weird,1,low,,\nNOPE,x,primary,1,low,,\n";
         $imp = $this->import($csv);
         $s = app(ImportProcessor::class)->run($imp, true);
         $this->assertSame([2, 2], [$s['ok'], $s['error']]);                                    // bad type + unknown SKU are reported, not guessed
@@ -99,7 +121,7 @@ class ListingKeywordTest extends TestCase
         $this->assertSame(2, $s2['duplicate']);
         $this->assertSame([2, 1], [Keyword::count(), KeywordRanking::count()]);
 
-        $upd = $this->import($h . "SKU1,steel water bottle,Primary,9000,High,12,core\n");     // only the volume changed
+        $upd = $this->import($h."SKU1,steel water bottle,Primary,9000,High,12,core\n");     // only the volume changed
         $s3 = app(ImportProcessor::class)->run($upd, true);
         $this->assertSame([1, 0], [$s3['created'], $s3['duplicate']]);
         $this->assertSame(9000, $k->fresh()->search_volume);

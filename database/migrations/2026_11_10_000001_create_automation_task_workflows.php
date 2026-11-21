@@ -4,10 +4,11 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
-        if (!Schema::hasTable('automation_tasks')) {
+        if (! Schema::hasTable('automation_tasks')) {
             Schema::create('automation_tasks', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('business_id')->nullable()->index();
@@ -26,7 +27,7 @@ return new class extends Migration {
             });
         }
 
-        if (!Schema::hasTable('automation_recurring_tasks')) {
+        if (! Schema::hasTable('automation_recurring_tasks')) {
             Schema::create('automation_recurring_tasks', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('business_id')->nullable()->index();
@@ -44,7 +45,7 @@ return new class extends Migration {
             });
         }
 
-        if (!Schema::hasTable('automation_task_reminders')) {
+        if (! Schema::hasTable('automation_task_reminders')) {
             Schema::create('automation_task_reminders', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('task_id')->constrained('automation_tasks')->cascadeOnDelete();

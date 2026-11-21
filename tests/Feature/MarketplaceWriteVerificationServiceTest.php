@@ -20,9 +20,13 @@ class MarketplaceWriteVerificationServiceTest extends TestCase
     use RefreshDatabase;
 
     private Business $business;
+
     private User $preparer;
+
     private User $submitter;
+
     private User $verifier;
+
     private int $attemptId;
 
     protected function setUp(): void

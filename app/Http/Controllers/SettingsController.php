@@ -1,8 +1,11 @@
 <?php
+
 namespace App\Http\Controllers;
 
-use App\Models\{Business, Marketplace};
-use App\Services\{ActivityLogger, SettingsService};
+use App\Models\Business;
+use App\Models\Marketplace;
+use App\Services\ActivityLogger;
+use App\Services\SettingsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -30,7 +33,10 @@ class SettingsController extends Controller
     public function index()
     {
         $values = [];
-        foreach (self::DEFAULTS as $k => $d) $values[$k] = SettingsService::get($k);
+        foreach (self::DEFAULTS as $k => $d) {
+            $values[$k] = SettingsService::get($k);
+        }
+
         return view('settings.index', ['business' => Business::first(), 'defaults' => self::DEFAULTS, 'values' => $values, 'marketplaces' => Marketplace::active()->get()]);
     }
 
@@ -40,24 +46,37 @@ class SettingsController extends Controller
             'name' => 'required|string|max:255', 'legal_name' => 'nullable|string|max:255',
             'gstin' => ['nullable', 'string', 'size:15', 'regex:/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/i'],
         ];
-        foreach (self::DEFAULTS as $k => $d) $rules[$k] = $d[3];
+        foreach (self::DEFAULTS as $k => $d) {
+            $rules[$k] = $d[3];
+        }
         $data = $request->validate($rules, ['gstin.regex' => 'GSTIN format is invalid.', 'gstin.size' => 'GSTIN must be 15 characters.']);
 
         DB::transaction(function () use ($data) {
             $b = Business::firstOrFail();
             $b->fill(['name' => $data['name'], 'legal_name' => $data['legal_name'] ?? null, 'gstin' => isset($data['gstin']) ? strtoupper($data['gstin']) : null]);
-            $dirty = $b->getDirty(); $old = array_intersect_key($b->getOriginal(), $dirty);
+            $dirty = $b->getDirty();
+            $old = array_intersect_key($b->getOriginal(), $dirty);
             $b->save();
-            if ($dirty) ActivityLogger::log('settings.business_changed', $b, $old, $dirty);
+            if ($dirty) {
+                ActivityLogger::log('settings.business_changed', $b, $old, $dirty);
+            }
 
-            $oldS = []; $newS = [];
+            $oldS = [];
+            $newS = [];
             foreach (self::DEFAULTS as $k => [$label, $group, $type]) {
-                $before = SettingsService::get($k); $after = $data[$k] ?? null;
-                if ((string) $before !== (string) $after) { $oldS[$k] = $before; $newS[$k] = $after; }
+                $before = SettingsService::get($k);
+                $after = $data[$k] ?? null;
+                if ((string) $before !== (string) $after) {
+                    $oldS[$k] = $before;
+                    $newS[$k] = $after;
+                }
                 SettingsService::set($k, $after, $group, $type);
             }
-            if ($newS) ActivityLogger::log('settings.defaults_changed', $b, $oldS, $newS);
+            if ($newS) {
+                ActivityLogger::log('settings.defaults_changed', $b, $oldS, $newS);
+            }
         });
+
         return back()->with('success', 'Settings saved.');
     }
 }

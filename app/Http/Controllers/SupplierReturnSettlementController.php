@@ -20,11 +20,11 @@ class SupplierReturnSettlementController extends Controller
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->input('status')))
             ->when($request->filled('type'), fn ($q) => $q->where('settlement_type', $request->input('type')))
             ->when($request->filled('q'), function ($q) use ($request) {
-                $term = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $request->input('q')) . '%';
+                $term = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $request->input('q')).'%';
                 $q->where(function ($w) use ($term) {
                     $w->where('reference_number', 'like', $term)
-                      ->orWhereHas('supplierReturn', fn ($r) => $r->where('return_number', 'like', $term)->orWhere('supplier_reference', 'like', $term))
-                      ->orWhereHas('supplierReturn.purchase.supplier', fn ($s) => $s->where('name', 'like', $term));
+                        ->orWhereHas('supplierReturn', fn ($r) => $r->where('return_number', 'like', $term)->orWhere('supplier_reference', 'like', $term))
+                        ->orWhereHas('supplierReturn.purchase.supplier', fn ($s) => $s->where('name', 'like', $term));
                 });
             })
             ->latest()->paginate(20)->withQueryString();
@@ -53,7 +53,7 @@ class SupplierReturnSettlementController extends Controller
         ]);
 
         $return = SupplierReturn::findOrFail($data['supplier_return_id']);
-        if (!in_array($return->status, ['REPLACED', 'REFUNDED', 'CREDITED', 'CLOSED'], true)) {
+        if (! in_array($return->status, ['REPLACED', 'REFUNDED', 'CREDITED', 'CLOSED'], true)) {
             return back()->withInput()->withErrors(['supplier_return_id' => 'The supplier return must first be marked as resolved in Phase 26.']);
         }
 
@@ -102,6 +102,7 @@ class SupplierReturnSettlementController extends Controller
             return back()->withErrors(['settlement' => 'Only pending settlements can be cancelled.']);
         }
         $settlement->update(['status' => 'CANCELLED']);
+
         return back()->with('success', 'Pending settlement cancelled.');
     }
 }

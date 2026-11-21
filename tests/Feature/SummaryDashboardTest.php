@@ -1,18 +1,37 @@
 <?php
+
 namespace Tests\Feature;
 
 use App\Marketplaces\Amazon\AmazonAdapter;
-use App\Models\{Claim, DataImport, Inventory, Marketplace, Order, Product, ProductCostHistory, Role, User};
-use App\Services\{DashboardService, DecisionService, ImportProcessor, InventoryService, OrderService, SummaryService};
+use App\Models\Claim;
+use App\Models\DataImport;
+use App\Models\Inventory;
+use App\Models\Marketplace;
+use App\Models\Order;
+use App\Models\Product;
+use App\Models\ProductCostHistory;
+use App\Models\Role;
+use App\Models\User;
+use App\Services\DashboardService;
+use App\Services\DecisionService;
+use App\Services\ImportProcessor;
+use App\Services\InventoryService;
+use App\Services\OrderService;
+use App\Services\SummaryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\{DB, Storage};
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class SummaryDashboardTest extends TestCase
 {
     use RefreshDatabase;
 
-    private User $u; private Product $p; private Marketplace $mp;
+    private User $u;
+
+    private Product $p;
+
+    private Marketplace $mp;
 
     protected function setUp(): void
     {
@@ -29,19 +48,25 @@ class SummaryDashboardTest extends TestCase
         app(InventoryService::class)->record($this->p, 'STOCK_IN', 50);   // no fee rules: one order of 2 units = revenue 200, cost 100, profit 100
     }
 
-    private function day(int $ago = 3): string { return now()->subDays($ago)->toDateString(); }
+    private function day(int $ago = 3): string
+    {
+        return now()->subDays($ago)->toDateString();
+    }
+
     private function order(string $ext, int $ago = 3): Order
     {
         return app(OrderService::class)->create(['marketplace_id' => $this->mp->id, 'external_order_id' => $ext, 'order_date' => now()->subDays($ago)],
             [['product_id' => $this->p->id, 'quantity' => 2, 'unit_price' => '118']], $this->u);
     }
-    private function row(string $t, ?string $d = null) { return DB::table($t)->where('date', $d ?? $this->day())->first(); }
+
+    private function row(string $t, ?string $d = null)
+    {
+        return DB::table($t)->where('date', $d ?? $this->day())->first();
+    }
 
     public function test_speed_tables_follow_orders_and_cancellations_automatically(): void
     {
         $o = $this->order('A1');
-
-;
 
         // dump([
         //     'order' => DB::table('orders')->where('id', $o->id)->first(),
@@ -49,7 +74,8 @@ class SummaryDashboardTest extends TestCase
         //     'order_profits' => DB::table('order_profits')->where('order_id', $o->id)->get()->toArray(),
         //     'daily_profit' => DB::table('daily_profit')->get()->toArray(),
         // ]);
-        $s = $this->row('daily_sales'); $p = $this->row('daily_profit');
+        $s = $this->row('daily_sales');
+        $p = $this->row('daily_profit');
         $this->assertSame([1, 2], [(int) $s->orders, (int) $s->units]);
         $this->assertEqualsWithDelta(236.0, (float) $s->gross_sales, 0.001);
         $this->assertEqualsWithDelta(200.0, (float) $p->revenue, 0.001);
@@ -63,9 +89,11 @@ class SummaryDashboardTest extends TestCase
 
     public function test_rebuilding_from_scratch_gives_exactly_the_same_numbers(): void
     {
-        $this->order('A1'); $this->order('A2', 5);
+        $this->order('A1');
+        $this->order('A2', 5);
         $before = [DB::table('daily_sales')->orderBy('date')->get(['date', 'orders', 'units', 'gross_sales'])->toArray(), DB::table('daily_profit')->orderBy('date')->get(['date', 'revenue', 'profit'])->toArray()];
-        DB::table('daily_sales')->delete(); DB::table('daily_profit')->delete();
+        DB::table('daily_sales')->delete();
+        DB::table('daily_profit')->delete();
         $this->assertGreaterThanOrEqual(2, app(SummaryService::class)->rebuildAll());
         $after = [DB::table('daily_sales')->orderBy('date')->get(['date', 'orders', 'units', 'gross_sales'])->toArray(), DB::table('daily_profit')->orderBy('date')->get(['date', 'revenue', 'profit'])->toArray()];
         $this->assertEquals($before, $after);
@@ -75,7 +103,9 @@ class SummaryDashboardTest extends TestCase
     {
         $s = app(SummaryService::class);
         $s->begin();
-        $this->order('B1'); $this->order('B2'); $this->order('B3');
+        $this->order('B1');
+        $this->order('B2');
+        $this->order('B3');
         $this->assertSame(0, DB::table('daily_sales')->count());                                 // nothing written while batching
         $this->assertSame(1, $s->flush());                                                       // 3 orders, one day, one refresh
         $r = $this->row('daily_sales');
@@ -101,16 +131,16 @@ class SummaryDashboardTest extends TestCase
 
         $result = app(ImportProcessor::class)->run($i, true);
 
-;
     }
 
     public function test_ad_spend_flows_into_the_dashboard_and_unassigned_spend_is_a_leak(): void
     {
-        $this->order('A1'); $d = $this->day(); $h = "date,campaign,sku,imp,clicks,spend,sales,orders\n";
+        $this->order('A1');
+        $d = $this->day();
+        $h = "date,campaign,sku,imp,clicks,spend,sales,orders\n";
         $m = ['date' => 'date', 'campaign' => 'campaign', 'impressions' => 'imp', 'clicks' => 'clicks', 'spend' => 'spend', 'sales' => 'sales', 'orders' => 'orders'];
-        $this->adsImport('ADS_PRODUCT', $h . "$d,C1,SKU1,1000,50,40.00,236,1\n", $m + ['sku' => 'sku']);
+        $this->adsImport('ADS_PRODUCT', $h."$d,C1,SKU1,1000,50,40.00,236,1\n", $m + ['sku' => 'sku']);
 
-;
         // dump([
         //     'advertising_daily' => DB::table('advertising_daily')->where('date', $d)->get()->toArray(),
         //     'daily_advertising' => DB::table('daily_advertising')->where('date', $d)->get()->toArray(),
@@ -123,7 +153,7 @@ class SummaryDashboardTest extends TestCase
         $this->assertEqualsWithDelta(60.0, $k['orderProfit'], 0.001);
         $this->assertEqualsWithDelta(0.0, $k['unallocated'], 0.001);
 
-        $this->adsImport('ADS_CAMPAIGN', $h . "$d,C1,,1000,50,100.00,500,3\n", $m);              // the campaign report says Rs100 was really spent
+        $this->adsImport('ADS_CAMPAIGN', $h."$d,C1,,1000,50,100.00,500,3\n", $m);              // the campaign report says Rs100 was really spent
         $k = app(DashboardService::class)->build(['from' => $d, 'to' => $d])['kpi'];
         $this->assertEqualsWithDelta(100.0, $k['adSpend'], 0.001);                               // campaign report wins, no double count
         $this->assertEqualsWithDelta(60.0, $k['unallocated'], 0.001);                            // Rs60 no sale could carry

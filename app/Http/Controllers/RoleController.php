@@ -1,7 +1,9 @@
 <?php
+
 namespace App\Http\Controllers;
 
-use App\Models\{Permission, Role};
+use App\Models\Permission;
+use App\Models\Role;
 use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -13,6 +15,7 @@ class RoleController extends Controller
     public function index()
     {
         $roles = Role::with('permissions')->withCount('users')->orderByRaw("slug = 'super-admin' desc")->orderBy('name')->get();
+
         return view('roles.index', [
             'roles' => $roles,
             'permissions' => Permission::orderBy('module')->orderBy('name')->get()->groupBy('module'),
@@ -35,6 +38,7 @@ class RoleController extends Controller
                 }
             }
         });
+
         return back()->with('success', 'Permissions saved.');
     }
 
@@ -42,19 +46,27 @@ class RoleController extends Controller
     {
         $data = $request->validate(['name' => 'required|string|max:60|unique:roles,name']);
         $slug = Str::slug($data['name']);
-        if (Role::where('slug', $slug)->exists()) return back()->withInput()->with('error', 'A role with a similar name exists.');
+        if (Role::where('slug', $slug)->exists()) {
+            return back()->withInput()->with('error', 'A role with a similar name exists.');
+        }
         $role = Role::create(['name' => $data['name'], 'slug' => $slug, 'is_system' => false]);
         ActivityLogger::log('role.created', $role, null, ['name' => $role->name]);
+
         return back()->with('success', 'Role added. Tick its permissions below and save.');
     }
 
     public function destroy(Role $role)
     {
-        if ($role->is_system) return back()->with('error', 'System roles cannot be deleted.');
-        if ($role->users()->exists()) return back()->with('error', 'Role is assigned to users.');
+        if ($role->is_system) {
+            return back()->with('error', 'System roles cannot be deleted.');
+        }
+        if ($role->users()->exists()) {
+            return back()->with('error', 'Role is assigned to users.');
+        }
         $role->permissions()->detach();
         $role->delete();
         ActivityLogger::log('role.deleted', $role, ['name' => $role->name]);
+
         return back()->with('success', 'Role deleted.');
     }
 }

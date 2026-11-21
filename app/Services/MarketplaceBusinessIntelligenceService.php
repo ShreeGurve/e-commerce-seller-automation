@@ -27,7 +27,9 @@ class MarketplaceBusinessIntelligenceService
             ->join('orders as o', 'o.id', '=', 'op.order_id')
             ->whereBetween('op.order_date', [$from, $to])
             ->whereNull('o.deleted_at')
-            ->where(function ($q) { $q->whereNull('o.source')->orWhere('o.source', '!=', 'TEST'); })
+            ->where(function ($q) {
+                $q->whereNull('o.source')->orWhere('o.source', '!=', 'TEST');
+            })
             ->where('o.status', '!=', 'CANCELLED')
             ->when($marketplaceId, fn ($q) => $q->where('op.marketplace_id', $marketplaceId));
 
@@ -51,6 +53,7 @@ class MarketplaceBusinessIntelligenceService
         $salesTrend = collect(array_values($monthly))->map(function ($row) {
             $row['revenue'] = round($row['revenue'], 2);
             $row['profit'] = round($row['profit'], 2);
+
             return $row;
         })->values();
 
@@ -64,6 +67,7 @@ class MarketplaceBusinessIntelligenceService
                 $row->revenue = round((float) $row->revenue, 2);
                 $row->profit = round((float) $row->profit, 2);
                 $row->margin = round((float) $row->margin, 2);
+
                 return $row;
             });
 
@@ -90,6 +94,7 @@ class MarketplaceBusinessIntelligenceService
                 $row->margin = (float) $row->revenue > 0 ? round(((float) $row->profit / (float) $row->revenue) * 100, 2) : 0.0;
                 $row->revenue = round((float) $row->revenue, 2);
                 $row->profit = round((float) $row->profit, 2);
+
                 return $row;
             });
 

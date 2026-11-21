@@ -8,9 +8,7 @@ use App\Models\MarketplaceInventoryAlert;
 use App\Models\MarketplaceInventoryAutomationRun;
 use App\Models\MarketplaceInventoryAutomationSetting;
 use App\Models\MarketplaceInventoryReconciliationRun;
-use App\Models\MarketplaceSyncRun;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use RuntimeException;
 use Throwable;
 
@@ -37,12 +35,18 @@ class MarketplaceInventoryAutomationService
             ->chunkById(100, function ($settings) use (&$scheduled): void {
                 foreach ($settings as $setting) {
                     $lock = Cache::lock('marketplace-inventory-automation-schedule:'.$setting->marketplace_connection_id, 60);
-                    if (! $lock->get()) { continue; }
+                    if (! $lock->get()) {
+                        continue;
+                    }
                     try {
                         $fresh = MarketplaceInventoryAutomationSetting::query()->find($setting->id);
-                        if (! $fresh || ! $fresh->enabled || ($fresh->next_run_at && $fresh->next_run_at->isFuture())) { continue; }
+                        if (! $fresh || ! $fresh->enabled || ($fresh->next_run_at && $fresh->next_run_at->isFuture())) {
+                            continue;
+                        }
                         $connection = MarketplaceConnection::query()->find($fresh->marketplace_connection_id);
-                        if (! $connection || ! in_array(strtolower((string) $connection->status), ['connected', 'active', 'verified'], true)) { continue; }
+                        if (! $connection || ! in_array(strtolower((string) $connection->status), ['connected', 'active', 'verified'], true)) {
+                            continue;
+                        }
                         RunMarketplaceInventoryAutomation::dispatch((int) $connection->id, (int) $fresh->id);
                         $fresh->last_scheduled_at = now();
                         $fresh->next_run_at = now()->addHours(max(1, min(168, (int) $fresh->interval_hours)));

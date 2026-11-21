@@ -1,10 +1,12 @@
 <?php
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         // Configurable marketplace fee rules. No fee is ever hard-coded in PHP.
@@ -99,6 +101,8 @@ return new class extends Migration {
 
     public function down(): void
     {
-        foreach (['expenses', 'expense_categories', 'order_profits', 'order_item_fees', 'fee_rules'] as $t) Schema::dropIfExists($t);
+        foreach (['expenses', 'expense_categories', 'order_profits', 'order_item_fees', 'fee_rules'] as $t) {
+            Schema::dropIfExists($t);
+        }
     }
 };

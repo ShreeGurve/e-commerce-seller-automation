@@ -9,6 +9,7 @@ use Illuminate\Validation\ValidationException;
 class MarketplaceAutomationExecutionService
 {
     public const MODES = ['DRY_RUN', 'LIVE'];
+
     public const TYPES = ['RESTOCK', 'STOCK_RISK', 'SALES_DECLINE', 'HIGH_RETURN_RATE', 'LOW_PROFIT_MARGIN'];
 
     /**
@@ -33,6 +34,7 @@ class MarketplaceAutomationExecutionService
                 if ((int) $existing->task_id !== $taskId || $existing->mode !== $mode) {
                     throw ValidationException::withMessages(['idempotency_key' => 'This idempotency key was already used for a different execution request.']);
                 }
+
                 return ['execution' => $existing, 'replayed' => true];
             }
 
@@ -73,6 +75,7 @@ class MarketplaceAutomationExecutionService
 
             if ($blockedReason !== null) {
                 $this->finish($executionId, 'BLOCKED', ['executed' => false], [$blockedReason], $blockedReason, $started);
+
                 return ['execution' => DB::table('marketplace_automation_executions')->where('id', $executionId)->first(), 'replayed' => false];
             }
 
@@ -81,6 +84,7 @@ class MarketplaceAutomationExecutionService
             if (! is_array($snapshot) || ! is_array($metrics)) {
                 $message = 'Task recommendation data is missing or invalid; no action was prepared.';
                 $this->finish($executionId, 'FAILED', ['executed' => false], [$message], $message, $started);
+
                 return ['execution' => DB::table('marketplace_automation_executions')->where('id', $executionId)->first(), 'replayed' => false];
             }
 
@@ -141,6 +145,7 @@ class MarketplaceAutomationExecutionService
             return null;
         }
         $decoded = json_decode($value, true);
+
         return is_array($decoded) ? $decoded : null;
     }
 }

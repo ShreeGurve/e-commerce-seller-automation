@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Marketplace, MarketplaceRefundImport, MarketplaceReturnImport, ProductReturn};
+use App\Models\Marketplace;
+use App\Models\MarketplaceRefundImport;
+use App\Models\MarketplaceReturnImport;
+use App\Models\ProductReturn;
 use App\Services\MarketplaceReturnsService;
 use Illuminate\Http\Request;
 
@@ -25,12 +28,14 @@ class MarketplaceReturnsController extends Controller
             'reason_text' => 'nullable|string|max:500', 'items' => 'required|array|min:1', 'items.*.external_line_id' => 'nullable|string|max:60',
             'items.*.marketplace_sku' => 'nullable|string|max:120', 'items.*.quantity' => 'required|integer|min:1']);
         $service->stageReturn(Marketplace::findOrFail($data['marketplace_id']), $data);
+
         return back()->with('success', 'Return staged for review.');
     }
 
     public function approveReturn(MarketplaceReturnImport $import, MarketplaceReturnsService $service)
     {
         $service->approveReturn($import, auth()->user());
+
         return back()->with('success', 'Marketplace return imported into the return register.');
     }
 
@@ -38,6 +43,7 @@ class MarketplaceReturnsController extends Controller
     {
         $data = $request->validate(['note' => 'required|string|max:1000']);
         $service->rejectReturn($import, auth()->user(), $data['note']);
+
         return back()->with('success', 'Return import rejected.');
     }
 
@@ -47,6 +53,7 @@ class MarketplaceReturnsController extends Controller
             'items.*.received_qty' => 'required|integer|min:0', 'items.*.condition' => 'required|in:SELLABLE,USED,DAMAGED,SCRAP,MISSING',
             'items.*.restock_qty' => 'nullable|integer|min:0', 'items.*.note' => 'nullable|string|max:500']);
         $service->inspect($return, $data['items'], auth()->user());
+
         return back()->with('success', 'Return inspection saved. Inventory quantities were not changed.');
     }
 
@@ -56,12 +63,14 @@ class MarketplaceReturnsController extends Controller
             'external_order_id' => 'required|string|max:60', 'external_return_id' => 'nullable|string|max:80', 'amount' => 'required|numeric|gt:0',
             'currency' => 'nullable|string|size:3', 'refund_date' => 'required|date', 'reason' => 'nullable|string|max:180']);
         $service->stageRefund(Marketplace::findOrFail($data['marketplace_id']), $data);
+
         return back()->with('success', 'Refund staged for reconciliation.');
     }
 
     public function reconcileRefund(MarketplaceRefundImport $import, MarketplaceReturnsService $service)
     {
         $service->reconcileRefund($import, auth()->user());
+
         return back()->with('success', 'Marketplace refund reconciled with the existing refund ledger.');
     }
 }

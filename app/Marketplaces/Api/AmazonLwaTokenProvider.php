@@ -37,7 +37,7 @@ class AmazonLwaTokenProvider
     public function accessTokenForConnection(MarketplaceConnection $connection): string
     {
         $connection->loadMissing('marketplace');
-        if (!$connection->exists || $connection->marketplace?->code !== 'amazon') {
+        if (! $connection->exists || $connection->marketplace?->code !== 'amazon') {
             throw new RuntimeException('A valid Amazon marketplace connection is required.');
         }
         if ($connection->status !== 'connected') {
@@ -67,11 +67,12 @@ class AmazonLwaTokenProvider
             ]);
 
         $token = $response->json('access_token');
-        if (!$response->successful() || !is_string($token) || $token === '') {
+        if (! $response->successful() || ! is_string($token) || $token === '') {
             throw new RuntimeException('Amazon LWA token request failed (HTTP '.$response->status().'). Reverify this seller connection.');
         }
 
         $cache->put($connection, 'amazon-lwa', $token, (int) $response->json('expires_in', 3600));
+
         return $token;
     }
 
@@ -86,7 +87,7 @@ class AmazonLwaTokenProvider
             ]);
 
         $token = $response->json('access_token');
-        if (!$response->successful() || !is_string($token) || $token === '') {
+        if (! $response->successful() || ! is_string($token) || $token === '') {
             throw new RuntimeException('Amazon LWA token request failed (HTTP '.$response->status().'). Check the seller authorization.');
         }
 
@@ -95,7 +96,7 @@ class AmazonLwaTokenProvider
 
     private function assertApiEnabled(array $config): void
     {
-        if (!($config['enabled'] ?? false) || !($config['api_calls_enabled'] ?? false)) {
+        if (! ($config['enabled'] ?? false) || ! ($config['api_calls_enabled'] ?? false)) {
             throw new ConnectorDisabled('Amazon API calls are disabled by configuration.');
         }
     }

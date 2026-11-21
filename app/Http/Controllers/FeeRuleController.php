@@ -1,11 +1,17 @@
 <?php
+
 namespace App\Http\Controllers;
 
-use App\Models\{Category, FeeRule, Marketplace, Product};
-use App\Services\{ActivityLogger, FeeService};
+use App\Models\Category;
+use App\Models\FeeRule;
+use App\Models\Marketplace;
+use App\Models\Product;
+use App\Services\ActivityLogger;
+use App\Services\FeeService;
 use App\Support\Money;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class FeeRuleController extends Controller
 {
@@ -17,33 +23,47 @@ class FeeRuleController extends Controller
         $sim = null;   // fee simulator: check your rules against a real product + price
         if ($request->filled(['sim_product', 'sim_marketplace', 'sim_price'])) {
             $p = Product::find($request->sim_product);
-            $price = Money::p($request->sim_price); $qty = max((int) $request->input('sim_qty', 1), 1);
+            $price = Money::p($request->sim_price);
+            $qty = max((int) $request->input('sim_qty', 1), 1);
             if ($p && $price > 0) {
-                $line = $price * $qty; $rate = (float) $p->gst_rate;
+                $line = $price * $qty;
+                $rate = (float) $p->gst_rate;
                 $tax = (int) round($line * $rate / (100 + $rate));
                 $sim = ['product' => $p, 'line' => $line, 'tax' => $tax, 'lines' => $fees->estimate($p, (int) $request->sim_marketplace, $line, $tax, $qty, now())];
             }
         }
+
         return view('fees.index', ['rules' => $rules, 'marketplaces' => Marketplace::active()->get(), 'products' => Product::orderBy('sku')->get(['id', 'sku', 'name']), 'sim' => $sim]);
     }
 
-    public function create() { return view('fees.create', $this->form(new FeeRule(['is_active' => true, 'applies_on' => 'PRICE', 'effective_from' => now()]))); }
+    public function create()
+    {
+        return view('fees.create', $this->form(new FeeRule(['is_active' => true, 'applies_on' => 'PRICE', 'effective_from' => now()])));
+    }
 
     public function store(Request $request)
     {
         $rule = FeeRule::create($this->validated($request) + ['created_by' => $request->user()->id]);
         ActivityLogger::log('fee_rule.created', $rule, null, $rule->only(['fee_type', 'percentage', 'fixed_amount', 'marketplace_id']));
+
         return redirect()->route('fees.index')->with('success', 'Fee rule saved. Run "Recalculate" on the Profit page to apply it to existing orders.');
     }
 
-    public function edit(FeeRule $feeRule) { return view('fees.edit', $this->form($feeRule)); }
+    public function edit(FeeRule $feeRule)
+    {
+        return view('fees.edit', $this->form($feeRule));
+    }
 
     public function update(Request $request, FeeRule $feeRule)
     {
         $feeRule->fill($this->validated($request));
-        $dirty = $feeRule->getDirty(); $old = array_intersect_key($feeRule->getOriginal(), $dirty);
+        $dirty = $feeRule->getDirty();
+        $old = array_intersect_key($feeRule->getOriginal(), $dirty);
         $feeRule->save();
-        if ($dirty) ActivityLogger::log('fee_rule.updated', $feeRule, $old, $dirty);
+        if ($dirty) {
+            ActivityLogger::log('fee_rule.updated', $feeRule, $old, $dirty);
+        }
+
         return redirect()->route('fees.index')->with('success', 'Fee rule updated. Run "Recalculate" on the Profit page to apply it to existing orders.');
     }
 
@@ -51,6 +71,7 @@ class FeeRuleController extends Controller
     {
         $feeRule->delete();
         ActivityLogger::log('fee_rule.deleted', $feeRule, $feeRule->only(['fee_type', 'percentage', 'fixed_amount']));
+
         return redirect()->route('fees.index')->with('success', 'Fee rule deleted.');
     }
 
@@ -70,9 +91,12 @@ class FeeRuleController extends Controller
             'effective_from' => 'required|date', 'effective_to' => 'nullable|date|after_or_equal:effective_from',
         ]);
         if ((float) ($d['percentage'] ?? 0) <= 0 && (float) ($d['fixed_amount'] ?? 0) <= 0) {
-            throw \Illuminate\Validation\ValidationException::withMessages(['percentage' => 'Enter a percentage, a fixed amount, or both.']);
+            throw ValidationException::withMessages(['percentage' => 'Enter a percentage, a fixed amount, or both.']);
         }
-        $d['percentage'] = $d['percentage'] ?? 0; $d['fixed_amount'] = $d['fixed_amount'] ?? 0; $d['is_active'] = $request->boolean('is_active');
+        $d['percentage'] = $d['percentage'] ?? 0;
+        $d['fixed_amount'] = $d['fixed_amount'] ?? 0;
+        $d['is_active'] = $request->boolean('is_active');
+
         return $d;
     }
 }

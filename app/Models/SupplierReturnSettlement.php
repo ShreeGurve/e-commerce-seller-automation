@@ -22,6 +22,13 @@ class SupplierReturnSettlement extends Model
         return $this->belongsTo(SupplierReturn::class, 'supplier_return_id');
     }
 
-    public function creator() { return $this->belongsTo(User::class, 'created_by'); }
-    public function confirmer() { return $this->belongsTo(User::class, 'confirmed_by'); }
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function confirmer()
+    {
+        return $this->belongsTo(User::class, 'confirmed_by');
+    }
 }

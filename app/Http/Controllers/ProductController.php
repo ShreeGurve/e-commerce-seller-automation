@@ -1,8 +1,20 @@
 <?php
+
 namespace App\Http\Controllers;
 
-use App\Models\{ActivityLog, Brand, Category, Marketplace, Product, ProductCostHistory, ProductMarketplace};
-use App\Services\{ActivityLogger, ProductCostService};
+use App\Models\ActivityLog;
+use App\Models\Brand;
+use App\Models\Category;
+use App\Models\Keyword;
+use App\Models\Listing;
+use App\Models\Marketplace;
+use App\Models\MarketplaceProductSetting;
+use App\Models\Product;
+use App\Models\ProductCostHistory;
+use App\Models\ProductMarketplace;
+use App\Services\ActivityLogger;
+use App\Services\ProductCostService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -41,6 +53,7 @@ class ProductController extends Controller
                 }
             }
             ActivityLogger::log('product.created', $product, null, ['sku' => $product->sku, 'name' => $product->name]);
+
             return $product;
         });
 
@@ -50,11 +63,12 @@ class ProductController extends Controller
     public function show(Product $product)
     {
         $product->load(['category', 'brand', 'marketplaces.marketplace', 'marketplaceSettings.marketplace']);
+
         return view('products.show', [
             'product' => $product,
             'marketplaces' => Marketplace::active()->get(),
-            'listings' => \App\Models\Listing::with(['marketplace', 'current:id,version_no,score'])->where('product_id', $product->id)->get(),
-            'keywords' => \App\Models\Keyword::with('marketplace:id,name')->where('product_id', $product->id)->orderByRaw("CASE keyword_type WHEN 'PRIMARY' THEN 1 WHEN 'SECONDARY' THEN 2 ELSE 3 END")->limit(60)->get(),
+            'listings' => Listing::with(['marketplace', 'current:id,version_no,score'])->where('product_id', $product->id)->get(),
+            'keywords' => Keyword::with('marketplace:id,name')->where('product_id', $product->id)->orderByRaw("CASE keyword_type WHEN 'PRIMARY' THEN 1 WHEN 'SECONDARY' THEN 2 ELSE 3 END")->limit(60)->get(),
             'costRows' => $product->costs()->orderBy('cost_type')->orderByDesc('effective_from')->get()->groupBy('cost_type'),
             'activity' => ActivityLog::with('user')->where('subject_type', $product->getMorphClass())
                 ->where('subject_id', $product->id)->latest('id')->limit(40)->get(),
@@ -77,6 +91,7 @@ class ProductController extends Controller
         if ($dirty) {
             ActivityLogger::log('product.updated', $product, $old, $dirty);
         }
+
         return redirect()->route('products.show', $product)->with('success', 'Product updated.');
     }
 
@@ -84,6 +99,7 @@ class ProductController extends Controller
     {
         $product->delete();
         ActivityLogger::log('product.deleted', $product, ['sku' => $product->sku]);
+
         return redirect()->route('products.index')->with('success', 'Product archived (soft deleted).');
     }
 
@@ -95,7 +111,8 @@ class ProductController extends Controller
             'effective_from' => 'required|date',
             'note' => 'nullable|string|max:255',
         ]);
-        $row = $this->costs->setCost($product, $data['cost_type'], $data['amount'], \Carbon\Carbon::parse($data['effective_from']), $data['note'] ?? null);
+        $row = $this->costs->setCost($product, $data['cost_type'], $data['amount'], Carbon::parse($data['effective_from']), $data['note'] ?? null);
+
         return redirect()->route('products.show', [$product, 'tab' => 'costs'])
             ->with($row ? 'success' : 'error', $row ? 'Cost saved; previous value kept in history.' : 'Amount unchanged.');
     }
@@ -112,6 +129,7 @@ class ProductController extends Controller
         ]);
         $map = $product->marketplaces()->create($data);
         ActivityLogger::log('product.marketplace_mapped', $product, null, $data);
+
         return redirect()->route('products.show', [$product, 'tab' => 'marketplace'])->with('success', 'Marketplace mapping added.');
     }
 
@@ -120,9 +138,9 @@ class ProductController extends Controller
         abort_unless($mapping->product_id === $product->id, 404);
         $mapping->delete();
         ActivityLogger::log('product.marketplace_unmapped', $product, $mapping->only(['marketplace_id', 'marketplace_sku']));
+
         return redirect()->route('products.show', [$product, 'tab' => 'marketplace'])->with('success', 'Mapping removed.');
     }
-
 
     public function saveMarketplaceSettings(Request $request, Product $product)
     {
@@ -140,7 +158,7 @@ class ProductController extends Controller
         // Push remains off until a live, verified marketplace write adapter exists.
         $data['push_enabled'] = false;
 
-        \App\Models\MarketplaceProductSetting::updateOrCreate(
+        MarketplaceProductSetting::updateOrCreate(
             ['product_id' => $product->id, 'marketplace_id' => $data['marketplace_id']],
             $data
         );
@@ -168,6 +186,7 @@ class ProductController extends Controller
     private function rules(?Product $p = null): array
     {
         $money = 'nullable|numeric|min:0|max:9999999999';
+
         return [
             'sku' => ['required', 'string', 'max:100', Rule::unique('products', 'sku')->ignore($p?->id)],
             'parent_sku' => 'nullable|string|max:100',

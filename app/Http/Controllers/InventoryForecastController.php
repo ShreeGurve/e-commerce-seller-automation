@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\InventoryDemandForecast;
-use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\PurchaseItem;
@@ -106,6 +105,7 @@ class InventoryForecastController extends Controller
                 ->sum('order_items.quantity');
             $predicted = (int) $snapshot->predicted_demand;
             $accuracy = $actual === 0 ? ($predicted === 0 ? 100 : 0) : max(0, 100 - (abs($actual - $predicted) / $actual) * 100);
+
             return (object) ['snapshot' => $snapshot, 'actual' => $actual, 'accuracy' => round($accuracy, 1)];
         });
 

@@ -15,7 +15,7 @@ class FlipkartAccessTokenProvider
     {
         $this->assertConnection($connection);
         $config = config('marketplaces.flipkart', []);
-        if (!($config['enabled'] ?? false) || !($config['api_calls_enabled'] ?? false)) {
+        if (! ($config['enabled'] ?? false) || ! ($config['api_calls_enabled'] ?? false)) {
             throw new ConnectorDisabled('Flipkart API calls are disabled by configuration.');
         }
 
@@ -38,18 +38,19 @@ class FlipkartAccessTokenProvider
             ]);
 
         $token = $response->json('access_token');
-        if (!$response->successful() || !is_string($token) || $token === '') {
+        if (! $response->successful() || ! is_string($token) || $token === '') {
             throw new RuntimeException('Flipkart token request failed (HTTP '.$response->status().'). Reverify this seller connection.');
         }
 
         $this->tokens->put($connection, 'flipkart', $token, (int) $response->json('expires_in', 3600));
+
         return $token;
     }
 
     private function assertConnection(MarketplaceConnection $connection): void
     {
         $connection->loadMissing('marketplace');
-        if (!$connection->exists || $connection->marketplace?->code !== 'flipkart') {
+        if (! $connection->exists || $connection->marketplace?->code !== 'flipkart') {
             throw new RuntimeException('A valid Flipkart marketplace connection is required.');
         }
         if ($connection->status !== 'connected') {

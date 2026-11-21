@@ -27,8 +27,7 @@ class InventoryAutomationController extends Controller
 
     public function export()
     {
-        $rows = Inventory::with('product')->get()->filter(fn ($r) =>
-            (int) $r->available_qty <= 0 ||
+        $rows = Inventory::with('product')->get()->filter(fn ($r) => (int) $r->available_qty <= 0 ||
             ((int) $r->minimum_stock > 0 && (int) $r->available_qty <= (int) $r->minimum_stock) ||
             ((int) $r->reorder_level > 0 && (int) $r->available_qty <= (int) $r->reorder_level)
         );
@@ -41,6 +40,6 @@ class InventoryAutomationController extends Controller
                 fputcsv($out, [$r->product?->sku, $r->product?->name, $r->available_qty, $r->minimum_stock, $r->reorder_level, max(0, $target - (int) $r->available_qty), (int) $r->available_qty <= 0 ? 'OUT' : 'LOW']);
             }
             fclose($out);
-        }, 'inventory-automation-signals-' . now()->format('Ymd-His') . '.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+        }, 'inventory-automation-signals-'.now()->format('Ymd-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 }

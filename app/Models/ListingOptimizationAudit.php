@@ -10,7 +10,18 @@ class ListingOptimizationAudit extends Model
 
     protected $casts = ['results' => 'array', 'score' => 'decimal:2'];
 
-    public function listing() { return $this->belongsTo(Listing::class); }
-    public function version() { return $this->belongsTo(ListingVersion::class, 'listing_version_id'); }
-    public function author() { return $this->belongsTo(User::class, 'created_by'); }
+    public function listing()
+    {
+        return $this->belongsTo(Listing::class);
+    }
+
+    public function version()
+    {
+        return $this->belongsTo(ListingVersion::class, 'listing_version_id');
+    }
+
+    public function author()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 }

@@ -1,6 +1,8 @@
 <?php
+
 namespace App\Providers;
 
+use App\Services\SummaryService;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
@@ -10,7 +12,7 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->singleton(\App\Services\SummaryService::class);   // one instance so big jobs can batch refreshes
+        $this->app->singleton(SummaryService::class);   // one instance so big jobs can batch refreshes
     }
 
     public function boot(): void
@@ -27,6 +29,7 @@ class AppServiceProvider extends ServiceProvider
             if ($user->isSuperAdmin()) {
                 return true;
             }
+
             return str_contains($ability, '.') ? ($user->hasPermission($ability) ?: null) : null;
         });
     }

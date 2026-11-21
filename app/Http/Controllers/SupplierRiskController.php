@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Supplier;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SupplierRiskController extends Controller
@@ -35,7 +35,7 @@ class SupplierRiskController extends Controller
                 ->select('supplier_id',
                     DB::raw("SUM(CASE WHEN status = 'APPROVED' AND (expires_at IS NULL OR expires_at >= CURDATE()) THEN 1 ELSE 0 END) as valid_count"),
                     DB::raw("SUM(CASE WHEN expires_at IS NOT NULL AND expires_at < CURDATE() AND status IN ('PENDING','APPROVED') THEN 1 ELSE 0 END) as expired_count"),
-                    DB::raw("COUNT(*) as total_count"))
+                    DB::raw('COUNT(*) as total_count'))
                 ->groupBy('supplier_id')->get()->keyBy('supplier_id')
             : collect();
 
@@ -87,6 +87,7 @@ class SupplierRiskController extends Controller
             $supplier->setAttribute('open_issues', $openIssues);
             $supplier->setAttribute('overdue_issues', $overdueIssues);
             $supplier->setAttribute('received_purchase_count', $eligiblePurchases->count());
+
             return $supplier;
         });
     }
@@ -110,6 +111,7 @@ class SupplierRiskController extends Controller
             'path' => $request->url(),
             'query' => $request->query(),
         ]);
+
         return view('suppliers.risk', compact('suppliers', 'counts'));
     }
 

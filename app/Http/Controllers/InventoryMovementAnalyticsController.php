@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Inventory;
 use App\Models\InventoryTransaction;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class InventoryMovementAnalyticsController extends Controller
@@ -26,8 +25,8 @@ class InventoryMovementAnalyticsController extends Controller
             ->when($filters['type'] ?? null, fn ($q, $type) => $q->where('inventory_transactions.type', $type))
             ->when($filters['q'] ?? null, function ($q, $search) {
                 $q->where(function ($where) use ($search) {
-                    $where->where('products.name', 'like', '%' . $search . '%')
-                        ->orWhere('products.sku', 'like', '%' . $search . '%');
+                    $where->where('products.name', 'like', '%'.$search.'%')
+                        ->orWhere('products.sku', 'like', '%'.$search.'%');
                 });
             });
 

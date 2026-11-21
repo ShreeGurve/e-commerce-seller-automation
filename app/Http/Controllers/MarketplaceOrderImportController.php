@@ -6,7 +6,6 @@ use App\Models\MarketplaceOrderImport;
 use App\Models\MarketplaceSyncRun;
 use App\Services\MarketplaceOrderImportService;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 
 class MarketplaceOrderImportController extends Controller
 {
@@ -27,6 +26,7 @@ class MarketplaceOrderImportController extends Controller
         abort_unless($run->resource === 'orders' && in_array($run->status, ['COMPLETED', 'PARTIAL'], true), 422);
 
         $count = $service->previewFromSyncRun($run->id, (int) $request->user()->business_id);
+
         return redirect()->route('marketplaces.order-imports.index')
             ->with('success', $count.' new order review candidate(s) prepared.');
     }
@@ -36,6 +36,7 @@ class MarketplaceOrderImportController extends Controller
         abort_unless((int) $import->business_id === (int) $request->user()->business_id, 404);
         $validated = $request->validate(['deduct_stock' => ['nullable', 'boolean']]);
         $service->approveAndImport($import, $request->user(), (bool) ($validated['deduct_stock'] ?? false));
+
         return back()->with('success', 'Marketplace order approved and imported.');
     }
 
@@ -44,6 +45,7 @@ class MarketplaceOrderImportController extends Controller
         abort_unless((int) $import->business_id === (int) $request->user()->business_id, 404);
         $validated = $request->validate(['reason' => ['nullable', 'string', 'max:1000']]);
         $service->reject($import, $request->user(), $validated['reason'] ?? null);
+
         return back()->with('success', 'Marketplace order import rejected.');
     }
 }

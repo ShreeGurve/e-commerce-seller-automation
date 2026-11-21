@@ -6,6 +6,7 @@ use App\Models\Marketplace;
 use App\Models\Order;
 use App\Models\OrderFulfillmentEvent;
 use App\Models\User;
+use App\Services\ProfitService;
 use App\Services\ShipmentTrackingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
@@ -41,6 +42,7 @@ class ShipmentTrackingServiceTest extends TestCase
             'source' => 'TEST',
             'created_by' => $user->id,
         ]);
+
         return [$order, $user];
     }
 
@@ -108,7 +110,7 @@ class ShipmentTrackingServiceTest extends TestCase
     public function test_delivery_event_uses_existing_order_status_transition(): void
     {
         [$order, $user] = $this->fixture();
-        $this->mock(\App\Services\ProfitService::class, function ($mock) {
+        $this->mock(ProfitService::class, function ($mock) {
             $mock->shouldReceive('safe')->once();
         });
 

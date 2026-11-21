@@ -10,6 +10,7 @@ class AutomationGovernanceController extends Controller
     private function businessId(): ?int
     {
         $user = auth()->user();
+
         return $user && method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()
             ? null
             : (int) ($user->business_id ?? 0);
@@ -21,6 +22,7 @@ class AutomationGovernanceController extends Controller
         if ($this->businessId() !== null) {
             $query->where('business_id', $this->businessId());
         }
+
         return $query;
     }
 
@@ -30,6 +32,7 @@ class AutomationGovernanceController extends Controller
         if ($this->businessId() !== null) {
             $query->where('business_id', $this->businessId());
         }
+
         return $query;
     }
 
@@ -46,6 +49,7 @@ class AutomationGovernanceController extends Controller
         $byPriority = $completed->groupBy(fn ($task) => strtoupper((string) ($task->priority ?: 'UNSET')))
             ->map(function ($items, $priority) {
                 $good = $items->filter(fn ($task) => $task->completed_at <= $task->due_at)->count();
+
                 return (object) ['priority' => $priority, 'total' => $items->count(), 'on_time' => $good, 'late' => $items->count() - $good];
             })->sortBy('priority')->values();
 
@@ -65,7 +69,8 @@ class AutomationGovernanceController extends Controller
 
         $rows = $tasks->map(function ($task) use ($employees) {
             $assignee = $task->assigned_to ? $employees->get($task->assigned_to) : null;
-            $issue = !$task->assigned_to ? 'UNASSIGNED' : (!$assignee ? 'ASSIGNEE INACTIVE OR OUTSIDE BUSINESS' : null);
+            $issue = ! $task->assigned_to ? 'UNASSIGNED' : (! $assignee ? 'ASSIGNEE INACTIVE OR OUTSIDE BUSINESS' : null);
+
             return $issue ? (object) ['task' => $task, 'issue' => $issue] : null;
         })->filter()->values();
 
@@ -88,10 +93,16 @@ class AutomationGovernanceController extends Controller
             $priority = strtoupper((string) ($task->priority ?: 'NORMAL'));
             $urgentPriority = in_array($priority, ['URGENT', 'CRITICAL', 'HIGH'], true);
             $dueSoon = $hours <= 48;
-            if ($hours < 0 && !$urgentPriority) $reason = 'Overdue task without high/urgent priority';
-            elseif ($dueSoon && !$urgentPriority) $reason = 'Due within 48 hours without high/urgent priority';
-            elseif ($hours > 168 && $urgentPriority) $reason = 'High/urgent priority but due more than 7 days away';
-            else return null;
+            if ($hours < 0 && ! $urgentPriority) {
+                $reason = 'Overdue task without high/urgent priority';
+            } elseif ($dueSoon && ! $urgentPriority) {
+                $reason = 'Due within 48 hours without high/urgent priority';
+            } elseif ($hours > 168 && $urgentPriority) {
+                $reason = 'High/urgent priority but due more than 7 days away';
+            } else {
+                return null;
+            }
+
             return (object) ['task' => $task, 'hours' => $hours, 'reason' => $reason];
         })->filter()->sortBy('hours')->values();
 

@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Str;
 use Throwable;
 
 class MarketplaceConnectionVerifier
@@ -22,6 +21,7 @@ class MarketplaceConnectionVerifier
             };
         } catch (Throwable $e) {
             report($e);
+
             return ['ok' => false, 'message' => 'The marketplace could not be reached or returned an unexpected response. Check the credentials and try again.'];
         }
     }
@@ -35,7 +35,7 @@ class MarketplaceConnectionVerifier
             'client_secret' => $c['client_secret'],
         ]);
 
-        if (!$response->successful() || !$response->json('access_token')) {
+        if (! $response->successful() || ! $response->json('access_token')) {
             return ['ok' => false, 'message' => 'Amazon rejected the LWA credentials. Check Client ID, Client Secret and Refresh Token.'];
         }
 
@@ -58,7 +58,7 @@ class MarketplaceConnectionVerifier
                 'CreatedAfter' => 'TEST_CASE_200',
             ]);
 
-            if (!$sandboxResponse->successful()) {
+            if (! $sandboxResponse->successful()) {
                 return ['ok' => false, 'message' => 'Amazon LWA credentials were accepted, but the SP-API Sandbox test request failed (HTTP '.$sandboxResponse->status().'). Check the sandbox app credentials, region and API availability.'];
             }
 
@@ -74,7 +74,7 @@ class MarketplaceConnectionVerifier
         $response = Http::withBasicAuth($c['app_id'], $c['app_secret'])
             ->acceptJson()->timeout(20)->get($url);
 
-        if (!$response->successful() || !$response->json('access_token')) {
+        if (! $response->successful() || ! $response->json('access_token')) {
             return ['ok' => false, 'message' => 'Flipkart rejected the application credentials or access is not enabled. Check Application ID and Application Secret.'];
         }
 

@@ -19,15 +19,33 @@ class SupplierDocument extends Model
         'file_size' => 'integer',
     ];
 
-    public function supplier() { return $this->belongsTo(Supplier::class); }
-    public function uploader() { return $this->belongsTo(User::class, 'uploaded_by'); }
-    public function verifier() { return $this->belongsTo(User::class, 'verified_by'); }
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class);
+    }
+
+    public function uploader()
+    {
+        return $this->belongsTo(User::class, 'uploaded_by');
+    }
+
+    public function verifier()
+    {
+        return $this->belongsTo(User::class, 'verified_by');
+    }
 
     public function getExpiryStateAttribute(): string
     {
-        if (!$this->expires_at) return 'NO_EXPIRY';
-        if ($this->expires_at->lt(today())) return 'EXPIRED';
-        if ($this->expires_at->lte(today()->addDays(30))) return 'EXPIRING';
+        if (! $this->expires_at) {
+            return 'NO_EXPIRY';
+        }
+        if ($this->expires_at->lt(today())) {
+            return 'EXPIRED';
+        }
+        if ($this->expires_at->lte(today()->addDays(30))) {
+            return 'EXPIRING';
+        }
+
         return 'VALID';
     }
 }

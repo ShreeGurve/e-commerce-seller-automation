@@ -23,8 +23,11 @@ class MarketplaceInventoryReconciliationServiceTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
+
     private Marketplace $marketplace;
+
     private MarketplaceConnection $connection;
+
     private Product $product;
 
     protected function setUp(): void

@@ -1,18 +1,43 @@
 <?php
+
 namespace Tests\Feature;
 
 use App\Marketplaces\Amazon\AmazonAdapter;
-use App\Models\{AdvertisingCampaign, AdvertisingDaily, ExpenseCategory, Expense, Marketplace, Order, Permission, Product, ProductCostHistory, Purchase, PurchaseItem, Role, Settlement, SettlementItem, Supplier, User};
-use App\Services\{ClaimService, InventoryService, OrderService, ReportService, ReturnService};
+use App\Models\AdvertisingCampaign;
+use App\Models\AdvertisingDaily;
+use App\Models\Expense;
+use App\Models\ExpenseCategory;
+use App\Models\Marketplace;
+use App\Models\Order;
+use App\Models\Permission;
+use App\Models\Product;
+use App\Models\ProductCostHistory;
+use App\Models\Purchase;
+use App\Models\PurchaseItem;
+use App\Models\Role;
+use App\Models\Settlement;
+use App\Models\SettlementItem;
+use App\Models\Supplier;
+use App\Models\User;
+use App\Services\ClaimService;
+use App\Services\InventoryService;
+use App\Services\OrderService;
+use App\Services\ReportService;
+use App\Services\ReturnService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
-use Illuminate\Support\Facades\DB;
 
 class ReportTest extends TestCase
 {
     use RefreshDatabase;
 
-    private User $u; private Product $p; private Marketplace $mp; private string $day;
+    private User $u;
+
+    private Product $p;
+
+    private Marketplace $mp;
+
+    private string $day;
 
     protected function setUp(): void
     {
@@ -33,15 +58,24 @@ class ReportTest extends TestCase
     {
         $p = Product::create(['sku' => $sku, 'name' => "Product {$sku}", 'gst_rate' => 18]);
         ProductCostHistory::create(['product_id' => $p->id, 'cost_type' => 'COGS', 'amount' => $cogs, 'effective_from' => '2026-01-01']);
+
         return $p;
     }
+
     private function order(Product $p, string $ext): Order
     {
         $o = app(OrderService::class)->create(['marketplace_id' => $this->mp->id, 'external_order_id' => $ext, 'order_date' => now()->subDays(3)], [['product_id' => $p->id, 'quantity' => 2, 'unit_price' => '118']], $this->u);
-        foreach (['PACKED', 'SHIPPED'] as $s) app(OrderService::class)->changeStatus($o, $s);
+        foreach (['PACKED', 'SHIPPED'] as $s) {
+            app(OrderService::class)->changeStatus($o, $s);
+        }
+
         return $o->fresh();
     }
-    private function f(): array { return ['from' => now()->subDays(10)->toDateString(), 'to' => now()->toDateString(), 'marketplace_id' => null, 'product_id' => null, 'category_id' => null, 'sort' => 'profit_desc']; }
+
+    private function f(): array
+    {
+        return ['from' => now()->subDays(10)->toDateString(), 'to' => now()->toDateString(), 'marketplace_id' => null, 'product_id' => null, 'category_id' => null, 'sort' => 'profit_desc'];
+    }
 
     /** one row in every table every report reads */
     private function seedEverything(): Order
@@ -55,9 +89,12 @@ class ReportTest extends TestCase
         PurchaseItem::create(['purchase_id' => $pu->id, 'product_id' => $this->p->id, 'quantity' => 10, 'unit_cost' => '100', 'gst_rate' => '18', 'line_subtotal' => '1000', 'gst_amount' => '180', 'line_total' => '1180']);
         Expense::create(['expense_category_id' => ExpenseCategory::first()->id, 'expense_date' => $this->day, 'amount' => '500', 'notes' => '=HYPERLINK("http://evil","x")']);
         $st = Settlement::create(['marketplace_id' => $this->mp->id, 'external_settlement_id' => 'S1', 'period_start' => $this->day, 'period_end' => $this->day]);
-        foreach ([['SALE', '236.00'], ['REFERRAL_FEE', '-25.00']] as $i => [$k, $a]) SettlementItem::create(['settlement_id' => $st->id, 'order_id' => $o->id, 'kind' => $k, 'amount' => $a, 'posted_date' => $this->day, 'row_hash' => sha1("x{$i}")]);
+        foreach ([['SALE', '236.00'], ['REFERRAL_FEE', '-25.00']] as $i => [$k, $a]) {
+            SettlementItem::create(['settlement_id' => $st->id, 'order_id' => $o->id, 'kind' => $k, 'amount' => $a, 'posted_date' => $this->day, 'row_hash' => sha1("x{$i}")]);
+        }
         $c = AdvertisingCampaign::create(['marketplace_id' => $this->mp->id, 'name' => 'Camp1']);
         AdvertisingDaily::create(['marketplace_id' => $this->mp->id, 'date' => $this->day, 'level' => 'CAMPAIGN', 'campaign_id' => $c->id, 'impressions' => 1000, 'clicks' => 50, 'spend' => '40', 'sales' => '236', 'orders' => 1, 'units' => 2, 'row_key' => sha1('ad')]);
+
         return $o;
     }
 
@@ -128,12 +165,17 @@ class ReportTest extends TestCase
         $r = $this->actingAs($this->u)->get(route('reports.export', ['sales', 'xlsx']));
         $r->assertOk();
         $this->assertStringContainsString('spreadsheetml.sheet', $r->headers->get('Content-Type'));
-        $bin = $r->getContent(); $this->assertStringStartsWith('PK', $bin);
-        $tmp = tempnam(sys_get_temp_dir(), 'x'); file_put_contents($tmp, $bin);
-        $zip = new \ZipArchive(); $this->assertTrue($zip->open($tmp));
+        $bin = $r->getContent();
+        $this->assertStringStartsWith('PK', $bin);
+        $tmp = tempnam(sys_get_temp_dir(), 'x');
+        file_put_contents($tmp, $bin);
+        $zip = new \ZipArchive;
+        $this->assertTrue($zip->open($tmp));
         $sheet = $zip->getFromName('xl/worksheets/sheet1.xml');
-        $this->assertStringContainsString('Sales (incl. GST)', $sheet); $this->assertStringContainsString('<v>236</v>', $sheet);
-        $zip->close(); @unlink($tmp);
+        $this->assertStringContainsString('Sales (incl. GST)', $sheet);
+        $this->assertStringContainsString('<v>236</v>', $sheet);
+        $zip->close();
+        @unlink($tmp);
     }
 
     public function test_viewing_is_separate_from_exporting(): void

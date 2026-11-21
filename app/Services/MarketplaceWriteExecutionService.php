@@ -42,7 +42,7 @@ class MarketplaceWriteExecutionService
     public function setPolicy(int $connectionId, string $operation, bool $enabled, User $user): void
     {
         $operation = strtoupper($operation);
-        if (!in_array($operation, self::OPERATIONS, true)) {
+        if (! in_array($operation, self::OPERATIONS, true)) {
             throw ValidationException::withMessages(['operation' => 'Unsupported marketplace write operation.']);
         }
         $connection = MarketplaceConnection::with('marketplace')->where('business_id', $user->business_id)->findOrFail($connectionId);
@@ -53,7 +53,7 @@ class MarketplaceWriteExecutionService
         if ($enabled && ($connection->environment ?? 'production') !== 'production') {
             throw new RuntimeException('Live write policies can only be enabled for Production connections.');
         }
-        if ($enabled && !$user->isSuperAdmin()) {
+        if ($enabled && ! $user->isSuperAdmin()) {
             throw new RuntimeException('Only a Super Admin can enable a live marketplace write policy.');
         }
 
@@ -80,7 +80,7 @@ class MarketplaceWriteExecutionService
     public function prepare(User $user, array $data): object
     {
         $operation = strtoupper($data['operation']);
-        if (!in_array($operation, self::OPERATIONS, true)) {
+        if (! in_array($operation, self::OPERATIONS, true)) {
             throw ValidationException::withMessages(['operation' => 'Unsupported marketplace write operation.']);
         }
 
@@ -92,11 +92,11 @@ class MarketplaceWriteExecutionService
         $this->assertSupported($connection, $operation);
 
         $task = DB::table('marketplace_automation_tasks')->where('id', (int) $data['task_id'])->first();
-        if (!$task || $task->status !== 'APPROVED' || !$task->product_id || !$task->reviewed_by || !$task->reviewed_at) {
+        if (! $task || $task->status !== 'APPROVED' || ! $task->product_id || ! $task->reviewed_by || ! $task->reviewed_at) {
             throw ValidationException::withMessages(['task_id' => 'A marketplace automation task linked to a product must be formally APPROVED with reviewer and timestamp.']);
         }
         $allowedTypes = $operation === 'PRICE_UPDATE' ? ['LOW_PROFIT_MARGIN'] : ['RESTOCK', 'STOCK_RISK'];
-        if (!in_array($task->recommendation_type, $allowedTypes, true)) {
+        if (! in_array($task->recommendation_type, $allowedTypes, true)) {
             throw ValidationException::withMessages(['task_id' => 'The approved task type does not authorize this operation.']);
         }
 
@@ -104,11 +104,11 @@ class MarketplaceWriteExecutionService
             ->where('product_id', $task->product_id)
             ->where('marketplace_id', $connection->marketplace_id)
             ->first();
-        if (!$mapping || trim((string) $mapping->marketplace_sku) === '') {
+        if (! $mapping || trim((string) $mapping->marketplace_sku) === '') {
             throw ValidationException::withMessages(['task_id' => 'No marketplace SKU mapping exists for this product and connection.']);
         }
         $product = DB::table('products')->where('id', $task->product_id)->first();
-        if (!$product) {
+        if (! $product) {
             throw ValidationException::withMessages(['task_id' => 'The linked product no longer exists.']);
         }
         $productOwner = $product->created_by ? DB::table('users')->where('id', $product->created_by)->value('business_id') : null;
@@ -126,10 +126,11 @@ class MarketplaceWriteExecutionService
 
         $existing = DB::table('marketplace_write_attempts')->where('idempotency_key', $key)->first();
         if ($existing) {
-            if (!hash_equals((string) $existing->payload_hash, $hash) || (int) $existing->task_id !== (int) $task->id
+            if (! hash_equals((string) $existing->payload_hash, $hash) || (int) $existing->task_id !== (int) $task->id
                 || (int) $existing->marketplace_connection_id !== (int) $connection->id || $existing->operation !== $operation) {
                 throw ValidationException::withMessages(['idempotency_key' => 'This idempotency key was already used for a different payload.']);
             }
+
             return $existing;
         }
 
@@ -158,7 +159,7 @@ class MarketplaceWriteExecutionService
         $expired = false;
         $attempt = DB::transaction(function () use ($attemptId, $approver, &$expired) {
             $row = DB::table('marketplace_write_attempts')->where('id', $attemptId)->lockForUpdate()->first();
-            if (!$row || (int) $row->business_id !== (int) $approver->business_id) {
+            if (! $row || (int) $row->business_id !== (int) $approver->business_id) {
                 throw ValidationException::withMessages(['attempt' => 'Write attempt was not found.']);
             }
             if ($row->status !== 'PREPARED') {
@@ -167,31 +168,32 @@ class MarketplaceWriteExecutionService
             if ($row->expires_at && now()->greaterThan($row->expires_at)) {
                 DB::table('marketplace_write_attempts')->where('id', $row->id)->update(['status' => 'EXPIRED', 'updated_at' => now()]);
                 $expired = true;
+
                 return null;
             }
             if ((int) $row->prepared_by === (int) $approver->id) {
                 throw ValidationException::withMessages(['approver' => 'A different user must approve this exact write payload.']);
             }
             $payload = json_decode($row->request_payload, true);
-            if (!is_array($payload)) {
+            if (! is_array($payload)) {
                 throw ValidationException::withMessages(['attempt' => 'The prepared payload is missing or invalid.']);
             }
             $hash = hash('sha256', $this->canonicalJson($payload));
-            if (!hash_equals((string) $row->payload_hash, $hash)) {
+            if (! hash_equals((string) $row->payload_hash, $hash)) {
                 throw ValidationException::withMessages(['attempt' => 'The prepared payload failed its integrity check.']);
             }
 
             $task = DB::table('marketplace_automation_tasks')->where('id', $row->task_id)->first();
-            if (!$task || $task->status !== 'APPROVED' || !$task->reviewed_by || !$task->reviewed_at) {
+            if (! $task || $task->status !== 'APPROVED' || ! $task->reviewed_by || ! $task->reviewed_at) {
                 throw ValidationException::withMessages(['task' => 'The source automation task is no longer formally approved.']);
             }
             $allowedTypes = $row->operation === 'PRICE_UPDATE' ? ['LOW_PROFIT_MARGIN'] : ['RESTOCK', 'STOCK_RISK'];
-            if (!in_array($task->recommendation_type, $allowedTypes, true)) {
+            if (! in_array($task->recommendation_type, $allowedTypes, true)) {
                 throw ValidationException::withMessages(['task' => 'The approved task type no longer matches this marketplace operation.']);
             }
             $policy = DB::table('marketplace_write_policies')->where('marketplace_connection_id', $row->marketplace_connection_id)
                 ->where('operation', $row->operation)->first();
-            if (!$policy || !$policy->is_enabled) {
+            if (! $policy || ! $policy->is_enabled) {
                 throw ValidationException::withMessages(['policy' => 'Live writes are not enabled for this connection and operation.']);
             }
             $connection = MarketplaceConnection::with('marketplace')->where('business_id', $approver->business_id)->findOrFail($row->marketplace_connection_id);
@@ -200,12 +202,12 @@ class MarketplaceWriteExecutionService
             }
             $mappingExists = DB::table('product_marketplace')->where('product_id', $task->product_id)
                 ->where('marketplace_id', $connection->marketplace_id)->where('marketplace_sku', $row->marketplace_sku)->exists();
-            if (!$mappingExists) {
+            if (! $mappingExists) {
                 throw ValidationException::withMessages(['mapping' => 'The product-to-marketplace SKU mapping changed after preview. Prepare a new attempt.']);
             }
             $product = DB::table('products')->where('id', $task->product_id)->first();
             $productOwner = $product?->created_by ? DB::table('users')->where('id', $product->created_by)->value('business_id') : null;
-            if (!$product || (int) $productOwner !== (int) $approver->business_id) {
+            if (! $product || (int) $productOwner !== (int) $approver->business_id) {
                 throw ValidationException::withMessages(['product' => 'The product is no longer owned by your business.']);
             }
             $this->assertLiveGates($connection);
@@ -214,6 +216,7 @@ class MarketplaceWriteExecutionService
                 'status' => 'SUBMITTING', 'approved_by' => $approver->id, 'approved_at' => now(),
                 'submitted_at' => now(), 'updated_at' => now(),
             ]);
+
             return (object) array_merge((array) $row, ['request_payload' => $payload, 'connection' => $connection]);
         });
 
@@ -265,12 +268,13 @@ class MarketplaceWriteExecutionService
             $patch = $operation === 'PRICE_UPDATE'
                 ? $this->amazonPricePatch($marketplaceId, $data)
                 : $this->amazonInventoryPatch($marketplaceId, $data);
+
             return ['operation' => $operation, 'sku' => $sku, 'seller_id' => $sellerId, 'marketplace_id' => $marketplaceId, 'product_type' => $productType, 'patches' => [$patch]];
         }
 
         if ($code === 'flipkart') {
             $externalProductId = (string) ($mapping->external_product_id ?? '');
-            if (!preg_match('/^\d{13,16}$/', $externalProductId)) {
+            if (! preg_match('/^\d{13,16}$/', $externalProductId)) {
                 throw ValidationException::withMessages(['task_id' => 'Flipkart product mapping must include a valid 13–16 digit product ID.']);
             }
             if ($operation === 'PRICE_UPDATE') {
@@ -289,6 +293,7 @@ class MarketplaceWriteExecutionService
                 }
                 $marketplacePayload = ['product_id' => $externalProductId, 'locations' => [['id' => $locationId, 'inventory' => $quantity]]];
             }
+
             return ['operation' => $operation, 'sku' => $sku, 'marketplace_payload' => $marketplacePayload];
         }
 
@@ -301,6 +306,7 @@ class MarketplaceWriteExecutionService
         if ($price === false || $price <= 0) {
             throw ValidationException::withMessages(['selling_price' => 'Enter a positive selling price.']);
         }
+
         return ['op' => 'replace', 'path' => '/attributes/purchasable_offer', 'value' => [[
             'marketplace_id' => $marketplaceId,
             'currency' => 'INR',
@@ -314,6 +320,7 @@ class MarketplaceWriteExecutionService
         if ($quantity === false || $quantity < 0) {
             throw ValidationException::withMessages(['quantity' => 'Enter a non-negative whole-number quantity.']);
         }
+
         return ['op' => 'replace', 'path' => '/attributes/fulfillment_availability', 'value' => [[
             'fulfillment_channel_code' => 'DEFAULT',
             'quantity' => $quantity,
@@ -324,7 +331,7 @@ class MarketplaceWriteExecutionService
     private function canonicalJson(array $payload): string
     {
         $normalize = function ($value) use (&$normalize) {
-            if (!is_array($value)) {
+            if (! is_array($value)) {
                 return $value;
             }
             if (array_is_list($value)) {
@@ -334,18 +341,20 @@ class MarketplaceWriteExecutionService
             foreach ($value as $key => $item) {
                 $value[$key] = $normalize($item);
             }
+
             return $value;
         };
+
         return json_encode($normalize($payload), JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION | JSON_THROW_ON_ERROR);
     }
 
     private function assertSupported(MarketplaceConnection $connection, string $operation): void
     {
         $code = $connection->marketplace?->code;
-        if (!$connection->marketplace || !$connection->marketplace->is_active) {
+        if (! $connection->marketplace || ! $connection->marketplace->is_active) {
             throw ValidationException::withMessages(['connection_id' => 'The marketplace platform is inactive.']);
         }
-        if (!in_array($code, ['amazon', 'flipkart'], true)) {
+        if (! in_array($code, ['amazon', 'flipkart'], true)) {
             throw ValidationException::withMessages(['connection_id' => 'This marketplace does not have a write adapter.']);
         }
         if ($code === 'flipkart' && ($connection->environment ?? 'production') !== 'production') {
@@ -358,14 +367,14 @@ class MarketplaceWriteExecutionService
         if ($connection->status !== 'connected' || ($connection->environment ?? 'production') !== 'production') {
             throw new RuntimeException('Live writes require a verified production marketplace connection.');
         }
-        if (!config('marketplace_writes.enabled', false)) {
+        if (! config('marketplace_writes.enabled', false)) {
             throw new RuntimeException('The Package 20 global marketplace write gate is disabled.');
         }
         $code = $connection->marketplace?->code;
-        if ($code === 'amazon' && (!config('marketplace_writes.amazon_enabled', false) || !config('marketplaces.amazon.enabled', false) || !config('marketplaces.amazon.api_calls_enabled', false))) {
+        if ($code === 'amazon' && (! config('marketplace_writes.amazon_enabled', false) || ! config('marketplaces.amazon.enabled', false) || ! config('marketplaces.amazon.api_calls_enabled', false))) {
             throw new RuntimeException('Amazon write/API feature flags are not all enabled.');
         }
-        if ($code === 'flipkart' && (!config('marketplace_writes.flipkart_enabled', false) || !config('marketplaces.flipkart.enabled', false) || !config('marketplaces.flipkart.api_calls_enabled', false))) {
+        if ($code === 'flipkart' && (! config('marketplace_writes.flipkart_enabled', false) || ! config('marketplaces.flipkart.enabled', false) || ! config('marketplaces.flipkart.api_calls_enabled', false))) {
             throw new RuntimeException('Flipkart write/API feature flags are not all enabled.');
         }
     }

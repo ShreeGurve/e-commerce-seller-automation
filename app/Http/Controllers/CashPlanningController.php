@@ -2,13 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Inventory;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\PurchaseItem;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class CashPlanningController extends Controller
@@ -37,7 +35,7 @@ class CashPlanningController extends Controller
         $openPurchases = Purchase::query()->where('status', 'ORDERED')->with('supplier')
             ->whereNull('deleted_at')->orderBy('expected_delivery_date')->get();
         $purchaseCommitments = $openPurchases->sum(fn ($po) => max(0, (float) $po->total_amount - (float) $po->amount_paid));
-        $dueInHorizon = $openPurchases->filter(fn ($po) => !$po->expected_delivery_date || $po->expected_delivery_date->lte(now()->addDays($horizon)->endOfDay()))
+        $dueInHorizon = $openPurchases->filter(fn ($po) => ! $po->expected_delivery_date || $po->expected_delivery_date->lte(now()->addDays($horizon)->endOfDay()))
             ->sum(fn ($po) => max(0, (float) $po->total_amount - (float) $po->amount_paid));
         $overdueCommitments = $openPurchases->filter(fn ($po) => $po->expected_delivery_date && $po->expected_delivery_date->lt(today()))
             ->sum(fn ($po) => max(0, (float) $po->total_amount - (float) $po->amount_paid));
@@ -60,6 +58,7 @@ class CashPlanningController extends Controller
             $targetUnits = (int) ceil($dailyUnits * min($horizon, 30));
             $suggested = max(0, $targetUnits - max(0, $available - $reserved) - $onOrder);
             $unitCost = (float) $product->totalUnitCost();
+
             return (object) ['product' => $product, 'daily_units' => $dailyUnits, 'available' => $available,
                 'reserved' => $reserved, 'on_order' => $onOrder, 'suggested' => $suggested,
                 'unit_cost' => $unitCost, 'investment' => $suggested * $unitCost];

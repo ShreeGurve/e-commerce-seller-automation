@@ -10,6 +10,7 @@ use Throwable;
 class SellerSchedulerQueueAudit extends Command
 {
     protected $signature = 'seller-automation:scheduler-queue-audit';
+
     protected $description = 'Read-only audit of scheduler registration and queue configuration';
 
     public function handle(): int
@@ -41,6 +42,7 @@ class SellerSchedulerQueueAudit extends Command
 
         $this->newLine();
         $this->comment('A configured queue driver and registered schedule do not prove that workers or the scheduler are running on the host. Verify the OS scheduler, worker supervisor, failed jobs and logs after deployment.');
+
         return self::SUCCESS;
     }
 }

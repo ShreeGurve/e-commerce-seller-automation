@@ -18,7 +18,9 @@ class MarketplaceWriteAuditServiceTest extends TestCase
     use RefreshDatabase;
 
     private Business $business;
+
     private User $user;
+
     private MarketplaceConnection $connection;
 
     protected function setUp(): void

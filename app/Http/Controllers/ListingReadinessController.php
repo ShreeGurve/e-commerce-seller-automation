@@ -18,13 +18,14 @@ class ListingReadinessController extends Controller
             ->when($request->filled('marketplace_id'), fn ($q) => $q->where('marketplace_id', $request->integer('marketplace_id')))
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')->toString()))
             ->when($request->filled('q'), function ($q) use ($request) {
-                $term = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $request->string('q')->toString()) . '%';
+                $term = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $request->string('q')->toString()).'%';
                 $q->whereHas('product', fn ($p) => $p->where('sku', 'like', $term)->orWhere('name', 'like', $term));
             })
             ->latest('updated_at')->paginate(25)->withQueryString();
 
         $listings->setCollection($listings->getCollection()->map(function (Listing $listing) use ($readiness) {
             $listing->setAttribute('preflight', $readiness->evaluate($listing));
+
             return $listing;
         }));
 
@@ -41,11 +42,12 @@ class ListingReadinessController extends Controller
             ->when($request->filled('marketplace_id'), fn ($q) => $q->where('marketplace_id', $request->integer('marketplace_id')))
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')->toString()))
             ->when($request->filled('q'), function ($q) use ($request) {
-                $term = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $request->string('q')->toString()) . '%';
+                $term = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $request->string('q')->toString()).'%';
                 $q->whereHas('product', fn ($p) => $p->where('sku', 'like', $term)->orWhere('name', 'like', $term));
             })->orderBy('marketplace_id')->orderBy('product_id');
 
-        $filename = 'marketplace-listing-preflight-' . now()->format('Ymd-His') . '.csv';
+        $filename = 'marketplace-listing-preflight-'.now()->format('Ymd-His').'.csv';
+
         return response()->streamDownload(function () use ($query, $readiness) {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF");
@@ -56,7 +58,7 @@ class ListingReadinessController extends Controller
                 foreach ($batch as $listing) {
                     $result = $readiness->evaluate($listing);
                     $failed = collect($result['checks'])->where('passed', false)
-                        ->map(fn ($check) => $check['label'] . ': ' . $check['detail'])->implode(' | ');
+                        ->map(fn ($check) => $check['label'].': '.$check['detail'])->implode(' | ');
                     $version = $result['version'];
                     fputcsv($out, [$listing->marketplace?->name, $listing->marketplace?->code, $listing->product?->sku,
                         $listing->product?->name, $listing->status, $listing->external_listing_id, $version?->version_no,

@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Purchase;
 use App\Models\PurchaseItem;
 use App\Models\PurchaseQualityInspection;
+use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class PurchaseQualityInspectionController extends Controller
 {
@@ -28,7 +29,7 @@ class PurchaseQualityInspectionController extends Controller
         return view('purchases.quality-inspections', [
             'inspections' => $inspections,
             'summary' => $summary,
-            'suppliers' => \App\Models\Supplier::orderBy('name')->get(),
+            'suppliers' => Supplier::orderBy('name')->get(),
         ]);
     }
 
@@ -39,6 +40,7 @@ class PurchaseQualityInspectionController extends Controller
             ->where('received_qty', '>', 0)->orderByDesc('id')->get()
             ->filter(function ($item) {
                 $inspected = PurchaseQualityInspection::where('purchase_item_id', $item->id)->sum('inspected_qty');
+
                 return $inspected < (int) $item->received_qty;
             });
 
@@ -66,7 +68,7 @@ class PurchaseQualityInspectionController extends Controller
             $item = PurchaseItem::whereKey($data['purchase_item_id'])->lockForUpdate()->firstOrFail();
             $alreadyInspected = PurchaseQualityInspection::where('purchase_item_id', $item->id)->sum('inspected_qty');
             if ($alreadyInspected + (int) $data['inspected_qty'] > (int) $item->received_qty) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
+                throw ValidationException::withMessages([
                     'inspected_qty' => 'Inspection quantity cannot exceed the remaining received quantity.',
                 ]);
             }
@@ -95,6 +97,7 @@ class PurchaseQualityInspectionController extends Controller
             $data['supplier_action'] = 'NO_ACTION';
         }
         $inspection->update($data);
+
         return back()->with('success', 'Supplier quality follow-up updated.');
     }
 }

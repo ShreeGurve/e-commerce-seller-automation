@@ -16,16 +16,27 @@ class SupplierDocumentController extends Controller
     {
         $suppliers = Supplier::query()->orderBy('name')->get(['id', 'name']);
         $query = SupplierDocument::with(['supplier:id,name', 'uploader:id,name', 'verifier:id,name'])->latest();
-        if ($request->filled('supplier_id')) $query->where('supplier_id', $request->integer('supplier_id'));
-        if ($request->filled('status') && in_array($request->status, ['PENDING', 'APPROVED', 'REJECTED'], true)) $query->where('status', $request->status);
-        if ($request->filled('type') && in_array($request->type, self::TYPES, true)) $query->where('document_type', $request->type);
-        if ($request->filled('q')) $query->where(function ($q) use ($request) { $q->where('title', 'like', '%'.$request->q.'%')->orWhere('reference_number', 'like', '%'.$request->q.'%')->orWhere('original_filename', 'like', '%'.$request->q.'%'); });
+        if ($request->filled('supplier_id')) {
+            $query->where('supplier_id', $request->integer('supplier_id'));
+        }
+        if ($request->filled('status') && in_array($request->status, ['PENDING', 'APPROVED', 'REJECTED'], true)) {
+            $query->where('status', $request->status);
+        }
+        if ($request->filled('type') && in_array($request->type, self::TYPES, true)) {
+            $query->where('document_type', $request->type);
+        }
+        if ($request->filled('q')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('title', 'like', '%'.$request->q.'%')->orWhere('reference_number', 'like', '%'.$request->q.'%')->orWhere('original_filename', 'like', '%'.$request->q.'%');
+            });
+        }
 
         $documents = $query->paginate(15)->withQueryString();
         $totalCount = SupplierDocument::count();
         $pendingCount = SupplierDocument::where('status', 'PENDING')->count();
         $expiredCount = SupplierDocument::whereNotNull('expires_at')->whereDate('expires_at', '<', today())->count();
         $expiringCount = SupplierDocument::whereNotNull('expires_at')->whereBetween('expires_at', [today(), today()->addDays(30)])->count();
+
         return view('suppliers.documents', compact('suppliers', 'documents', 'totalCount', 'pendingCount', 'expiredCount', 'expiringCount'));
     }
 
@@ -50,6 +61,7 @@ class SupplierDocumentController extends Controller
             'issued_at' => $validated['issued_at'] ?? null, 'expires_at' => $validated['expires_at'] ?? null,
             'status' => 'PENDING', 'uploaded_by' => $request->user()->id,
         ]);
+
         return redirect()->route('supplier-documents.index')->with('success', 'Supplier document uploaded securely and submitted for review.');
     }
 
@@ -57,6 +69,7 @@ class SupplierDocumentController extends Controller
     {
         $disk = Storage::disk($document->disk);
         abort_unless($disk->exists($document->stored_path), 404);
+
         return $disk->download($document->stored_path, $document->original_filename);
     }
 
@@ -71,6 +84,7 @@ class SupplierDocumentController extends Controller
         $document->verified_by = $request->user()->id;
         $document->verified_at = now();
         $document->save();
+
         return redirect()->route('supplier-documents.index')->with('success', 'Supplier document review saved.');
     }
 }

@@ -22,6 +22,13 @@ class MarketplaceProductSetting extends Model
         'push_enabled' => 'boolean',
     ];
 
-    public function product() { return $this->belongsTo(Product::class); }
-    public function marketplace() { return $this->belongsTo(Marketplace::class); }
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
+    }
+
+    public function marketplace()
+    {
+        return $this->belongsTo(Marketplace::class);
+    }
 }

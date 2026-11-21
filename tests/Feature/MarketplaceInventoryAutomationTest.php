@@ -22,7 +22,9 @@ class MarketplaceInventoryAutomationTest extends TestCase
     use RefreshDatabase;
 
     private Business $business;
+
     private Marketplace $marketplace;
+
     private MarketplaceConnection $connection;
 
     protected function setUp(): void

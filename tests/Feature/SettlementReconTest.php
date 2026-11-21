@@ -1,9 +1,23 @@
 <?php
+
 namespace Tests\Feature;
 
 use App\Marketplaces\Amazon\AmazonAdapter;
-use App\Models\{DataImport, FeeRule, Marketplace, Order, OrderProfit, Product, ProductCostHistory, ReconciliationIssue, SettlementItem, User};
-use App\Services\{ImportProcessor, InventoryService, OrderService, ReconciliationService};
+use App\Models\DataImport;
+use App\Models\FeeRule;
+use App\Models\Marketplace;
+use App\Models\Order;
+use App\Models\OrderProfit;
+use App\Models\Product;
+use App\Models\ProductCostHistory;
+use App\Models\ReconciliationIssue;
+use App\Models\Settlement;
+use App\Models\SettlementItem;
+use App\Models\User;
+use App\Services\ImportProcessor;
+use App\Services\InventoryService;
+use App\Services\OrderService;
+use App\Services\ReconciliationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -12,7 +26,11 @@ class SettlementReconTest extends TestCase
 {
     use RefreshDatabase;
 
-    private User $u; private Product $p; private Marketplace $mp;
+    private User $u;
+
+    private Product $p;
+
+    private Marketplace $mp;
 
     protected function setUp(): void
     {
@@ -36,22 +54,38 @@ class SettlementReconTest extends TestCase
         return app(OrderService::class)->create(['marketplace_id' => $this->mp->id, 'external_order_id' => $ext, 'order_date' => now()->subDays($daysAgo)],
             [['product_id' => $this->p->id, 'quantity' => 2, 'unit_price' => '118']], $this->u);
     }
-    private function ship(Order $o): void { foreach (['PACKED', 'SHIPPED'] as $s) app(OrderService::class)->changeStatus($o, $s); }
-    private function d(): string { return now()->subDay()->toDateString(); }
+
+    private function ship(Order $o): void
+    {
+        foreach (['PACKED', 'SHIPPED'] as $s) {
+            app(OrderService::class)->changeStatus($o, $s);
+        }
+    }
+
+    private function d(): string
+    {
+        return now()->subDay()->toDateString();
+    }
 
     private function import(string $csv, array $map, array $opts = []): DataImport
     {
-        Storage::fake('local'); Storage::disk('local')->put('imports/s.csv', $csv);
+        Storage::fake('local');
+        Storage::disk('local')->put('imports/s.csv', $csv);
+
         return DataImport::create(['marketplace_id' => $this->mp->id, 'data_type' => 'SETTLEMENTS', 'file_name' => 's.csv', 'stored_path' => 'imports/s.csv', 'file_hash' => str_repeat('b', 64),
             'status' => 'MAPPED', 'mapping' => $map, 'uploaded_by' => $this->u->id, 'options' => $opts + ['date_format' => 'auto', 'deductions_positive' => true]]);
     }
+
     private const LONG = ['external_settlement_id' => 'settlement-id', 'posted_date' => 'posted-date', 'external_order_id' => 'order-id', 'sku' => 'sku',
         'txn_type' => 'transaction-type', 'amount_type' => 'amount-type', 'amount_desc' => 'amount-description', 'amount' => 'amount'];
+
     private function longCsv(string $sid, string $oid, string $commission = '-25.00'): string
     {
-        $d = $this->d(); $h = 'settlement-id,posted-date,order-id,sku,transaction-type,amount-type,amount-description,amount';
+        $d = $this->d();
+        $h = 'settlement-id,posted-date,order-id,sku,transaction-type,amount-type,amount-description,amount';
+
         return "$h\n$sid,$d,$oid,SKU1,Order,ItemPrice,Principal,236.00\n$sid,$d,$oid,SKU1,Order,ItemFees,Commission,$commission\n"
-             . "$sid,$d,$oid,SKU1,Order,ItemFees,FixedClosingFee,-20.00\n$sid,$d,$oid,SKU1,Order,ItemFees,Tax on Commission,-4.50\n";
+             ."$sid,$d,$oid,SKU1,Order,ItemFees,FixedClosingFee,-20.00\n$sid,$d,$oid,SKU1,Order,ItemFees,Tax on Commission,-4.50\n";
     }
 
     public function test_long_format_gives_actual_profit_is_idempotent_and_matches(): void
@@ -65,7 +99,7 @@ class SettlementReconTest extends TestCase
         $this->assertSame('ACTUAL', $pr->profit_status);
         $this->assertSame('50.50', (string) $pr->actual_profit);       // 200 - 100 - (25 + 20 + 4.50)
         $this->assertSame('48.55', (string) $pr->estimated_profit);    // estimate kept for comparison
-        $this->assertSame('186.50', (string) \App\Models\Settlement::first()->total_amount);
+        $this->assertSame('186.50', (string) Settlement::first()->total_amount);
         $this->assertSame('MATCHED', Order::first()->recon_status);
         $this->assertSame(0, ReconciliationIssue::count());
 
@@ -77,7 +111,7 @@ class SettlementReconTest extends TestCase
     public function test_one_column_per_fee_format_with_positive_deductions(): void
     {
         $this->order('A1');
-        $csv = "settlement,date,order,sku,sale,commission,fixed,gst\nS2," . $this->d() . ",A1,SKU1,236,25,20,4.5\n";
+        $csv = "settlement,date,order,sku,sale,commission,fixed,gst\nS2,".$this->d().",A1,SKU1,236,25,20,4.5\n";
         $imp = $this->import($csv, ['external_settlement_id' => 'settlement', 'posted_date' => 'date', 'external_order_id' => 'order', 'sku' => 'sku',
             'sale_amount' => 'sale', 'referral_fee' => 'commission', 'closing_fee' => 'fixed', 'fee_tax' => 'gst']);
         app(ImportProcessor::class)->run($imp, true);
@@ -100,7 +134,8 @@ class SettlementReconTest extends TestCase
 
     public function test_missing_settlement_and_unexpected_fee_are_flagged_and_ignore_sticks(): void
     {
-        $old = $this->order('OLD1', 40); $this->ship($old);             // shipped 40 days ago, never paid
+        $old = $this->order('OLD1', 40);
+        $this->ship($old);             // shipped 40 days ago, never paid
         $b = $this->order('B1');
         app(ImportProcessor::class)->run($this->import($this->longCsv('S4', 'B1', '-200.00'), self::LONG), true);   // fee far above your rules
 

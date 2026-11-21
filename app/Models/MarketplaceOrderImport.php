@@ -23,8 +23,23 @@ class MarketplaceOrderImport extends Model
         ];
     }
 
-    public function connection() { return $this->belongsTo(MarketplaceConnection::class, 'marketplace_connection_id'); }
-    public function syncRecord() { return $this->belongsTo(MarketplaceSyncRecord::class, 'sync_record_id'); }
-    public function order() { return $this->belongsTo(Order::class); }
-    public function reviewer() { return $this->belongsTo(User::class, 'reviewed_by'); }
+    public function connection()
+    {
+        return $this->belongsTo(MarketplaceConnection::class, 'marketplace_connection_id');
+    }
+
+    public function syncRecord()
+    {
+        return $this->belongsTo(MarketplaceSyncRecord::class, 'sync_record_id');
+    }
+
+    public function order()
+    {
+        return $this->belongsTo(Order::class);
+    }
+
+    public function reviewer()
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
 }

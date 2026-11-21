@@ -15,8 +15,9 @@ class OperationalInsightsController extends Controller
     private function scopedEvents(Request $request)
     {
         $user = $request->user();
+
         return BusinessAutomationEvent::query()->when(
-            !$user->isSuperAdmin(),
+            ! $user->isSuperAdmin(),
             fn ($query) => $query->whereIn('created_by', User::where('business_id', $user->business_id)->select('id'))
         );
     }
@@ -24,8 +25,9 @@ class OperationalInsightsController extends Controller
     private function scopedApprovals(Request $request)
     {
         $user = $request->user();
+
         return ApprovalRequest::query()->when(
-            !$user->isSuperAdmin(),
+            ! $user->isSuperAdmin(),
             fn ($query) => $query->where('business_id', $user->business_id)
         );
     }
@@ -33,8 +35,9 @@ class OperationalInsightsController extends Controller
     private function scopedLogs(Request $request)
     {
         $user = $request->user();
+
         return BusinessActivityLog::query()->when(
-            !$user->isSuperAdmin(),
+            ! $user->isSuperAdmin(),
             fn ($query) => $query->where('business_id', $user->business_id)
         );
     }
@@ -65,9 +68,9 @@ class OperationalInsightsController extends Controller
         $byPriority = (clone $events)->select('priority', DB::raw('COUNT(*) as total'))->groupBy('priority')->orderBy('priority')->get();
         $byAssignee = $this->scopedEvents($request)
             ->whereBetween('business_automation_events.created_at', [$from.' 00:00:00', $to.' 23:59:59'])
-            ->leftJoin('users as assignees','business_automation_events.assigned_to','=','assignees.id')
+            ->leftJoin('users as assignees', 'business_automation_events.assigned_to', '=', 'assignees.id')
             ->selectRaw("COALESCE(assignees.name, 'Unassigned') as assignee_name, COUNT(*) as total, SUM(CASE WHEN business_automation_events.status='RESOLVED' THEN 1 ELSE 0 END) as resolved")
-            ->groupBy('business_automation_events.assigned_to','assignees.name')->orderByDesc('total')->limit(12)->get();
+            ->groupBy('business_automation_events.assigned_to', 'assignees.name')->orderByDesc('total')->limit(12)->get();
 
         $approvals = $this->scopedApprovals($request)->whereBetween('created_at', [$from.' 00:00:00', $to.' 23:59:59']);
         $approvalStats = (clone $approvals)->selectRaw("
@@ -86,7 +89,7 @@ class OperationalInsightsController extends Controller
         $recentLogs = (clone $logs)->with('actor')->latest()->limit(15)->get();
 
         return view('automation.operational-insights', compact(
-            'from','to','eventStats','byPriority','byAssignee','approvalStats','approvalTypes','logCount','recentLogs'
+            'from', 'to', 'eventStats', 'byPriority', 'byAssignee', 'approvalStats', 'approvalTypes', 'logCount', 'recentLogs'
         ));
     }
 
@@ -96,32 +99,38 @@ class OperationalInsightsController extends Controller
         $filters = $this->dateFilters($request);
         $from = $filters['from'] ?? now()->startOfMonth()->toDateString();
         $to = $filters['to'] ?? now()->toDateString();
-        $dataset = $request->validate(['dataset' => ['required','in:alerts,approvals,audit']])['dataset'];
+        $dataset = $request->validate(['dataset' => ['required', 'in:alerts,approvals,audit']])['dataset'];
         $filename = 'seller-automation-'.$dataset.'-'.$from.'-to-'.$to.'.csv';
 
-        return response()->streamDownload(function () use ($request,$dataset,$from,$to) {
-            $out = fopen('php://output','w');
+        return response()->streamDownload(function () use ($request, $dataset, $from, $to) {
+            $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF");
             if ($dataset === 'alerts') {
-                fputcsv($out,['ID','Title','Status','Priority','Severity','Assigned User ID','Due At','Created At','Resolved At']);
-                $this->scopedEvents($request)->whereBetween('created_at',[$from.' 00:00:00',$to.' 23:59:59'])
-                    ->orderBy('id')->chunk(500,function($rows) use($out) {
-                        foreach($rows as $row) fputcsv($out,[$row->id,$row->title,$row->status,$row->priority,$row->severity,$row->assigned_to,$row->due_at,$row->created_at,$row->resolved_at]);
+                fputcsv($out, ['ID', 'Title', 'Status', 'Priority', 'Severity', 'Assigned User ID', 'Due At', 'Created At', 'Resolved At']);
+                $this->scopedEvents($request)->whereBetween('created_at', [$from.' 00:00:00', $to.' 23:59:59'])
+                    ->orderBy('id')->chunk(500, function ($rows) use ($out) {
+                        foreach ($rows as $row) {
+                            fputcsv($out, [$row->id, $row->title, $row->status, $row->priority, $row->severity, $row->assigned_to, $row->due_at, $row->created_at, $row->resolved_at]);
+                        }
                     });
             } elseif ($dataset === 'approvals') {
-                fputcsv($out,['ID','Title','Request Type','Reference','Amount','Status','Requested By','Reviewed By','Created At','Reviewed At']);
-                $this->scopedApprovals($request)->whereBetween('created_at',[$from.' 00:00:00',$to.' 23:59:59'])
-                    ->orderBy('id')->chunk(500,function($rows) use($out) {
-                        foreach($rows as $row) fputcsv($out,[$row->id,$row->title,$row->request_type,$row->reference,$row->amount,$row->status,$row->requested_by,$row->reviewed_by,$row->created_at,$row->reviewed_at]);
+                fputcsv($out, ['ID', 'Title', 'Request Type', 'Reference', 'Amount', 'Status', 'Requested By', 'Reviewed By', 'Created At', 'Reviewed At']);
+                $this->scopedApprovals($request)->whereBetween('created_at', [$from.' 00:00:00', $to.' 23:59:59'])
+                    ->orderBy('id')->chunk(500, function ($rows) use ($out) {
+                        foreach ($rows as $row) {
+                            fputcsv($out, [$row->id, $row->title, $row->request_type, $row->reference, $row->amount, $row->status, $row->requested_by, $row->reviewed_by, $row->created_at, $row->reviewed_at]);
+                        }
                     });
             } else {
-                fputcsv($out,['ID','Actor ID','Action','Subject Type','Subject ID','Details','IP Address','Created At']);
-                $this->scopedLogs($request)->whereBetween('created_at',[$from.' 00:00:00',$to.' 23:59:59'])
-                    ->orderBy('id')->chunk(500,function($rows) use($out) {
-                        foreach($rows as $row) fputcsv($out,[$row->id,$row->actor_id,$row->action,$row->subject_type,$row->subject_id,json_encode($row->details),$row->ip_address,$row->created_at]);
+                fputcsv($out, ['ID', 'Actor ID', 'Action', 'Subject Type', 'Subject ID', 'Details', 'IP Address', 'Created At']);
+                $this->scopedLogs($request)->whereBetween('created_at', [$from.' 00:00:00', $to.' 23:59:59'])
+                    ->orderBy('id')->chunk(500, function ($rows) use ($out) {
+                        foreach ($rows as $row) {
+                            fputcsv($out, [$row->id, $row->actor_id, $row->action, $row->subject_type, $row->subject_id, json_encode($row->details), $row->ip_address, $row->created_at]);
+                        }
                     });
             }
             fclose($out);
-        },$filename,['Content-Type'=>'text/csv; charset=UTF-8']);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 }

@@ -15,6 +15,7 @@ class MarketplaceAutomationExecutionServiceTest extends TestCase
     private function approvedTask(string $type = 'RESTOCK', array $overrides = []): int
     {
         $ruleId = DB::table('marketplace_automation_rules')->where('recommendation_type', $type)->value('id');
+
         return (int) DB::table('marketplace_automation_tasks')->insertGetId(array_merge([
             'rule_id' => $ruleId,
             'recommendation_type' => $type,

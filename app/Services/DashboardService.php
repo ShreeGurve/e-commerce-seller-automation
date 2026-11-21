@@ -1,7 +1,10 @@
 <?php
+
 namespace App\Services;
 
-use App\Models\{Expense, Marketplace, ProductReturn};
+use App\Models\Expense;
+use App\Models\Marketplace;
+use App\Models\ProductReturn;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -19,9 +22,11 @@ class DashboardService
             ->when($mp, fn ($q, $v) => $q->where('marketplace_id', $v))->exists();
         if (! $hasSummary) {
             $hasSourceOrders = DB::table('orders')->whereNull('deleted_at')->where(fn ($q) => $q->whereNull('source')->orWhere('source', '<>', 'TEST'))
-                ->whereBetween('order_date', [$f['from'] . ' 00:00:00', $f['to'] . ' 23:59:59'])
+                ->whereBetween('order_date', [$f['from'].' 00:00:00', $f['to'].' 23:59:59'])
                 ->when($mp, fn ($q, $v) => $q->where('marketplace_id', $v))->exists();
-            if ($hasSourceOrders) app(SummaryService::class)->rebuildRange($f['from'], $f['to']);
+            if ($hasSourceOrders) {
+                app(SummaryService::class)->rebuildRange($f['from'], $f['to']);
+            }
         }
 
         $tot = fn (string $table, string $cols, string $from, string $to) => DB::table($table)->whereBetween('date', [$from, $to])->when($mp, fn ($q, $v) => $q->where('marketplace_id', $v))->selectRaw($cols)->first();
@@ -32,7 +37,12 @@ class DashboardService
         $expenses = (float) Expense::whereBetween('expense_date', [$f['from'], $f['to']])->when($mp, fn ($q, $v) => $q->where('marketplace_id', $v))->sum('amount');
         $returns = ProductReturn::whereBetween('return_date', [$f['from'], $f['to']])->when($mp, fn ($q, $v) => $q->where('marketplace_id', $v))->count();
 
-        $sales = (float) $s->sales; $orders = (int) $s->orders; $revenue = (float) $p->revenue; $profit = (float) $p->profit; $adSpend = (float) $a->spend; $adSales = (float) $a->sales;
+        $sales = (float) $s->sales;
+        $orders = (int) $s->orders;
+        $revenue = (float) $p->revenue;
+        $profit = (float) $p->profit;
+        $adSpend = (float) $a->spend;
+        $adSales = (float) $a->sales;
         $unalloc = max($adSpend - (float) $p->ads, 0);                  // ad money no sale could carry: still a cost
         $kpi = [
             'sales' => $sales, 'orders' => $orders, 'units' => (int) $s->units, 'cancelled' => (int) $s->cancelled, 'revenue' => $revenue, 'cogs' => (float) $p->cogs, 'fees' => (float) $p->fees,
@@ -46,7 +56,8 @@ class DashboardService
 
         // the period right before this one, same length, for "up / down" arrows
         $days = max((int) Carbon::parse($f['from'])->diffInDays(Carbon::parse($f['to'])) + 1, 1);
-        $pTo = Carbon::parse($f['from'])->subDay()->toDateString(); $pFrom = Carbon::parse($pTo)->subDays($days - 1)->toDateString();
+        $pTo = Carbon::parse($f['from'])->subDay()->toDateString();
+        $pFrom = Carbon::parse($pTo)->subDays($days - 1)->toDateString();
         $ps = $tot('daily_sales', 'COALESCE(SUM(orders),0) orders, COALESCE(SUM(gross_sales),0) sales', $pFrom, $pTo);
         $pp = $tot('daily_profit', 'COALESCE(SUM(profit),0) profit', $pFrom, $pTo);
         $delta = fn (float $now, float $prev) => $prev != 0.0 ? round(($now - $prev) / abs($prev) * 100, 1) : null;
@@ -60,14 +71,21 @@ class DashboardService
     {
         $by = fn (string $table, string $cols) => DB::table($table)->whereBetween('date', [$f['from'], $f['to']])->when($mp, fn ($q, $v) => $q->where('marketplace_id', $v))
             ->selectRaw("date, {$cols}")->groupBy('date')->get()->keyBy(fn ($r) => substr((string) $r->date, 0, 10));
-        $s = $by('daily_sales', 'SUM(orders) orders, SUM(gross_sales) sales'); $p = $by('daily_profit', 'SUM(profit) profit, SUM(refunds) refunds'); $a = $by('daily_advertising', 'SUM(spend) spend, SUM(sales) adsales');
+        $s = $by('daily_sales', 'SUM(orders) orders, SUM(gross_sales) sales');
+        $p = $by('daily_profit', 'SUM(profit) profit, SUM(refunds) refunds');
+        $a = $by('daily_advertising', 'SUM(spend) spend, SUM(sales) adsales');
         $out = ['labels' => [], 'sales' => [], 'orders' => [], 'profit' => [], 'refunds' => [], 'adSpend' => [], 'adSales' => []];
         for ($d = Carbon::parse($f['from']), $n = 0; $d->lte(Carbon::parse($f['to'])) && $n < 731; $d->addDay(), $n++) {
             $k = $d->toDateString();
-            $out['labels'][] = $d->format('d M'); $out['sales'][] = round((float) ($s[$k]->sales ?? 0), 2); $out['orders'][] = (int) ($s[$k]->orders ?? 0);
-            $out['profit'][] = round((float) ($p[$k]->profit ?? 0), 2); $out['refunds'][] = round((float) ($p[$k]->refunds ?? 0), 2);
-            $out['adSpend'][] = round((float) ($a[$k]->spend ?? 0), 2); $out['adSales'][] = round((float) ($a[$k]->adsales ?? 0), 2);
+            $out['labels'][] = $d->format('d M');
+            $out['sales'][] = round((float) ($s[$k]->sales ?? 0), 2);
+            $out['orders'][] = (int) ($s[$k]->orders ?? 0);
+            $out['profit'][] = round((float) ($p[$k]->profit ?? 0), 2);
+            $out['refunds'][] = round((float) ($p[$k]->refunds ?? 0), 2);
+            $out['adSpend'][] = round((float) ($a[$k]->spend ?? 0), 2);
+            $out['adSales'][] = round((float) ($a[$k]->adsales ?? 0), 2);
         }
+
         return $out;
     }
 
@@ -75,14 +93,21 @@ class DashboardService
     {
         $g = fn (string $table, string $cols) => DB::table($table)->whereBetween('date', [$f['from'], $f['to']])->when($mp, fn ($q, $v) => $q->where('marketplace_id', $v))
             ->selectRaw("marketplace_id, {$cols}")->groupBy('marketplace_id')->get()->keyBy('marketplace_id');
-        $s = $g('daily_sales', 'SUM(orders) orders, SUM(gross_sales) sales'); $p = $g('daily_profit', 'SUM(profit) profit, SUM(refunds) refunds, SUM(ads) ads, SUM(revenue) revenue'); $a = $g('daily_advertising', 'SUM(spend) spend, SUM(sales) adsales');
+        $s = $g('daily_sales', 'SUM(orders) orders, SUM(gross_sales) sales');
+        $p = $g('daily_profit', 'SUM(profit) profit, SUM(refunds) refunds, SUM(ads) ads, SUM(revenue) revenue');
+        $a = $g('daily_advertising', 'SUM(spend) spend, SUM(sales) adsales');
         $ret = ProductReturn::whereBetween('return_date', [$f['from'], $f['to']])->when($mp, fn ($q, $v) => $q->where('marketplace_id', $v))->select('marketplace_id', DB::raw('count(*) c'))->groupBy('marketplace_id')->pluck('c', 'marketplace_id');
         $rows = [];
         foreach (Marketplace::query()->when($mp, fn ($q, $v) => $q->where('id', $v))->orderBy('sort_order')->orderBy('name')->get() as $m) {
-            $sp = (float) ($a[$m->id]->spend ?? 0); $as = (float) ($a[$m->id]->adsales ?? 0); $orders = (int) ($s[$m->id]->orders ?? 0); $rev = (float) ($p[$m->id]->revenue ?? 0); $pr = (float) ($p[$m->id]->profit ?? 0);
+            $sp = (float) ($a[$m->id]->spend ?? 0);
+            $as = (float) ($a[$m->id]->adsales ?? 0);
+            $orders = (int) ($s[$m->id]->orders ?? 0);
+            $rev = (float) ($p[$m->id]->revenue ?? 0);
+            $pr = (float) ($p[$m->id]->profit ?? 0);
             $rows[] = ['id' => $m->id, 'name' => $m->name, 'orders' => $orders, 'sales' => (float) ($s[$m->id]->sales ?? 0), 'profit' => $pr, 'margin' => $rev > 0 ? $pr / $rev * 100 : null,
                 'adSpend' => $sp, 'acos' => $as > 0 ? $sp / $as * 100 : null, 'returns' => (int) ($ret[$m->id] ?? 0), 'refunded' => (float) ($p[$m->id]->refunds ?? 0)];
         }
+
         return $rows;
     }
 
@@ -90,6 +115,7 @@ class DashboardService
     {
         $q = fn () => DB::table('order_profits as p')->join('products as pr', 'pr.id', '=', 'p.product_id')->whereBetween('p.order_date', [$f['from'], $f['to']])->when($mp, fn ($x, $v) => $x->where('p.marketplace_id', $v))
             ->selectRaw('p.product_id, pr.sku, pr.name, SUM(p.qty) units, SUM(p.revenue) revenue, SUM(COALESCE(p.actual_profit, p.estimated_profit)) profit')->groupBy('p.product_id', 'pr.sku', 'pr.name');
+
         return ['top' => $q()->orderByRaw('profit DESC')->limit($n)->get(), 'worst' => $q()->orderByRaw('profit ASC')->limit($n)->get()];
     }
 }

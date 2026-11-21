@@ -15,6 +15,7 @@ class InventoryCorrectionController extends Controller
     {
         $requests = InventoryCorrectionRequest::with(['product', 'requester', 'reviewer'])
             ->latest()->paginate(25);
+
         return view('inventory.corrections', compact('requests'));
     }
 
@@ -66,7 +67,7 @@ class InventoryCorrectionController extends Controller
             }
 
             $transaction = $inventoryService->record($product, 'ADJUSTMENT', (int) $locked->variance, [
-                'note' => 'Approved stock correction request #' . $locked->id . ($locked->note ? ': ' . $locked->note : ''),
+                'note' => 'Approved stock correction request #'.$locked->id.($locked->note ? ': '.$locked->note : ''),
                 'reference' => $locked,
             ]);
 

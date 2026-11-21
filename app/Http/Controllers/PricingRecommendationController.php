@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Marketplace;
 use App\Models\PriceHistory;
-use App\Models\Product;
 use App\Models\PricingRecommendation;
+use App\Models\Product;
 use App\Services\ActivityLogger;
 use App\Services\PricingService;
 use App\Support\Money;
@@ -21,13 +21,14 @@ class PricingRecommendationController extends Controller
     {
         $query = PricingRecommendation::with(['product', 'marketplace', 'requester', 'reviewer'])
             ->latest();
-        if (!$request->user()->isSuperAdmin()) {
+        if (! $request->user()->isSuperAdmin()) {
             $query->where('business_id', $request->user()->business_id);
         }
         if ($request->filled('status') && in_array($request->status, ['pending', 'approved', 'rejected', 'applied'], true)) {
             $query->where('status', $request->status);
         }
         $recommendations = $query->paginate(20)->withQueryString();
+
         return view('pricing.recommendations', compact('recommendations'));
     }
 
@@ -50,13 +51,13 @@ class PricingRecommendationController extends Controller
         }
         if ($proposedPaise < $minimumPaise) {
             throw ValidationException::withMessages([
-                'proposed_price' => 'This price is below the calculated minimum of ₹' . number_format($minimumPaise / 100, 2) . '.',
+                'proposed_price' => 'This price is below the calculated minimum of ₹'.number_format($minimumPaise / 100, 2).'.',
             ]);
         }
 
         $user = $request->user();
         $brandBusinessId = $product->brand()->value('business_id');
-        if (!$user->isSuperAdmin() && $brandBusinessId && (int) $brandBusinessId !== (int) $user->business_id) {
+        if (! $user->isSuperAdmin() && $brandBusinessId && (int) $brandBusinessId !== (int) $user->business_id) {
             abort(404);
         }
 
@@ -101,6 +102,7 @@ class PricingRecommendationController extends Controller
         });
 
         ActivityLogger::log('pricing.recommendation_approved', $pricingRecommendation);
+
         return back()->with('success', 'Recommendation approved. It is still not published to the marketplace.');
     }
 
@@ -122,6 +124,7 @@ class PricingRecommendationController extends Controller
         });
 
         ActivityLogger::log('pricing.recommendation_rejected', $pricingRecommendation);
+
         return back()->with('success', 'Recommendation rejected.');
     }
 
@@ -148,7 +151,7 @@ class PricingRecommendationController extends Controller
                 'marketplace_id' => $marketplace->id,
                 'price' => $row->proposed_price,
                 'previous_price' => $previous['price'] ?? null,
-                'reason' => 'Approved recommendation #' . $row->id,
+                'reason' => 'Approved recommendation #'.$row->id,
                 'source' => 'MANUAL',
                 'effective_on' => now()->toDateString(),
                 'changed_by' => $request->user()->id,
@@ -157,13 +160,14 @@ class PricingRecommendationController extends Controller
         });
 
         ActivityLogger::log('pricing.recommendation_recorded', $pricingRecommendation);
+
         return back()->with('success', 'Approved price recorded in internal price history. Update the marketplace manually when ready.');
     }
 
     private function ensureBusiness(Request $request, PricingRecommendation $row): void
     {
         $user = $request->user();
-        if (!$user->isSuperAdmin()) {
+        if (! $user->isSuperAdmin()) {
             abort_unless($row->business_id !== null && $user->business_id !== null
                 && (int) $row->business_id === (int) $user->business_id, 404);
         }

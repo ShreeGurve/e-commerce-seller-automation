@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Models\Marketplace;
 use App\Services\MarketplaceFinancialAnalyticsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class MarketplaceFinancialAnalyticsTest extends TestCase
@@ -30,7 +30,7 @@ class MarketplaceFinancialAnalyticsTest extends TestCase
 
     public function test_dashboard_rejects_a_reversed_date_range(): void
     {
-        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        $this->expectException(ValidationException::class);
         app(MarketplaceFinancialAnalyticsService::class)->dashboard(['from' => '2026-11-30', 'to' => '2026-11-01']);
     }
 }

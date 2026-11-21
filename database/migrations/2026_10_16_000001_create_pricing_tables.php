@@ -1,9 +1,11 @@
 <?php
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         // A record of the selling prices YOU set. Nothing here changes a price on a marketplace.
@@ -39,5 +41,9 @@ return new class extends Migration {
         });
     }
 
-    public function down(): void { Schema::dropIfExists('competitor_prices'); Schema::dropIfExists('price_history'); }
+    public function down(): void
+    {
+        Schema::dropIfExists('competitor_prices');
+        Schema::dropIfExists('price_history');
+    }
 };

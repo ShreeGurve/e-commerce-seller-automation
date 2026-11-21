@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Services\ActivityLogger;
@@ -8,7 +9,10 @@ use Illuminate\Validation\Rules\Password;
 
 class ProfileController extends Controller
 {
-    public function edit(Request $request) { return view('profile.edit', ['user' => $request->user()->load('roles')]); }
+    public function edit(Request $request)
+    {
+        return view('profile.edit', ['user' => $request->user()->load('roles')]);
+    }
 
     public function update(Request $request)
     {
@@ -19,9 +23,13 @@ class ProfileController extends Controller
             'phone' => 'nullable|string|max:20',
         ]);
         $user->fill($data);
-        $dirty = $user->getDirty(); $old = array_intersect_key($user->getOriginal(), $dirty);
+        $dirty = $user->getDirty();
+        $old = array_intersect_key($user->getOriginal(), $dirty);
         $user->save();
-        if ($dirty) ActivityLogger::log('profile.updated', $user, $old, $dirty);
+        if ($dirty) {
+            ActivityLogger::log('profile.updated', $user, $old, $dirty);
+        }
+
         return back()->with('success', 'Profile updated.');
     }
 
@@ -33,6 +41,7 @@ class ProfileController extends Controller
         ]);
         $request->user()->update(['password' => $data['password']]); // 'hashed' cast
         ActivityLogger::log('profile.password_changed', $request->user());
+
         return back()->with('success', 'Password changed.');
     }
 }

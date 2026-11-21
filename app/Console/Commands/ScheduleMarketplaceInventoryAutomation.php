@@ -8,6 +8,7 @@ use Illuminate\Console\Command;
 class ScheduleMarketplaceInventoryAutomation extends Command
 {
     protected $signature = 'marketplaces:inventory-automation';
+
     protected $description = 'Dispatch due marketplace inventory synchronization and monitoring jobs';
 
     public function handle(MarketplaceInventoryAutomationService $automation): int

@@ -23,8 +23,23 @@ class ListingReview extends Model
         'CHANGES_REQUESTED' => 'Changes requested',
     ];
 
-    public function listing() { return $this->belongsTo(Listing::class); }
-    public function version() { return $this->belongsTo(ListingVersion::class, 'listing_version_id'); }
-    public function requester() { return $this->belongsTo(User::class, 'requested_by'); }
-    public function reviewer() { return $this->belongsTo(User::class, 'reviewed_by'); }
+    public function listing()
+    {
+        return $this->belongsTo(Listing::class);
+    }
+
+    public function version()
+    {
+        return $this->belongsTo(ListingVersion::class, 'listing_version_id');
+    }
+
+    public function requester()
+    {
+        return $this->belongsTo(User::class, 'requested_by');
+    }
+
+    public function reviewer()
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
 }

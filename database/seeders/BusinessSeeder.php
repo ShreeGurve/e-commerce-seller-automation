@@ -1,7 +1,13 @@
 <?php
+
 namespace Database\Seeders;
 
-use App\Models\{Brand, Business, BusinessSetting, Marketplace, Role, User};
+use App\Models\Brand;
+use App\Models\Business;
+use App\Models\BusinessSetting;
+use App\Models\Marketplace;
+use App\Models\Role;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 
 class BusinessSeeder extends Seeder

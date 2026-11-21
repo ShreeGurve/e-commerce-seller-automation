@@ -1,7 +1,10 @@
 <?php
+
 namespace App\Http\Controllers;
 
-use App\Models\{Category, Marketplace, Order, OrderProfit, Product};
+use App\Models\Category;
+use App\Models\Marketplace;
+use App\Models\Order;
 use App\Services\ProfitService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +24,7 @@ class ProfitController extends Controller
         $highReturnProducts = $rows->filter(fn ($p) => (float) $p->revenue > 0 && (float) $p->refunded / (float) $p->revenue > 0.15)->count();
         $topProduct = $rows->sortByDesc(fn ($p) => (float) $p->profit)->first();
         $r['intelligence'] = compact('lossProducts', 'thinMarginProducts', 'highReturnProducts', 'topProduct');
+
         return view('profit.index', $r + ['f' => $f, 'marketplaces' => Marketplace::active()->get()->keyBy('id'), 'categories' => Category::orderBy('name')->get(),
             'sorts' => array_keys(ProfitService::SORTS)]);
     }
@@ -40,7 +44,8 @@ class ProfitController extends Controller
             ->when($f['category_id'] ?? null, fn ($q, $v) => $q->where('p.category_id', $v))
             ->selectRaw('op.product_id, COALESCE(p.sku, CONCAT("#", op.product_id)) as sku, COALESCE(p.name, "Deleted product") as product_name, SUM(op.qty) as units, SUM(op.revenue) as revenue, SUM(op.cogs) as cogs, SUM(op.fees) as fees, SUM(op.return_loss) as refunds, SUM(op.ads_cost) as ads, SUM(COALESCE(op.actual_profit, op.estimated_profit)) as profit')
             ->groupBy('op.product_id', 'p.sku', 'p.name')->orderBy('profit', 'desc');
-        $filename = 'product-profitability-' . now()->format('Ymd-His') . '.csv';
+        $filename = 'product-profitability-'.now()->format('Ymd-His').'.csv';
+
         return response()->streamDownload(function () use ($query) {
             $out = fopen('php://output', 'w');
             fputcsv($out, ['Product ID', 'SKU', 'Product', 'Units', 'Revenue', 'COGS', 'Marketplace fees', 'Refunds', 'Ads cost', 'Profit', 'Margin %']);
@@ -54,8 +59,11 @@ class ProfitController extends Controller
 
     public function recalculate(ProfitService $profit)
     {
-        if (Order::count() > 5000) return back()->with('error', 'Many orders: run  php artisan profit:recalculate  in the project folder instead.');
+        if (Order::count() > 5000) {
+            return back()->with('error', 'Many orders: run  php artisan profit:recalculate  in the project folder instead.');
+        }
         set_time_limit(300);
-        return back()->with('success', 'Profit recalculated for ' . number_format($profit->recalcAll()) . ' orders.');
+
+        return back()->with('success', 'Profit recalculated for '.number_format($profit->recalcAll()).' orders.');
     }
 }

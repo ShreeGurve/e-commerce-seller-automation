@@ -1,7 +1,15 @@
 <?php
+
 namespace App\Services;
 
-use App\Models\{Claim, Expense, Order, OrderItemFee, OrderProfit, Product, ReturnItem, SettlementItem};
+use App\Models\Claim;
+use App\Models\Expense;
+use App\Models\Order;
+use App\Models\OrderItemFee;
+use App\Models\OrderProfit;
+use App\Models\Product;
+use App\Models\ReturnItem;
+use App\Models\SettlementItem;
 use App\Support\Money;
 use Illuminate\Support\Facades\DB;
 
@@ -21,7 +29,9 @@ class ProfitService
         try {
             $this->summary->touch($o->order_date->toDateString(), (int) $o->marketplace_id);
         } catch (\Throwable $e) {
-            if (app()->environment('testing')) { throw $e; }
+            if (app()->environment('testing')) {
+                throw $e;
+            }
             report($e);
         }
     }
@@ -32,7 +42,9 @@ class ProfitService
         try {
             $this->recalcOrder($order);
         } catch (\Throwable $e) {
-            if (app()->environment('testing')) { throw $e; }
+            if (app()->environment('testing')) {
+                throw $e;
+            }
             report($e);
         }
     }
@@ -43,14 +55,19 @@ class ProfitService
     {
         DB::transaction(function () use ($order) {
             $o = Order::with(['items.product', 'refunds'])->find($order->id);
-            if (! $o || $o->source === 'TEST') return;
+            if (! $o || $o->source === 'TEST') {
+                return;
+            }
             $ids = $o->items->pluck('id');
 
             if ($o->status === 'CANCELLED') {            // nothing sold, nothing earned
                 OrderItemFee::whereIn('order_item_id', $ids)->delete();
                 OrderProfit::whereIn('order_item_id', $ids)->delete();
-                foreach ($o->items->pluck('product_id')->unique() as $pid) $this->ads->allocateKey($o->marketplace_id, $pid, $o->order_date->toDateString());
+                foreach ($o->items->pluck('product_id')->unique() as $pid) {
+                    $this->ads->allocateKey($o->marketplace_id, $pid, $o->order_date->toDateString());
+                }
                 $this->touchSummary($o);
+
                 return;
             }
             $subtotal = Money::p($o->subtotal);
@@ -61,11 +78,15 @@ class ProfitService
 
             // Settlement lines (actual money from the marketplace): per line item, or per order when the SKU was not given.
             $settle = SettlementItem::where('order_id', $o->id)->get(['order_item_id', 'kind', 'amount']);
-            $itemAmt = []; $orderAmt = [];
+            $itemAmt = [];
+            $orderAmt = [];
             foreach ($settle as $sl) {
                 $paise = Money::p($sl->amount);
-                if ($sl->order_item_id && $ids->contains($sl->order_item_id)) $itemAmt[$sl->order_item_id][$sl->kind] = ($itemAmt[$sl->order_item_id][$sl->kind] ?? 0) + $paise;
-                else $orderAmt[$sl->kind] = ($orderAmt[$sl->kind] ?? 0) + $paise;
+                if ($sl->order_item_id && $ids->contains($sl->order_item_id)) {
+                    $itemAmt[$sl->order_item_id][$sl->kind] = ($itemAmt[$sl->order_item_id][$sl->kind] ?? 0) + $paise;
+                } else {
+                    $orderAmt[$sl->kind] = ($orderAmt[$sl->kind] ?? 0) + $paise;
+                }
             }
             $settled = $settle->contains(fn ($x) => $x->kind === 'SALE' || in_array($x->kind, SettlementItem::FEE_KINDS, true));
             $hasRefundLines = $settle->contains('kind', 'REFUND');
@@ -75,16 +96,24 @@ class ProfitService
             $claimRec = [];
             foreach (Claim::where('order_id', $o->id)->where('approved_amount', '>', 0)->get(['product_id', 'approved_amount']) as $c) {
                 $elig = $o->items->filter(fn ($i) => ! $c->product_id || $i->product_id === $c->product_id)->values();
-                if ($elig->isEmpty()) $elig = $o->items->values();
-                $tot = max($elig->sum(fn ($i) => Money::p($i->line_total)), 1); $amt = Money::p($c->approved_amount); $left = $amt; $last = $elig->count() - 1;
+                if ($elig->isEmpty()) {
+                    $elig = $o->items->values();
+                }
+                $tot = max($elig->sum(fn ($i) => Money::p($i->line_total)), 1);
+                $amt = Money::p($c->approved_amount);
+                $left = $amt;
+                $last = $elig->count() - 1;
                 foreach ($elig as $k => $i) {
                     $share = $k === $last ? $left : (int) round($amt * Money::p($i->line_total) / $tot);
-                    $left -= $share; $claimRec[$i->id] = ($claimRec[$i->id] ?? 0) + $share;
+                    $left -= $share;
+                    $claimRec[$i->id] = ($claimRec[$i->id] ?? 0) + $share;
                 }
             }
 
             foreach ($o->items as $item) {
-                $L = Money::p($item->line_total); $T = Money::p($item->tax_amount); $qty = (int) $item->quantity;
+                $L = Money::p($item->line_total);
+                $T = Money::p($item->tax_amount);
+                $qty = (int) $item->quantity;
                 $revenue = $L - $T + ($subtotal > 0 ? (int) round($ship * $L / $subtotal) : 0);
                 $unit = Money::p($item->cogs_at_sale) + Money::p($item->packaging_at_sale) + Money::p($item->other_cost_at_sale);
                 $cogs = $unit * max($qty - (int) ($restocked[$item->id] ?? 0), 0);          // sellable returns put the cost back
@@ -110,13 +139,23 @@ class ProfitService
                     $feeAct = 0;
                     foreach (self::FEE_TYPE as $kind => $type) {
                         $a = -$alloc($kind);
-                        if ($a !== 0) { OrderItemFee::create(['order_item_id' => $item->id, 'fee_type' => $type, 'amount' => Money::m($a), 'tax_amount' => '0.00', 'source' => 'SETTLEMENT']); $feeAct += $a; }
+                        if ($a !== 0) {
+                            OrderItemFee::create(['order_item_id' => $item->id, 'fee_type' => $type, 'amount' => Money::m($a), 'tax_amount' => '0.00', 'source' => 'SETTLEMENT']);
+                            $feeAct += $a;
+                        }
                     }
                     $gst = -$alloc('FEE_TAX');
-                    if ($gst !== 0) { OrderItemFee::create(['order_item_id' => $item->id, 'fee_type' => 'GST_ON_FEES', 'amount' => Money::m($gst), 'tax_amount' => '0.00', 'source' => 'SETTLEMENT']); if ($feeGstIsCost) $feeAct += $gst; }
+                    if ($gst !== 0) {
+                        OrderItemFee::create(['order_item_id' => $item->id, 'fee_type' => 'GST_ON_FEES', 'amount' => Money::m($gst), 'tax_amount' => '0.00', 'source' => 'SETTLEMENT']);
+                        if ($feeGstIsCost) {
+                            $feeAct += $gst;
+                        }
+                    }
                     $refundAct = $hasRefundLines ? (int) round(-$alloc('REFUND') * ($L > 0 ? ($L - $T) / $L : 1)) : $refundEst;   // principal assumed GST-inclusive like order prices
                     $recovery = $alloc('REIMBURSEMENT') + $alloc('ADJUSTMENT') + $alloc('OTHER');
-                    if (! $hasReimbursement) $recovery += $cr;
+                    if (! $hasReimbursement) {
+                        $recovery += $cr;
+                    }
                     $row += ['fees' => Money::m($feeAct), 'return_loss' => Money::m($refundAct), 'recovery' => Money::m($recovery),
                         'actual_profit' => Money::m($revenue - $cogs - $feeAct - $refundAct + $recovery - $ads), 'profit_status' => 'ACTUAL'];
                 } else {
@@ -139,14 +178,23 @@ class ProfitService
 
     public function recalcAll(): int
     {
-        $n = 0; $this->summary->begin();                      // refresh each affected day once at the end, not once per order
+        $n = 0;
+        $this->summary->begin();                      // refresh each affected day once at the end, not once per order
         try {
             Order::where('source', '!=', 'TEST')->where('status', '!=', 'CANCELLED')->select('id')->chunkById(200, function ($chunk) use (&$n) {
-                foreach ($chunk as $o) { $this->recalcOrder($o); $n++; }
+                foreach ($chunk as $o) {
+                    $this->recalcOrder($o);
+                    $n++;
+                }
             });
         } finally {
-            try { $this->summary->flush(); } catch (\Throwable $e) { report($e); }
+            try {
+                $this->summary->flush();
+            } catch (\Throwable $e) {
+                report($e);
+            }
         }
+
         return $n;
     }
 
@@ -162,7 +210,7 @@ class ProfitService
             ->when($f['category_id'] ?? null, fn ($q, $v) => $q->whereIn('product_id', Product::where('category_id', $v)->select('id')));
         $cols = 'COUNT(DISTINCT order_id) orders, SUM(qty) units, SUM(revenue) revenue, SUM(cogs) cogs, SUM(fees) fees, SUM(return_loss) refunded, SUM(recovery) recovery, SUM(ads_cost) ads, SUM(COALESCE(actual_profit, estimated_profit)) profit';
 
-        $t = (clone $base)->selectRaw($cols . ', SUM(CASE WHEN actual_profit IS NOT NULL THEN 1 ELSE 0 END) actual_rows, COUNT(*) all_rows')->first();
+        $t = (clone $base)->selectRaw($cols.', SUM(CASE WHEN actual_profit IS NOT NULL THEN 1 ELSE 0 END) actual_rows, COUNT(*) all_rows')->first();
         $sort = self::SORTS[$f['sort'] ?? ''] ?? self::SORTS['profit_desc'];
         $byProduct = (clone $base)->selectRaw("product_id, $cols")->groupBy('product_id')->orderByRaw($sort)->limit(300)->get();
         $names = Product::withTrashed()->whereIn('id', $byProduct->pluck('product_id'))->get(['id', 'sku', 'name'])->keyBy('id');
@@ -172,6 +220,7 @@ class ProfitService
         // ad spend that no sale could carry (campaign-only reports, or days with ad clicks but no orders) still costs money
         $adsTotal = app(AdsService::class)->totalSpend($f['from'], $f['to'], $f['marketplace_id'] ?? null);
         $unalloc = (empty($f['product_id']) && empty($f['category_id'])) ? max($adsTotal - (float) ($t->ads ?? 0), 0) : 0;
+
         return ['totals' => $t, 'byProduct' => $byProduct, 'names' => $names, 'byMarketplace' => $byMp, 'expenses' => (float) $exp->sum('amount'),
             'adsTotal' => round($adsTotal, 2), 'adsUnallocated' => round($unalloc, 2)];
     }

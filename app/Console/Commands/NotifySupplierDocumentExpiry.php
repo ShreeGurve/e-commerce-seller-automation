@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 class NotifySupplierDocumentExpiry extends Command
 {
     protected $signature = 'suppliers:documents-expiry-notify {--days=30 : Upcoming expiry window in days}';
+
     protected $description = 'Create internal notifications for expired and soon-to-expire supplier documents';
 
     public function handle(): int
@@ -49,10 +50,10 @@ class NotifySupplierDocumentExpiry extends Command
 
             $daysLeft = $today->diffInDays($document->expires_at, false);
             $title = $expired ? 'Supplier document expired' : 'Supplier document expiring soon';
-            $message = ($document->supplier->name ?? 'Supplier') . ' — ' . $document->title
-                . ($expired
-                    ? ' expired on ' . $document->expires_at->format('d M Y') . '.'
-                    : ' expires in ' . $daysLeft . ' day(s), on ' . $document->expires_at->format('d M Y') . '.');
+            $message = ($document->supplier->name ?? 'Supplier').' — '.$document->title
+                .($expired
+                    ? ' expired on '.$document->expires_at->format('d M Y').'.'
+                    : ' expires in '.$daysLeft.' day(s), on '.$document->expires_at->format('d M Y').'.');
 
             foreach ($recipients as $recipient) {
                 $recipient->notify(new SupplierDocumentExpiryNotification([
@@ -70,6 +71,7 @@ class NotifySupplierDocumentExpiry extends Command
         }
 
         $this->info("Checked {$documents->count()} supplier document(s); created {$created} internal notification(s).");
+
         return self::SUCCESS;
     }
 }

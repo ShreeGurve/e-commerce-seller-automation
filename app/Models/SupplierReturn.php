@@ -16,9 +16,28 @@ class SupplierReturn extends Model
         'return_date' => 'date', 'dispatched_at' => 'datetime', 'resolved_at' => 'datetime',
     ];
 
-    public function purchase() { return $this->belongsTo(Purchase::class); }
-    public function item() { return $this->belongsTo(PurchaseItem::class, 'purchase_item_id'); }
-    public function inspection() { return $this->belongsTo(PurchaseQualityInspection::class, 'quality_inspection_id'); }
-    public function creator() { return $this->belongsTo(User::class, 'created_by'); }
-    public function settlements() { return $this->hasMany(SupplierReturnSettlement::class, 'supplier_return_id'); }
+    public function purchase()
+    {
+        return $this->belongsTo(Purchase::class);
+    }
+
+    public function item()
+    {
+        return $this->belongsTo(PurchaseItem::class, 'purchase_item_id');
+    }
+
+    public function inspection()
+    {
+        return $this->belongsTo(PurchaseQualityInspection::class, 'quality_inspection_id');
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function settlements()
+    {
+        return $this->hasMany(SupplierReturnSettlement::class, 'supplier_return_id');
+    }
 }

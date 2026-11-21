@@ -69,6 +69,7 @@ class MarketplaceOrderImportServiceTest extends TestCase
     {
         $method = new ReflectionMethod(MarketplaceOrderImportService::class, 'buildPreview');
         $method->setAccessible(true);
+
         return $method->invoke(app(MarketplaceOrderImportService::class), $payload, $marketplaceId);
     }
 }

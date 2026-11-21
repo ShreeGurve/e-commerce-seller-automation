@@ -1,8 +1,21 @@
 <?php
+
 namespace Tests\Feature;
 
-use App\Models\{Category, FeeRule, Marketplace, Order, OrderItemFee, OrderProfit, Product, ProductCostHistory, User};
-use App\Services\{InventoryService, OrderService, ProfitService, RefundService, ReturnService};
+use App\Models\Category;
+use App\Models\FeeRule;
+use App\Models\Marketplace;
+use App\Models\Order;
+use App\Models\OrderItemFee;
+use App\Models\OrderProfit;
+use App\Models\Product;
+use App\Models\ProductCostHistory;
+use App\Models\User;
+use App\Services\InventoryService;
+use App\Services\OrderService;
+use App\Services\ProfitService;
+use App\Services\RefundService;
+use App\Services\ReturnService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -10,7 +23,11 @@ class ProfitEngineTest extends TestCase
 {
     use RefreshDatabase;
 
-    private ?User $u = null; private Product $p; private Marketplace $mp;
+    private ?User $u = null;
+
+    private Product $p;
+
+    private Marketplace $mp;
 
     protected function setUp(): void
     {
@@ -32,13 +49,18 @@ class ProfitEngineTest extends TestCase
     {
         return FeeRule::create(['marketplace_id' => $this->mp->id, 'category_id' => $cat, 'fee_type' => $type, 'percentage' => $pct, 'fixed_amount' => $fixed, 'effective_from' => '2026-01-01']);
     }
+
     /** 2 units x Rs 118 (GST 18% inside) = 236.00 */
     private function order(string $ext = 'A1'): Order
     {
         return app(OrderService::class)->create(['marketplace_id' => $this->mp->id, 'external_order_id' => $ext, 'order_date' => now()->subDays(3)],
             [['product_id' => $this->p->id, 'quantity' => 2, 'unit_price' => '118']], $this->u);
     }
-    private function profit(): string { return (string) OrderProfit::first()->estimated_profit; }
+
+    private function profit(): string
+    {
+        return (string) OrderProfit::first()->estimated_profit;
+    }
 
     public function test_estimated_profit_uses_fee_rules_cost_snapshot_and_fee_gst(): void
     {
@@ -69,7 +91,9 @@ class ProfitEngineTest extends TestCase
     public function test_sellable_return_gives_cost_back_and_refund_reduces_revenue(): void
     {
         $o = $this->order();
-        foreach (['PACKED', 'SHIPPED'] as $s) app(OrderService::class)->changeStatus($o, $s);
+        foreach (['PACKED', 'SHIPPED'] as $s) {
+            app(OrderService::class)->changeStatus($o, $s);
+        }
         $ret = app(ReturnService::class)->create($o, ['return_type' => 'UNKNOWN', 'return_date' => now()->toDateString()], [$o->items->first()->id => 1], $this->u);
         app(ReturnService::class)->inspect($ret, [$ret->items->first()->id => ['received_qty' => 1, 'condition' => 'SELLABLE']], false, null, $this->u);
         app(RefundService::class)->record($o, ['amount' => '118', 'refund_date' => now()->toDateString()], $this->u);

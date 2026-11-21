@@ -164,6 +164,7 @@ class MarketplaceReadProviderTest extends TestCase
         ]);
         $connection->exists = true;
         $connection->setRelation('marketplace', $marketplace);
+
         return $connection;
     }
 }

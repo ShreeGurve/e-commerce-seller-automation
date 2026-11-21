@@ -1,7 +1,10 @@
 <?php
+
 namespace App\Http\Controllers;
 
-use App\Models\{Product, Purchase, Supplier};
+use App\Models\Product;
+use App\Models\Purchase;
+use App\Models\Supplier;
 use App\Services\PurchaseService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -17,6 +20,7 @@ class PurchaseController extends Controller
             ->when($request->status, fn ($q, $s) => $q->where('status', $s))
             ->when($request->supplier_id, fn ($q, $s) => $q->where('supplier_id', $s))
             ->latest('purchase_date')->latest('id')->paginate(20)->withQueryString();
+
         return view('purchases.index', ['purchases' => $purchases, 'suppliers' => Supplier::orderBy('name')->get()]);
     }
 
@@ -29,12 +33,14 @@ class PurchaseController extends Controller
     {
         [$data, $items] = $this->validated($request);
         $purchase = $this->service->save(null, $data, $items, $request->user());
+
         return redirect()->route('purchases.show', $purchase)->with('success', "Purchase {$purchase->po_number} saved.");
     }
 
     public function show(Purchase $purchase)
     {
         $purchase->load(['supplier', 'items.product', 'creator']);
+
         return view('purchases.show', compact('purchase'));
     }
 
@@ -44,6 +50,7 @@ class PurchaseController extends Controller
             return redirect()->route('purchases.show', $purchase)->with('error', 'Only Draft/Ordered purchases can be edited.');
         }
         $purchase->load('items');
+
         return view('purchases.edit', $this->formData($purchase));
     }
 
@@ -51,12 +58,14 @@ class PurchaseController extends Controller
     {
         [$data, $items] = $this->validated($request);
         $this->service->save($purchase, $data, $items, $request->user());
+
         return redirect()->route('purchases.show', $purchase)->with('success', 'Purchase updated.');
     }
 
     public function receive(Purchase $purchase)
     {
         $this->service->receive($purchase);
+
         return redirect()->route('purchases.show', $purchase)->with('success', 'All outstanding stock received and added to inventory.');
     }
 
@@ -67,12 +76,14 @@ class PurchaseController extends Controller
             'quantities.*' => 'required|integer|min:0|max:1000000',
         ]);
         $this->service->receive($purchase, $data['quantities']);
+
         return redirect()->route('purchases.show', $purchase)->with('success', 'Received quantities added to inventory. Outstanding quantities remain on the purchase order.');
     }
 
     public function cancel(Purchase $purchase)
     {
         $this->service->cancel($purchase);
+
         return redirect()->route('purchases.show', $purchase)->with('success', 'Purchase cancelled.');
     }
 
@@ -80,6 +91,7 @@ class PurchaseController extends Controller
     {
         $data = $request->validate(['amount' => 'required|numeric|gt:0|max:9999999999']);
         $this->service->addPayment($purchase, $data['amount']);
+
         return redirect()->route('purchases.show', $purchase)->with('success', 'Payment recorded.');
     }
 
@@ -110,6 +122,7 @@ class PurchaseController extends Controller
         ], ['items.required' => 'Add at least one product.', 'items.*.product_id.distinct' => 'Same product added twice.']);
         $items = $v['items'];
         unset($v['items']);
+
         return [$v, $items];
     }
 }

@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Order;
-use App\Models\OrderFulfillment;
 use App\Models\OrderFulfillmentEvent;
 use App\Models\User;
 use Carbon\Carbon;

@@ -1,7 +1,12 @@
 <?php
+
 namespace App\Services;
 
-use App\Models\{Order, OrderItem, ProductReturn, ReturnItem, User};
+use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\ProductReturn;
+use App\Models\ReturnItem;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -22,11 +27,13 @@ class ReturnService
                 throw ValidationException::withMessages(['external_return_id' => 'This marketplace return id already exists.']);
             }
             $lines = array_filter(array_map('intval', $lines), fn ($q) => $q > 0);
-            if (! $lines) throw ValidationException::withMessages(['items' => 'Enter a quantity for at least one item.']);
+            if (! $lines) {
+                throw ValidationException::withMessages(['items' => 'Enter a quantity for at least one item.']);
+            }
 
             $items = OrderItem::where('order_id', $order->id)->whereIn('id', array_keys($lines))->get()->keyBy('id');
             $return = ProductReturn::create([
-                'order_id' => $order->id, 'marketplace_id' => $order->marketplace_id, 'return_number' => 'TMP' . bin2hex(random_bytes(8)),
+                'order_id' => $order->id, 'marketplace_id' => $order->marketplace_id, 'return_number' => 'TMP'.bin2hex(random_bytes(8)),
                 'external_return_id' => $ext, 'return_date' => $data['return_date'], 'return_type' => $data['return_type'],
                 'reason_text' => $data['reason_text'] ?? null, 'status' => 'REQUESTED', 'created_by' => $user->id,
             ]);
@@ -36,7 +43,7 @@ class ReturnService
                 $item = $items[$itemId] ?? throw ValidationException::withMessages(['items' => 'Item does not belong to this order.']);
                 $already = (int) ReturnItem::where('order_item_id', $item->id)->sum('quantity');
                 if ($qty > $item->quantity - $already) {
-                    throw ValidationException::withMessages(['items' => "Cannot return {$qty} of {$item->product->sku}: only " . ($item->quantity - $already) . ' left to return.']);
+                    throw ValidationException::withMessages(['items' => "Cannot return {$qty} of {$item->product->sku}: only ".($item->quantity - $already).' left to return.']);
                 }
                 $return->items()->create(['order_item_id' => $item->id, 'product_id' => $item->product_id, 'quantity' => $qty]);
             }
@@ -44,6 +51,7 @@ class ReturnService
                 $this->orders->changeStatus($order, 'RETURNED', $user, "Return {$return->return_number}");
             }
             ActivityLogger::log('return.created', $return, null, ['return' => $return->return_number, 'order' => $order->order_number]);
+
             return $return;
         });
     }
@@ -51,13 +59,16 @@ class ReturnService
     /**
      * Inspection: expected vs received. Sellable units go back to available stock; used/damaged/scrap go to the
      * damaged bucket; nothing received = Missing. Runs once per return (second call is rejected).
-     * @param array<int,array{received_qty:int,condition:?string,note:?string}> $lines keyed by return_item id
+     *
+     * @param  array<int,array{received_qty:int,condition:?string,note:?string}>  $lines  keyed by return_item id
      */
     public function inspect(ProductReturn $return, array $lines, bool $claimEligible, ?string $notes, User $user): ProductReturn
     {
-        return DB::transaction(function () use ($return, $lines, $claimEligible, $notes, $user) {
+        return DB::transaction(function () use ($return, $lines, $claimEligible, $notes) {
             $return = ProductReturn::whereKey($return->id)->lockForUpdate()->firstOrFail();
-            if ($return->status !== 'REQUESTED') throw ValidationException::withMessages(['status' => 'This return was already inspected.']);
+            if ($return->status !== 'REQUESTED') {
+                throw ValidationException::withMessages(['status' => 'This return was already inspected.']);
+            }
 
             foreach ($return->items()->with('product')->get() as $item) {
                 $l = $lines[$item->id] ?? throw ValidationException::withMessages(['items' => 'Inspection data missing for a line.']);
@@ -71,8 +82,12 @@ class ReturnService
                 }
                 $restock = 0;
                 if ($recv > 0) {
-                    if ($cond === 'SELLABLE') { $this->inventory->record($item->product, 'RETURN', $recv, ['reference' => $return, 'note' => $return->return_number]); $restock = $recv; }
-                    else { $this->inventory->record($item->product, 'RETURN_DAMAGED', $recv, ['reference' => $return, 'note' => "{$return->return_number} ({$cond})"]); }
+                    if ($cond === 'SELLABLE') {
+                        $this->inventory->record($item->product, 'RETURN', $recv, ['reference' => $return, 'note' => $return->return_number]);
+                        $restock = $recv;
+                    } else {
+                        $this->inventory->record($item->product, 'RETURN_DAMAGED', $recv, ['reference' => $return, 'note' => "{$return->return_number} ({$cond})"]);
+                    }
                 }
                 $item->update(['received_qty' => $recv, 'condition' => $cond, 'restocked_qty' => $restock, 'note' => $l['note'] ?? null]);
             }
@@ -80,6 +95,7 @@ class ReturnService
                 'notes' => $notes ?: $return->notes]);
             app(ProfitService::class)->safe($return->order);   // restocked units give their cost back
             ActivityLogger::log('return.inspected', $return, ['status' => 'REQUESTED'], ['status' => 'INSPECTED', 'claim_eligible' => $claimEligible]);
+
             return $return;
         });
     }
@@ -88,9 +104,12 @@ class ReturnService
     {
         return DB::transaction(function () use ($return) {
             $return = ProductReturn::whereKey($return->id)->lockForUpdate()->firstOrFail();
-            if ($return->status !== 'INSPECTED') throw ValidationException::withMessages(['status' => 'Only inspected returns can be closed.']);
+            if ($return->status !== 'INSPECTED') {
+                throw ValidationException::withMessages(['status' => 'Only inspected returns can be closed.']);
+            }
             $return->update(['status' => 'CLOSED']);
             ActivityLogger::log('return.closed', $return, ['status' => 'INSPECTED'], ['status' => 'CLOSED']);
+
             return $return;
         });
     }

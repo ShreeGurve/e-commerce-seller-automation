@@ -21,7 +21,9 @@ class BusinessAutomationInsightsController extends Controller
     {
         $orders = Schema::hasTable('orders')
             ? DB::table('orders')->whereBetween('order_date', [$start.' 00:00:00', $end.' 23:59:59'])
-                ->where(function ($q) { $q->whereNull('source')->orWhere('source', '<>', 'TEST'); })
+                ->where(function ($q) {
+                    $q->whereNull('source')->orWhere('source', '<>', 'TEST');
+                })
                 ->whereNull('deleted_at')
             : null;
         $eligible = ['CONFIRMED', 'PACKED', 'SHIPPED', 'DELIVERED', 'CLOSED'];
@@ -32,6 +34,7 @@ class BusinessAutomationInsightsController extends Controller
             ? (int) DB::table('procurement_requisitions')->whereBetween('approved_at', [$start.' 00:00:00', $end.' 23:59:59'])->whereIn('status', ['APPROVED', 'AWARDED'])->count() : 0;
         $payments = Schema::hasTable('supplier_invoice_payments')
             ? (float) DB::table('supplier_invoice_payments')->whereBetween('payment_date', [$start, $end])->where('status', 'CONFIRMED')->sum('amount') : 0.0;
+
         return ['sales_value' => $sales, 'orders' => $count, 'fulfilled_orders' => $fulfilled, 'approved_requisitions' => $requisitions, 'supplier_payments' => $payments];
     }
 
@@ -39,12 +42,15 @@ class BusinessAutomationInsightsController extends Controller
     public function dailyDigest(Request $request)
     {
         $date = $request->query('date', now()->subDay()->toDateString());
-        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || !strtotime($date)) $date = now()->subDay()->toDateString();
+        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || ! strtotime($date)) {
+            $date = now()->subDay()->toDateString();
+        }
         $actuals = $this->actuals($date, $date);
         $events = Schema::hasTable('business_automation_events')
             ? BusinessAutomationEvent::whereDate('created_at', $date)->orderByRaw("FIELD(severity, 'CRITICAL', 'HIGH', 'WARNING', 'INFO')")->latest()->limit(100)->get()
             : collect();
         $openCount = Schema::hasTable('business_automation_events') ? BusinessAutomationEvent::where('status', 'OPEN')->count() : 0;
+
         return view('business-automation.daily-digest', compact('date', 'actuals', 'events', 'openCount'));
     }
 
@@ -52,7 +58,9 @@ class BusinessAutomationInsightsController extends Controller
     public function alertSla(Request $request)
     {
         $filter = $request->query('filter', 'overdue');
-        if (!in_array($filter, ['overdue', 'due-today', 'upcoming', 'all'], true)) $filter = 'overdue';
+        if (! in_array($filter, ['overdue', 'due-today', 'upcoming', 'all'], true)) {
+            $filter = 'overdue';
+        }
         $events = Schema::hasTable('business_automation_events')
             ? BusinessAutomationEvent::with(['assignee', 'creator'])->where('status', 'OPEN')->whereNotNull('due_at')
                 ->when($filter === 'overdue', fn ($q) => $q->where('due_at', '<', now()))
@@ -65,6 +73,7 @@ class BusinessAutomationInsightsController extends Controller
             'today' => Schema::hasTable('business_automation_events') ? BusinessAutomationEvent::where('status', 'OPEN')->whereDate('due_at', today())->count() : 0,
             'unassigned' => Schema::hasTable('business_automation_events') ? BusinessAutomationEvent::where('status', 'OPEN')->whereNull('assigned_to')->count() : 0,
         ];
+
         return view('business-automation.alert-sla', compact('events', 'filter', 'counts'));
     }
 
@@ -72,15 +81,28 @@ class BusinessAutomationInsightsController extends Controller
     public function kpiForecast(Request $request)
     {
         $metric = $request->query('metric', 'sales_value');
-        if (!array_key_exists($metric, self::METRICS)) $metric = 'sales_value';
+        if (! array_key_exists($metric, self::METRICS)) {
+            $metric = 'sales_value';
+        }
         $months = [];
         $base = now()->startOfMonth()->subMonths(5);
         for ($i = 0; $i < 6; $i++) {
             $month = $base->copy()->addMonths($i);
             $months[] = ['label' => $month->format('M Y'), 'month' => $month->format('Y-m'), 'value' => $this->actuals($month->copy()->startOfMonth()->toDateString(), $month->copy()->endOfMonth()->toDateString())[$metric]];
         }
-        $n = count($months); $sumX = 0; $sumY = 0; $sumXY = 0; $sumXX = 0;
-        foreach ($months as $i => $point) { $x = $i + 1; $y = (float) $point['value']; $sumX += $x; $sumY += $y; $sumXY += $x * $y; $sumXX += $x * $x; }
+        $n = count($months);
+        $sumX = 0;
+        $sumY = 0;
+        $sumXY = 0;
+        $sumXX = 0;
+        foreach ($months as $i => $point) {
+            $x = $i + 1;
+            $y = (float) $point['value'];
+            $sumX += $x;
+            $sumY += $y;
+            $sumXY += $x * $y;
+            $sumXX += $x * $x;
+        }
         $denominator = ($n * $sumXX) - ($sumX * $sumX);
         $slope = $denominator != 0 ? (($n * $sumXY) - ($sumX * $sumY)) / $denominator : 0;
         $intercept = ($sumY - ($slope * $sumX)) / $n;
@@ -90,6 +112,7 @@ class BusinessAutomationInsightsController extends Controller
             $raw = $intercept + ($slope * ($n + $i));
             $next[] = ['label' => $month->format('M Y'), 'value' => round(max(0, $raw), 2)];
         }
+
         return view('business-automation.kpi-forecast', ['metric' => $metric, 'meta' => self::METRICS[$metric], 'history' => $months, 'forecast' => $next, 'slope' => round($slope, 2)]);
     }
 }

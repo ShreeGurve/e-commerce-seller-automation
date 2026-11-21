@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\PurchaseBudget;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PurchaseBudgetController extends Controller
@@ -17,7 +16,7 @@ class PurchaseBudgetController extends Controller
             $selectedMonth = now()->format('Y-m');
         }
 
-        $monthStart = $selectedMonth . '-01';
+        $monthStart = $selectedMonth.'-01';
         $monthEnd = date('Y-m-t', strtotime($monthStart));
 
         $budget = PurchaseBudget::whereDate('budget_month', $monthStart)->first();
@@ -30,7 +29,7 @@ class PurchaseBudgetController extends Controller
 
         $history = collect();
         for ($i = 1; $i <= 3; $i++) {
-            $start = date('Y-m-01', strtotime($monthStart . " -{$i} months"));
+            $start = date('Y-m-01', strtotime($monthStart." -{$i} months"));
             $end = date('Y-m-t', strtotime($start));
             $amount = (float) DB::table('purchases')
                 ->where('status', 'RECEIVED')
@@ -62,7 +61,7 @@ class PurchaseBudgetController extends Controller
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        $month = $validated['budget_month'] . '-01';
+        $month = $validated['budget_month'].'-01';
         $userId = $request->user()->id;
 
         PurchaseBudget::updateOrCreate(
@@ -82,6 +81,7 @@ class PurchaseBudgetController extends Controller
     public function export(Request $request): StreamedResponse
     {
         $rows = PurchaseBudget::orderBy('budget_month')->get();
+
         return response()->streamDownload(function () use ($rows) {
             $out = fopen('php://output', 'w');
             fputcsv($out, ['Budget Month', 'Budget Amount', 'Notes']);

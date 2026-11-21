@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\MarketplaceConnection;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /** Resolves a seller connection inside an explicitly supplied business boundary. */
 class MarketplaceConnectionResolver

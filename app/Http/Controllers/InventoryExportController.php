@@ -23,8 +23,8 @@ class InventoryExportController extends Controller
             ->with('inventory')
             ->when($filters['q'] ?? null, function ($query, $search) {
                 $query->where(function ($where) use ($search) {
-                    $where->where('name', 'like', '%' . $search . '%')
-                        ->orWhere('sku', 'like', '%' . $search . '%');
+                    $where->where('name', 'like', '%'.$search.'%')
+                        ->orWhere('sku', 'like', '%'.$search.'%');
                 });
             })
             ->when(($filters['stock'] ?? null) === 'low', function ($query) {
@@ -41,7 +41,7 @@ class InventoryExportController extends Controller
             })
             ->orderBy('sku');
 
-        $filename = 'inventory-register-' . now()->format('Ymd-His') . '.csv';
+        $filename = 'inventory-register-'.now()->format('Ymd-His').'.csv';
 
         return response()->streamDownload(function () use ($query) {
             $out = fopen('php://output', 'w');
@@ -86,6 +86,7 @@ class InventoryExportController extends Controller
     private function spreadsheetSafe(?string $value): string
     {
         $value = (string) $value;
-        return preg_match('/^[\s]*[=+\-@]/u', $value) ? "'" . $value : $value;
+
+        return preg_match('/^[\s]*[=+\-@]/u', $value) ? "'".$value : $value;
     }
 }

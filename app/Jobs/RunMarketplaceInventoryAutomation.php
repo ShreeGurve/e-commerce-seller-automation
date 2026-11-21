@@ -15,11 +15,15 @@ class RunMarketplaceInventoryAutomation implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public int $timeout = 240;
 
     public function __construct(public readonly int $connectionId, public readonly int $settingId) {}
 
-    public function backoff(): array { return [60, 180, 600]; }
+    public function backoff(): array
+    {
+        return [60, 180, 600];
+    }
 
     public function handle(MarketplaceInventoryAutomationService $automation): void
     {

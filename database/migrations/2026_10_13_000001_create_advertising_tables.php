@@ -1,9 +1,11 @@
 <?php
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('advertising_campaigns', function (Blueprint $t) {
@@ -71,6 +73,8 @@ return new class extends Migration {
 
     public function down(): void
     {
-        foreach (['advertising_daily', 'advertising_search_terms', 'advertising_keywords', 'advertising_groups', 'advertising_campaigns'] as $t) Schema::dropIfExists($t);
+        foreach (['advertising_daily', 'advertising_search_terms', 'advertising_keywords', 'advertising_groups', 'advertising_campaigns'] as $t) {
+            Schema::dropIfExists($t);
+        }
     }
 };

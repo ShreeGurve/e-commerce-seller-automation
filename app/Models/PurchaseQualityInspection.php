@@ -14,7 +14,18 @@ class PurchaseQualityInspection extends Model
 
     protected $casts = ['inspection_date' => 'date'];
 
-    public function purchase() { return $this->belongsTo(Purchase::class); }
-    public function item() { return $this->belongsTo(PurchaseItem::class, 'purchase_item_id'); }
-    public function creator() { return $this->belongsTo(User::class, 'created_by'); }
+    public function purchase()
+    {
+        return $this->belongsTo(Purchase::class);
+    }
+
+    public function item()
+    {
+        return $this->belongsTo(PurchaseItem::class, 'purchase_item_id');
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 }

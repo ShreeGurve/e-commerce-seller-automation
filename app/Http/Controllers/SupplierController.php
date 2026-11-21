@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\Supplier;
@@ -13,20 +14,28 @@ class SupplierController extends Controller
         $suppliers = Supplier::withCount('purchases')
             ->when($request->q, fn ($q, $s) => $q->where(fn ($w) => $w->where('name', 'like', "%$s%")->orWhere('phone', 'like', "%$s%")->orWhere('gstin', 'like', "%$s%")))
             ->orderBy('name')->paginate(20)->withQueryString();
+
         return view('suppliers.index', compact('suppliers'));
     }
 
-    public function create() { return view('suppliers.create', ['supplier' => new Supplier(['is_active' => true])]); }
+    public function create()
+    {
+        return view('suppliers.create', ['supplier' => new Supplier(['is_active' => true])]);
+    }
 
     public function store(Request $request)
     {
         $data = $this->validated($request);
         $supplier = Supplier::create($data);
         ActivityLogger::log('supplier.created', $supplier, null, ['name' => $supplier->name]);
+
         return redirect()->route('suppliers.index')->with('success', 'Supplier added.');
     }
 
-    public function edit(Supplier $supplier) { return view('suppliers.edit', compact('supplier')); }
+    public function edit(Supplier $supplier)
+    {
+        return view('suppliers.edit', compact('supplier'));
+    }
 
     public function update(Request $request, Supplier $supplier)
     {
@@ -35,7 +44,10 @@ class SupplierController extends Controller
         $dirty = $supplier->getDirty();
         $old = array_intersect_key($supplier->getOriginal(), $dirty);
         $supplier->save();
-        if ($dirty) ActivityLogger::log('supplier.updated', $supplier, $old, $dirty);
+        if ($dirty) {
+            ActivityLogger::log('supplier.updated', $supplier, $old, $dirty);
+        }
+
         return redirect()->route('suppliers.index')->with('success', 'Supplier updated.');
     }
 
@@ -46,6 +58,7 @@ class SupplierController extends Controller
         }
         $supplier->delete();
         ActivityLogger::log('supplier.deleted', $supplier, ['name' => $supplier->name]);
+
         return redirect()->route('suppliers.index')->with('success', 'Supplier deleted.');
     }
 
@@ -59,6 +72,7 @@ class SupplierController extends Controller
             'payment_terms' => 'nullable|string|max:120', 'notes' => 'nullable|string|max:2000',
         ]);
         $data['is_active'] = $request->boolean('is_active');
+
         return $data;
     }
 }

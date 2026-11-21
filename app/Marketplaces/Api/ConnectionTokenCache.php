@@ -29,6 +29,7 @@ class ConnectionTokenCache
         // A one-way fingerprint prevents stale tokens after credential rotation without exposing secrets.
         $credentials = $connection->credentials ?? [];
         $revision = hash('sha256', json_encode($credentials, JSON_UNESCAPED_SLASHES) ?: 'empty');
+
         return implode(':', ['marketplace', 'connection-token', $provider, $connection->business_id, $connection->id, $revision]);
     }
 }

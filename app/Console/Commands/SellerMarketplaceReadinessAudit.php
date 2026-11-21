@@ -7,6 +7,7 @@ use Illuminate\Console\Command;
 class SellerMarketplaceReadinessAudit extends Command
 {
     protected $signature = 'seller-automation:marketplace-readiness';
+
     protected $description = 'Read-only presence audit for Amazon and Flipkart integration configuration';
 
     public function handle(): int
@@ -21,7 +22,9 @@ class SellerMarketplaceReadinessAudit extends Command
             $this->collectMarketplaceSettings($services, $marketplace, '', $matches);
             $configured = count($matches) > 0;
             $checks++;
-            if (!$configured) $warnings++;
+            if (! $configured) {
+                $warnings++;
+            }
             $this->line(($configured ? '<fg=green>CONFIG FOUND</>' : '<fg=yellow>NOT DETECTED</>')." {$marketplace}: ".($configured ? count($matches).' related configuration value(s) present' : 'No matching services configuration detected'));
             if ($configured) {
                 foreach ($matches as $key => $present) {
@@ -33,6 +36,7 @@ class SellerMarketplaceReadinessAudit extends Command
         $this->newLine();
         $this->comment('Configuration presence is not proof of valid credentials, seller approval, API scopes or successful API calls. No secrets or values are displayed; no marketplace requests or writes are made.');
         $this->info("Marketplaces checked: {$checks} | Not detected: {$warnings}");
+
         return self::SUCCESS;
     }
 

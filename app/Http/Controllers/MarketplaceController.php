@@ -1,8 +1,15 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Marketplaces\MarketplaceManager;
-use App\Models\{DataImport, Marketplace, Order, Product, ProductMarketplace, ProductReturn};
+use App\Models\DataImport;
+use App\Models\Marketplace;
+use App\Models\Order;
+use App\Models\Product;
+use App\Models\ProductMarketplace;
+use App\Models\ProductReturn;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class MarketplaceController extends Controller
@@ -30,7 +37,7 @@ class MarketplaceController extends Controller
     }
 
     /** Internal SKU mapping workspace. This does not publish or sync marketplace data. */
-    public function operations(\Illuminate\Http\Request $request)
+    public function operations(Request $request)
     {
         $query = ProductMarketplace::with(['product', 'marketplace']);
         if ($request->filled('q')) {
@@ -67,7 +74,7 @@ class MarketplaceController extends Controller
         ));
     }
 
-    public function storeMapping(\Illuminate\Http\Request $request)
+    public function storeMapping(Request $request)
     {
         $data = $request->validate([
             'product_id' => ['required', 'integer', 'exists:products,id'],
@@ -84,13 +91,14 @@ class MarketplaceController extends Controller
             return back()->withErrors(['marketplace_sku' => 'This marketplace SKU is already mapped on the selected marketplace.'])->withInput();
         }
         ProductMarketplace::create($data);
+
         return back()->with('success', 'Local marketplace SKU mapping saved. No marketplace listing was changed.');
     }
 
     public function destroyMapping(ProductMarketplace $mapping)
     {
         $mapping->delete();
+
         return back()->with('success', 'Local marketplace SKU mapping removed. No marketplace listing was changed.');
     }
-
 }

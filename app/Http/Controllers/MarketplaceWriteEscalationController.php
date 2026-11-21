@@ -15,6 +15,7 @@ class MarketplaceWriteEscalationController extends Controller
     public function saveRule(Request $request, MarketplaceWriteEscalationService $service)
     {
         $service->saveRule($request->user(), $request->all());
+
         return back()->with('success', 'Escalation rule saved.');
     }
 }

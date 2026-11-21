@@ -1,8 +1,11 @@
 <?php
+
 namespace App\Http\Controllers;
 
-use App\Models\{AdvertisingCampaign, Marketplace};
+use App\Models\AdvertisingCampaign;
+use App\Models\Marketplace;
 use App\Services\AdsService;
+use App\Services\SettingsService;
 use Illuminate\Http\Request;
 
 class AdsController extends Controller
@@ -17,13 +20,14 @@ class AdsController extends Controller
 
     private function common(array $f): array
     {
-        return ['f' => $f, 'marketplaces' => Marketplace::active()->get(), 'targetAcos' => (float) \App\Services\SettingsService::get('default_target_acos', 25),
-            'wasteMin' => (float) \App\Services\SettingsService::get('ads_waste_min_spend', 200)];
+        return ['f' => $f, 'marketplaces' => Marketplace::active()->get(), 'targetAcos' => (float) SettingsService::get('default_target_acos', 25),
+            'wasteMin' => (float) SettingsService::get('ads_waste_min_spend', 200)];
     }
 
     public function index(Request $request)
     {
         $f = $this->filters($request);
+
         return view('ads.index', $this->common($f) + $this->ads->summary($f) + ['ads' => $this->ads]);
     }
 
@@ -31,6 +35,7 @@ class AdsController extends Controller
     {
         abort_unless(in_array($level, ['keywords', 'terms'], true), 404);
         $f = $this->filters($request);
+
         return view('ads.targets', $this->common($f) + [
             'rows' => $this->ads->targets($level === 'keywords' ? 'KEYWORD' : 'TERM', $f, true, $f['sort']), 'level' => $level, 'ads' => $this->ads,
             'campaigns' => AdvertisingCampaign::orderBy('name')->get(['id', 'name']),
@@ -40,6 +45,7 @@ class AdsController extends Controller
     public function insights(Request $request)
     {
         $f = $this->filters($request);
+
         return view('ads.insights', $this->common($f) + ['i' => $this->ads->insights($f)]);
     }
 }

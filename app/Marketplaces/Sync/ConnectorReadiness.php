@@ -26,7 +26,7 @@ class ConnectorReadiness
                 'enabled' => (bool) ($amazon['enabled'] ?? false),
                 'configured' => $amazonConfigured,
                 'api_calls_enabled' => (bool) ($amazon['api_calls_enabled'] ?? false) && (bool) ($amazon['enabled'] ?? false),
-                'status' => !($amazon['enabled'] ?? false) ? 'NOT_CONFIGURED' : (!$amazonConfigured ? 'PENDING_CREDENTIALS' : (($amazon['api_calls_enabled'] ?? false) ? 'READY_FOR_AUTH_CHECK' : 'DISABLED')),
+                'status' => ! ($amazon['enabled'] ?? false) ? 'NOT_CONFIGURED' : (! $amazonConfigured ? 'PENDING_CREDENTIALS' : (($amazon['api_calls_enabled'] ?? false) ? 'READY_FOR_AUTH_CHECK' : 'DISABLED')),
                 'missing' => $this->missing($amazon, ['endpoint', 'region', 'marketplace_id', 'client_id', 'client_secret', 'refresh_token']),
                 'message' => 'Amazon SP-API requires a registered application, seller authorization, operation roles and regional request signing.',
             ],
@@ -34,7 +34,7 @@ class ConnectorReadiness
                 'enabled' => (bool) ($flipkart['enabled'] ?? false),
                 'configured' => $flipkartConfigured,
                 'api_calls_enabled' => (bool) ($flipkart['api_calls_enabled'] ?? false) && (bool) ($flipkart['enabled'] ?? false),
-                'status' => !($flipkart['enabled'] ?? false) ? 'NOT_CONFIGURED' : (!$flipkartConfigured ? 'PENDING_CREDENTIALS' : (($flipkart['api_calls_enabled'] ?? false) ? 'READY_FOR_AUTH_CHECK' : 'DISABLED')),
+                'status' => ! ($flipkart['enabled'] ?? false) ? 'NOT_CONFIGURED' : (! $flipkartConfigured ? 'PENDING_CREDENTIALS' : (($flipkart['api_calls_enabled'] ?? false) ? 'READY_FOR_AUTH_CHECK' : 'DISABLED')),
                 'missing' => $this->missing($flipkart, ['base_url', 'seller_id', 'access_token']),
                 'message' => 'Flipkart Seller API requires approved Seller Dashboard developer access and seller-specific credentials.',
             ],
@@ -54,6 +54,6 @@ class ConnectorReadiness
 
     private function missing(array $config, array $keys): array
     {
-        return array_values(array_filter($keys, fn ($key) => !isset($config[$key]) || trim((string) $config[$key]) === ''));
+        return array_values(array_filter($keys, fn ($key) => ! isset($config[$key]) || trim((string) $config[$key]) === ''));
     }
 }

@@ -21,7 +21,7 @@ class FinanceOperationsInsightController extends Controller
             ->whereBetween('op.order_date', [$from, $to])
             ->where(function ($q) use ($threshold) {
                 $q->whereRaw('COALESCE(op.actual_profit, op.estimated_profit) < 0')
-                  ->orWhereRaw('(op.revenue > 0 AND (COALESCE(op.actual_profit, op.estimated_profit) / op.revenue) * 100 < ?)', [$threshold]);
+                    ->orWhereRaw('(op.revenue > 0 AND (COALESCE(op.actual_profit, op.estimated_profit) / op.revenue) * 100 < ?)', [$threshold]);
             })
             ->orderByRaw('COALESCE(op.actual_profit, op.estimated_profit) ASC')
             ->limit(500)
@@ -32,6 +32,7 @@ class FinanceOperationsInsightController extends Controller
             'losses' => $rows->filter(fn ($r) => (float) ($r->actual_profit ?? $r->estimated_profit) < 0)->count(),
             'exposure' => abs((float) $rows->sum(fn ($r) => min(0, (float) ($r->actual_profit ?? $r->estimated_profit)))),
         ];
+
         return view('finance.operations.profitability-exceptions', compact('from', 'to', 'threshold', 'rows', 'summary'));
     }
 
@@ -71,8 +72,10 @@ class FinanceOperationsInsightController extends Controller
         $performance->transform(function ($row) use ($refunds) {
             $row->refund_amount = (float) ($refunds[$row->id] ?? 0);
             $row->margin = (float) $row->revenue > 0 ? ((float) $row->profit / (float) $row->revenue) * 100 : 0;
+
             return $row;
         });
+
         return view('finance.operations.marketplace-performance', compact('from', 'to', 'performance'));
     }
 
@@ -85,6 +88,7 @@ class FinanceOperationsInsightController extends Controller
         ]);
         $to = Carbon::parse($validated['to'] ?? now()->toDateString())->toDateString();
         $from = Carbon::parse($validated['from'] ?? now()->subDays(29)->toDateString())->toDateString();
+
         return [$from, $to];
     }
 }

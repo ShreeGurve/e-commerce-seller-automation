@@ -12,6 +12,7 @@ class SellerAutomationIntegrationAudit extends Command
 {
     protected $signature = 'seller-automation:integration-audit
                             {--skip-database : Check routes and source safeguards without querying the database}';
+
     protected $description = 'Run a read-only integration readiness audit for Seller Automation modules';
 
     public function handle(): int
@@ -65,7 +66,7 @@ class SellerAutomationIntegrationAudit extends Command
             ];
         }
 
-        if (!$this->option('skip-database')) {
+        if (! $this->option('skip-database')) {
             $requiredTables = [
                 'purchases',
                 'purchase_invoice_matches',
@@ -125,10 +126,12 @@ class SellerAutomationIntegrationAudit extends Command
 
         if ($failed > 0) {
             $this->warn('This audit is read-only. It does not modify records or run workflow actions.');
+
             return self::FAILURE;
         }
 
         $this->info('All configured readiness checks passed. Continue with the manual workflow checklist.');
+
         return self::SUCCESS;
     }
 }

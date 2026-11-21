@@ -13,5 +13,8 @@ class MarketplaceInventoryAutomationSetting extends Model
         return ['enabled' => 'boolean', 'last_scheduled_at' => 'datetime', 'next_run_at' => 'datetime'];
     }
 
-    public function connection() { return $this->belongsTo(MarketplaceConnection::class, 'marketplace_connection_id'); }
+    public function connection()
+    {
+        return $this->belongsTo(MarketplaceConnection::class, 'marketplace_connection_id');
+    }
 }

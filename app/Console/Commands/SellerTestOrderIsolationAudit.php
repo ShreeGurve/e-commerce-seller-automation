@@ -10,13 +10,15 @@ use Throwable;
 class SellerTestOrderIsolationAudit extends Command
 {
     protected $signature = 'seller-automation:test-order-audit';
+
     protected $description = 'Inspect explicit TEST-order markers without changing orders or financial records';
 
     public function handle(): int
     {
         $this->info('Seller Automation — TEST Order Isolation Audit (read-only)');
-        if (!Schema::hasTable('orders')) {
+        if (! Schema::hasTable('orders')) {
             $this->warn('REVIEW: orders table was not found.');
+
             return self::SUCCESS;
         }
 
@@ -29,10 +31,11 @@ class SellerTestOrderIsolationAudit extends Command
             'environment' => ['type' => 'text'],
         ];
         $found = array_values(array_filter(array_keys($candidates), fn ($column) => in_array($column, $columns, true)));
-        if (!$found) {
+        if (! $found) {
             $this->warn('REVIEW: No recognized explicit TEST-order marker was found on orders.');
             $this->line('Available columns: '.implode(', ', $columns));
             $this->comment('Do not infer TEST status from order numbers or customer names. Confirm the application’s actual test-order convention before changing financial reports.');
+
             return self::SUCCESS;
         }
 
@@ -55,6 +58,7 @@ class SellerTestOrderIsolationAudit extends Command
 
         $this->newLine();
         $this->comment('This audit only discovers and counts explicit order markers. It does not inspect every revenue/profit/settlement/tax query and cannot certify financial exclusion. Verify each financial report and export separately. No data is modified.');
+
         return self::SUCCESS;
     }
 }

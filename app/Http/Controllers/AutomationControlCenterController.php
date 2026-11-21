@@ -13,6 +13,7 @@ class AutomationControlCenterController extends Controller
     private function businessId(): ?int
     {
         $user = auth()->user();
+
         return $user && method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()
             ? null : (int) ($user->business_id ?? 0);
     }
@@ -20,7 +21,10 @@ class AutomationControlCenterController extends Controller
     private function tasksQuery()
     {
         $query = AutomationTask::query();
-        if ($this->businessId() !== null) $query->where('business_id', $this->businessId());
+        if ($this->businessId() !== null) {
+            $query->where('business_id', $this->businessId());
+        }
+
         return $query;
     }
 
@@ -51,13 +55,19 @@ class AutomationControlCenterController extends Controller
     {
         $status = strtoupper((string) $request->query('status', 'OPEN'));
         $allowed = ['OPEN', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'ALL'];
-        if (!in_array($status, $allowed, true)) $status = 'OPEN';
+        if (! in_array($status, $allowed, true)) {
+            $status = 'OPEN';
+        }
 
         $query = $this->tasksQuery()->with('assignee')->orderBy('due_at')->orderBy('id');
-        if ($status === 'OPEN') $query->whereNotIn('status', ['COMPLETED', 'CANCELLED']);
-        elseif ($status !== 'ALL') $query->where('status', $status);
+        if ($status === 'OPEN') {
+            $query->whereNotIn('status', ['COMPLETED', 'CANCELLED']);
+        } elseif ($status !== 'ALL') {
+            $query->where('status', $status);
+        }
 
-        $filename = 'automation-task-register-' . now()->format('Ymd-His') . '.csv';
+        $filename = 'automation-task-register-'.now()->format('Ymd-His').'.csv';
+
         return response()->streamDownload(function () use ($query) {
             $out = fopen('php://output', 'w');
             fputcsv($out, ['Task ID', 'Title', 'Status', 'Priority', 'Assignee', 'Due At', 'Completed At', 'Created At', 'Updated At']);
@@ -72,8 +82,9 @@ class AutomationControlCenterController extends Controller
                     // Neutralize spreadsheet formulas in untrusted text fields.
                     $cells = array_map(static function ($value) {
                         if (is_string($value) && preg_match('/^[\s]*[=+\-@]/u', $value)) {
-                            return "'" . $value;
+                            return "'".$value;
                         }
+
                         return $value;
                     }, $cells);
                     fputcsv($out, $cells);
@@ -96,11 +107,11 @@ class AutomationControlCenterController extends Controller
         $dependencyRows = collect();
 
         if ($dependencyAvailable) {
-            $taskTable = (new AutomationTask())->getTable();
+            $taskTable = (new AutomationTask)->getTable();
             $businessId = $this->businessId();
             $deps = DB::table('automation_task_dependencies as d')
-                ->join($taskTable . ' as prerequisite', 'prerequisite.id', '=', 'd.prerequisite_task_id')
-                ->join($taskTable . ' as dependent', 'dependent.id', '=', 'd.dependent_task_id')
+                ->join($taskTable.' as prerequisite', 'prerequisite.id', '=', 'd.prerequisite_task_id')
+                ->join($taskTable.' as dependent', 'dependent.id', '=', 'd.dependent_task_id')
                 ->whereNotIn('dependent.status', ['COMPLETED', 'CANCELLED'])
                 ->when($businessId !== null, fn ($q) => $q->where('dependent.business_id', $businessId)->where('prerequisite.business_id', $businessId))
                 ->select('d.*', 'prerequisite.title as prerequisite_title', 'prerequisite.status as prerequisite_status', 'dependent.title as dependent_title', 'dependent.status as dependent_status')

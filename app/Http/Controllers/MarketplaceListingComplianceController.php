@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Listing, MarketplaceListingIssue};
+use App\Models\Listing;
+use App\Models\MarketplaceListingIssue;
 use App\Services\MarketplaceListingComplianceService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -12,9 +13,15 @@ class MarketplaceListingComplianceController extends Controller
     public function index(Request $request)
     {
         $query = MarketplaceListingIssue::query()->with(['listing.product:id,sku,name', 'listing.marketplace:id,name'])->latest('id');
-        if ($request->filled('status')) $query->where('status', strtoupper((string) $request->string('status')));
-        if ($request->filled('severity')) $query->where('severity', strtoupper((string) $request->string('severity')));
-        if ($request->boolean('suppression_only')) $query->where('is_suppression', true);
+        if ($request->filled('status')) {
+            $query->where('status', strtoupper((string) $request->string('status')));
+        }
+        if ($request->filled('severity')) {
+            $query->where('severity', strtoupper((string) $request->string('severity')));
+        }
+        if ($request->boolean('suppression_only')) {
+            $query->where('is_suppression', true);
+        }
         $issues = $query->paginate(25)->withQueryString();
         $stats = [
             'open' => MarketplaceListingIssue::whereIn('status', ['OPEN', 'IN_PROGRESS'])->count(),
@@ -23,6 +30,7 @@ class MarketplaceListingComplianceController extends Controller
             'resolved' => MarketplaceListingIssue::where('status', 'RESOLVED')->count(),
         ];
         $listings = Listing::query()->with(['product:id,sku,name', 'marketplace:id,name'])->latest('id')->limit(200)->get();
+
         return view('listings.compliance', compact('issues', 'stats', 'listings'));
     }
 
@@ -40,6 +48,7 @@ class MarketplaceListingComplianceController extends Controller
         ]);
         $listing = Listing::findOrFail($data['listing_id']);
         $service->report($listing, $data, $request->user()?->id);
+
         return back()->with('success', 'Marketplace listing issue recorded.');
     }
 
@@ -49,12 +58,14 @@ class MarketplaceListingComplianceController extends Controller
             'note' => ['nullable', 'string', 'max:5000'], 'evidence' => ['nullable', 'array', 'max:10'],
             'evidence.*.label' => ['required_with:evidence', 'string', 'max:160'], 'evidence.*.reference' => ['required_with:evidence', 'string', 'max:500'], 'evidence.*.note' => ['nullable', 'string', 'max:500']]);
         $service->transition($issue, $data['status'], $data['note'] ?? null, $data['evidence'] ?? [], $request->user()?->id);
+
         return back()->with('success', 'Issue status updated and audit event recorded.');
     }
 
     public function recheck(Request $request, Listing $listing, MarketplaceListingComplianceService $service)
     {
         $check = $service->recheck($listing, $request->user()?->id);
+
         return back()->with('success', 'Local issue-register recheck: '.$check->result.' ('.$check->open_issues.' open issues).');
     }
 }

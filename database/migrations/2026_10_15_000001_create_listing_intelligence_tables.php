@@ -14,7 +14,8 @@ use Illuminate\Database\Migrations\Migration;
  * it recorded in the migrations table remain compatible. The canonical
  * listing schema is created by 2026_10_15_000001_create_listing_tables.php.
  */
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         // Intentionally empty. See the canonical listing migration.

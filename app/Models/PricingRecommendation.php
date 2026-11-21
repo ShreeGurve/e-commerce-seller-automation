@@ -22,8 +22,23 @@ class PricingRecommendation extends Model
         'applied_at' => 'datetime',
     ];
 
-    public function product() { return $this->belongsTo(Product::class)->withTrashed(); }
-    public function marketplace() { return $this->belongsTo(Marketplace::class); }
-    public function requester() { return $this->belongsTo(User::class, 'requested_by'); }
-    public function reviewer() { return $this->belongsTo(User::class, 'reviewed_by'); }
+    public function product()
+    {
+        return $this->belongsTo(Product::class)->withTrashed();
+    }
+
+    public function marketplace()
+    {
+        return $this->belongsTo(Marketplace::class);
+    }
+
+    public function requester()
+    {
+        return $this->belongsTo(User::class, 'requested_by');
+    }
+
+    public function reviewer()
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
 }

@@ -37,6 +37,7 @@ class PurchaseInvoiceMatchController extends Controller
             ->whereDoesntHave('invoiceMatch')
             ->when($request->purchase_id, fn ($q, $id) => $q->whereKey($id))
             ->latest('purchase_date')->get();
+
         return view('purchases.invoice-match-create', compact('purchases'));
     }
 
@@ -102,6 +103,7 @@ class PurchaseInvoiceMatchController extends Controller
             'review_notes' => $data['review_notes'], 'reviewed_by' => $request->user()->id,
             'reviewed_at' => now(),
         ]);
+
         return redirect()->route('purchase-invoice-matching.index')->with('success', 'Invoice review decision saved.');
     }
 }
