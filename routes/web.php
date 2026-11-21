@@ -54,12 +54,12 @@ use App\Http\Controllers\MarketplaceConnectionController;
 use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\MarketplaceFinancialAnalyticsController;
 use App\Http\Controllers\MarketplaceRecommendationController;
+use App\Http\Controllers\MarketplaceWriteAlertPreferenceController;
 use App\Http\Controllers\MarketplaceWriteAuditController;
 use App\Http\Controllers\MarketplaceWriteEmergencyController;
 use App\Http\Controllers\MarketplaceWriteEscalationController;
 use App\Http\Controllers\MarketplaceWriteEvidenceController;
 use App\Http\Controllers\MarketplaceWriteExecutionController;
-use App\Http\Controllers\MarketplaceWriteGovernanceAlertController;
 use App\Http\Controllers\MarketplaceWriteGovernanceController;
 use App\Http\Controllers\MarketplaceWriteIncidentController;
 use App\Http\Controllers\MarketplaceWriteMonitoringController;
@@ -1119,19 +1119,27 @@ Route::middleware(['auth', 'can:listings.manage'])->prefix('marketplace-writes/a
     // Notification center
     Route::get(
         '/',
-        [MarketplaceWriteGovernanceAlertController::class, 'index']
+        [App\Http\Controllers\MarketplaceWriteGovernanceAlertController::class, 'index']
     )->name('index');
 
     // Mark individual notification as read
     Route::post(
         '/{notification}/read',
-        [MarketplaceWriteGovernanceAlertController::class, 'markRead']
+        [App\Http\Controllers\MarketplaceWriteGovernanceAlertController::class, 'markRead']
     )->name('read');
 
     // Mark all marketplace-write notifications as read
     Route::post(
         '/read-all',
-        [MarketplaceWriteGovernanceAlertController::class, 'markAllRead']
+        [App\Http\Controllers\MarketplaceWriteGovernanceAlertController::class, 'markAllRead']
     )->name('read-all');
 
+});
+
+Route::middleware(['auth', 'can:listings.manage'])->prefix('marketplace-writes/alerts/preferences')->name('marketplaces.writes.alerts.preferences.')->group(function () {
+    Route::get('/', [MarketplaceWriteAlertPreferenceController::class, 'edit'])
+        ->name('edit');
+
+    Route::put('/', [MarketplaceWriteAlertPreferenceController::class, 'update'])
+        ->name('update');
 });
