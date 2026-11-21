@@ -14,6 +14,27 @@
     </div>
 
     <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div><strong>Executive risk overview</strong><div class="small text-muted">Operational indicators for the selected filters</div></div>
+            <span class="badge bg-{{ $riskLevel === 'HIGH' ? 'danger' : ($riskLevel === 'ELEVATED' ? 'warning text-dark' : ($riskLevel === 'GUARDED' ? 'info text-dark' : 'success')) }}">{{ $riskLevel }} RISK</span>
+        </div>
+        <div class="card-body">
+            <div class="row g-3 align-items-center">
+                <div class="col-md-3"><div class="small text-muted">Risk signal score</div><div class="display-6 fw-semibold">{{ number_format($riskScore) }}<span class="fs-6 text-muted"> / 100</span></div></div>
+                <div class="col-md-9"><div class="progress" role="progressbar" aria-label="Operational risk signal" aria-valuenow="{{ $riskScore }}" aria-valuemin="0" aria-valuemax="100" style="height: 12px"><div class="progress-bar bg-{{ $riskLevel === 'HIGH' ? 'danger' : ($riskLevel === 'ELEVATED' ? 'warning' : ($riskLevel === 'GUARDED' ? 'info' : 'success')) }}" style="width: {{ $riskScore }}%"></div></div><div class="small text-muted mt-2">Weighted from same-user approval exceptions, failed submissions, review-required attempts and missing verification records.</div></div>
+            </div>
+            <div class="table-responsive mt-4"><table class="table table-sm align-middle mb-0"><thead><tr><th>Marketplace</th><th class="text-end">Attempts</th><th class="text-end">Failed</th><th class="text-end">Needs review</th><th class="text-end">Verification pending</th></tr></thead><tbody>
+                @forelse($marketplaceBreakdown as $marketplace)
+                    <tr><td class="text-capitalize fw-semibold">{{ $marketplace->marketplace_code }}</td><td class="text-end">{{ number_format($marketplace->total_attempts) }}</td><td class="text-end">{{ number_format($marketplace->failed_attempts) }}</td><td class="text-end">{{ number_format($marketplace->review_required) }}</td><td class="text-end">{{ number_format($marketplace->verification_pending) }}</td></tr>
+                @empty
+                    <tr><td colspan="5" class="text-center text-muted py-3">No marketplace activity for these filters.</td></tr>
+                @endforelse
+            </tbody></table></div>
+            <p class="small text-muted mt-3 mb-0">This score is an operational prioritization heuristic, not a regulatory rating, security certification or legal compliance determination. Review underlying incidents and audit records before taking action.</p>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
         <div class="card-header bg-white py-3"><strong>Compliance indicators</strong><span class="text-muted small ms-2">Based on the selected filters</span></div>
         <div class="card-body"><div class="row g-3">
             <div class="col-6 col-lg-3"><div class="small text-muted">Live confirmed</div><div class="fs-4 fw-semibold text-success">{{ number_format($counts['live_confirmed']) }}</div></div>

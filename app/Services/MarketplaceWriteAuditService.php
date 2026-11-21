@@ -34,7 +34,28 @@ class MarketplaceWriteAuditService
             'approval_exceptions' => (clone $countsQuery)->whereNotNull('a.approved_by')->whereColumn('a.prepared_by', '=', 'a.approved_by')->count(),
         ];
 
-        return compact('attempts', 'counts', 'filters');
+        // A transparent operational signal, not a legal/compliance score.
+        $riskScore = min(100, ($counts['approval_exceptions'] * 30)
+            + ($counts['failed'] * 10)
+            + ($counts['review_required'] * 15)
+            + ($counts['verification_pending'] * 5));
+        $riskLevel = $riskScore >= 70 ? 'HIGH' : ($riskScore >= 30 ? 'ELEVATED' : ($riskScore > 0 ? 'GUARDED' : 'LOW'));
+
+        $breakdownQuery = DB::table('marketplace_write_attempts as a')
+            ->leftJoin('marketplace_write_verifications as v', 'v.attempt_id', '=', 'a.id')
+            ->where('a.business_id', $businessId);
+        $this->applyFilters($breakdownQuery, $filters);
+        $marketplaceBreakdown = $breakdownQuery
+            ->select('a.marketplace_code')
+            ->selectRaw('COUNT(DISTINCT a.id) as total_attempts')
+            ->selectRaw("COUNT(DISTINCT CASE WHEN a.status = 'FAILED' THEN a.id END) as failed_attempts")
+            ->selectRaw("COUNT(DISTINCT CASE WHEN a.status = 'REVIEW_REQUIRED' THEN a.id END) as review_required")
+            ->selectRaw("COUNT(DISTINCT CASE WHEN v.id IS NULL AND a.status IN ('ACCEPTED', 'REVIEW_REQUIRED') THEN a.id END) as verification_pending")
+            ->groupBy('a.marketplace_code')
+            ->orderBy('a.marketplace_code')
+            ->get();
+
+        return compact('attempts', 'counts', 'filters', 'riskScore', 'riskLevel', 'marketplaceBreakdown');
     }
 
     public function exportRows(int $businessId, array $filters = [])
